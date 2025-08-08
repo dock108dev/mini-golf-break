@@ -172,9 +172,21 @@ export class GameLoopManager {
       if (this.game.performanceManager) {
         this.game.performanceManager.startTimer('effects');
       }
-      this.game.visualEffectsManager.update(
-        this.game.ballManager ? this.game.ballManager.ball : null
-      );
+      
+      // Update particle effects
+      this.game.visualEffectsManager.update(this.deltaTime);
+      
+      // Update ball trail if ball exists
+      if (this.game.ballManager?.ball) {
+        const ball = this.game.ballManager.ball;
+        const ballPosition = ball.mesh?.position;
+        const ballVelocity = ball.body?.velocity;
+        if (ballPosition && ballVelocity) {
+          const speed = Math.sqrt(ballVelocity.x ** 2 + ballVelocity.z ** 2);
+          this.game.visualEffectsManager.updateBallTrail(ballPosition, speed);
+        }
+      }
+      
       if (this.game.performanceManager) {
         this.game.performanceManager.endTimer('effects');
       }

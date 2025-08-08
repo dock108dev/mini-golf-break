@@ -62,18 +62,22 @@ export class HoleEntity extends BaseElement {
       this.parentGroup = null;
     }
 
-    // Validate boundary shape
-    this.boundaryShape =
-      Array.isArray(config.boundaryShape) && config.boundaryShape.length >= 3
-        ? config.boundaryShape.map(p => new THREE.Vector2(p.x, p.y)) // Ensure Vector2, use y for world z
-        : [
-            // Default rectangular shape if invalid
-            new THREE.Vector2(-2, -10),
-            new THREE.Vector2(-2, 10),
-            new THREE.Vector2(2, 10),
-            new THREE.Vector2(2, -10),
-            new THREE.Vector2(-2, -10)
-          ];
+    // Validate boundary shape - handle both regular and compound shapes
+    if (config.boundaryShapeDef && config.boundaryShapeDef.outer) {
+      // For compound shapes, use the outer boundary for walls
+      this.boundaryShape = config.boundaryShapeDef.outer.map(p => new THREE.Vector2(p.x, p.y));
+    } else if (Array.isArray(config.boundaryShape) && config.boundaryShape.length >= 3) {
+      this.boundaryShape = config.boundaryShape.map(p => new THREE.Vector2(p.x, p.y)); // Ensure Vector2, use y for world z
+    } else {
+      // Default rectangular shape if invalid
+      this.boundaryShape = [
+        new THREE.Vector2(-2, -10),
+        new THREE.Vector2(-2, 10),
+        new THREE.Vector2(2, 10),
+        new THREE.Vector2(2, -10),
+        new THREE.Vector2(-2, -10)
+      ];
+    }
 
     // Hole-specific properties
     this.wallHeight = 1.0;
@@ -134,6 +138,16 @@ export class HoleEntity extends BaseElement {
     }
   }
 
+  /**
+   * Check if shape type is known to be self-intersecting
+   * @returns {boolean} True if shape may self-intersect
+   * @private
+   */
+  isSelfIntersectingShape() {
+    // Figure-8/lemniscate is known to self-intersect
+    return this.config.shapeType === 'figure8';
+  }
+
   createGreenSurfaceAndPhysics() {
     const greenMaterial = new THREE.MeshStandardMaterial({
       color: 0x2ecc71,
@@ -162,6 +176,7 @@ export class HoleEntity extends BaseElement {
       );
       return; // Cannot create green without shape definition
     }
+
 
     // Extrude the shape slightly to give it depth
     const extrudeSettings = { depth: greenDepth, bevelEnabled: false };
@@ -350,6 +365,12 @@ export class HoleEntity extends BaseElement {
       metalness: 0.3
     });
 
+    // For complex shapes, merge very short segments to avoid excessive wall pieces
+    const minSegmentLength = 0.5; // Minimum wall segment length
+    const mergedSegments = [];
+    let currentStart = this.boundaryShape[0];
+    let accumulatedLength = 0;
+
     // Iterate through the boundary shape segments
     for (let i = 0; i < this.boundaryShape.length - 1; i++) {
       const startPoint = this.boundaryShape[i]; // Vector2 (x, z)
@@ -360,6 +381,40 @@ export class HoleEntity extends BaseElement {
       if (length < 0.01) {
         continue;
       } // Skip zero-length segments
+
+      // For complex shapes with many points, optimize wall generation
+      if (this.boundaryShape.length > 50 && length < minSegmentLength) {
+        accumulatedLength += length;
+        if (accumulatedLength >= minSegmentLength || i === this.boundaryShape.length - 2) {
+          mergedSegments.push({ start: currentStart, end: endPoint });
+          currentStart = endPoint;
+          accumulatedLength = 0;
+        }
+      } else {
+        if (accumulatedLength > 0) {
+          mergedSegments.push({ start: currentStart, end: startPoint });
+          accumulatedLength = 0;
+        }
+        mergedSegments.push({ start: startPoint, end: endPoint });
+        currentStart = endPoint;
+      }
+    }
+
+    // Use merged segments for complex shapes, original segments for simple shapes
+    const segmentsToUse = mergedSegments.length > 0 ? mergedSegments : 
+      this.boundaryShape.slice(0, -1).map((p, i) => ({ 
+        start: p, 
+        end: this.boundaryShape[i + 1] 
+      }));
+
+    // Create walls for each segment
+    segmentsToUse.forEach((segment, i) => {
+      const startPoint = segment.start;
+      const endPoint = segment.end;
+
+      const segmentVector = new THREE.Vector2().subVectors(endPoint, startPoint);
+      const length = segmentVector.length();
+      if (length < 0.01) return; // Skip tiny segments
 
       const angle = Math.atan2(segmentVector.y, segmentVector.x); // Angle in XZ plane
 
@@ -400,6 +455,54 @@ export class HoleEntity extends BaseElement {
       body.userData = { type: `wall_segment_${i}`, holeIndex: this.config.index };
       this.world.addBody(body);
       this.bodies.push(body);
+    });
+
+    console.log(`[HoleEntity] Created ${segmentsToUse.length} wall segments for hole ${this.config.index + 1} (original points: ${this.boundaryShape.length})`);
+    
+    // Add special handling for self-intersecting shapes
+    if (this.isSelfIntersectingShape()) {
+      this.addInvisibleGuideWalls();
+    }
+  }
+
+  /**
+   * Add invisible physics walls for complex shapes to prevent ball from getting stuck
+   * @private
+   */
+  addInvisibleGuideWalls() {
+    // For figure-8, add small invisible walls at the crossing point
+    if (this.config.shapeType === 'figure8') {
+      const crossingY = this.surfaceHeight + this.wallHeight / 2;
+      
+      // Add small diagonal guide walls at center to prevent ball getting stuck
+      const guideConfigs = [
+        { pos: new THREE.Vector3(0.3, crossingY, 0.3), angle: Math.PI / 4, length: 0.5 },
+        { pos: new THREE.Vector3(-0.3, crossingY, -0.3), angle: Math.PI / 4, length: 0.5 },
+        { pos: new THREE.Vector3(0.3, crossingY, -0.3), angle: -Math.PI / 4, length: 0.5 },
+        { pos: new THREE.Vector3(-0.3, crossingY, 0.3), angle: -Math.PI / 4, length: 0.5 }
+      ];
+
+      guideConfigs.forEach((config, idx) => {
+        const body = new CANNON.Body({
+          mass: 0,
+          type: CANNON.Body.STATIC,
+          material: this.world.bumperMaterial
+        });
+        
+        const halfExtents = new CANNON.Vec3(config.length / 2, this.wallHeight / 2, this.wallThickness / 4);
+        body.addShape(new CANNON.Box(halfExtents));
+        body.position.copy(config.pos);
+        
+        const guideQuaternion = new CANNON.Quaternion();
+        guideQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), config.angle);
+        body.quaternion.copy(guideQuaternion);
+        
+        body.userData = { type: `guide_wall_${idx}`, holeIndex: this.config.index };
+        this.world.addBody(body);
+        this.bodies.push(body);
+      });
+      
+      console.log(`[HoleEntity] Added invisible guide walls for figure-8 shape at hole ${this.config.index + 1}`);
     }
   }
 
@@ -430,17 +533,61 @@ export class HoleEntity extends BaseElement {
   }
 
   createStartPosition() {
-    // Use WORLD start position for the visual mesh
-    const teeGeometry = new THREE.CylinderGeometry(0.6, 0.6, 0.05, 24);
+    // Use shape-specific geometry for tee markers
+    let teeGeometry;
+    let teeColor = 0x0077cc; // Default blue
+    
+    // Create shape-specific tee markers for visual interest
+    switch(this.config.shapeType) {
+      case 'circle':
+        teeGeometry = new THREE.CylinderGeometry(0.6, 0.6, 0.05, 32);
+        teeColor = 0x0088ff; // Bright blue for launch pad
+        break;
+      case 'star':
+        teeGeometry = new THREE.CylinderGeometry(0.5, 0.6, 0.05, 5); // 5-sided for star
+        teeColor = 0xffaa00; // Gold for star
+        break;
+      case 'spiral':
+        teeGeometry = new THREE.CylinderGeometry(0.4, 0.7, 0.05, 6); // Tapered hex
+        teeColor = 0x9933ff; // Purple for wormhole
+        break;
+      case 'figure8':
+        teeGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.05, 8); // 8-sided
+        teeColor = 0xff6600; // Orange for Saturn's rings
+        break;
+      case 'cross':
+        teeGeometry = new THREE.CylinderGeometry(0.6, 0.6, 0.05, 4); // Square base
+        teeColor = 0x333333; // Dark for gravity well
+        break;
+      case 'diamond':
+        teeGeometry = new THREE.CylinderGeometry(0.5, 0.6, 0.05, 4); // Diamond shape
+        teeColor = 0xff00ff; // Magenta for galactic core
+        break;
+      default:
+        teeGeometry = new THREE.CylinderGeometry(0.6, 0.6, 0.05, 24);
+        break;
+    }
+    
     const teeMaterial = new THREE.MeshStandardMaterial({
-      color: 0x0077cc,
+      color: teeColor,
       roughness: 0.5,
-      metalness: 0.2
+      metalness: 0.3,
+      emissive: teeColor,
+      emissiveIntensity: 0.1 // Slight glow
     });
+    
     const teeMesh = new THREE.Mesh(teeGeometry, teeMaterial);
     // Position mesh at WORLD start position, adjusted for local Y offset
     teeMesh.position.copy(this.worldStartPosition);
     teeMesh.position.y = this.visualGreenY + 0.03; // Y offset relative to surface
+    
+    // Add rotation for visual interest on some shapes
+    if (this.config.shapeType === 'diamond' || this.config.shapeType === 'cross') {
+      teeMesh.rotation.y = Math.PI / 4; // 45 degree rotation
+    }
+    
+    teeMesh.castShadow = true;
+    teeMesh.receiveShadow = true;
     this.group.add(teeMesh); // Add to group at (0,0,0)
     this.meshes.push(teeMesh);
   }
@@ -623,4 +770,5 @@ export class HoleEntity extends BaseElement {
     // Setting group to null might cause issues if reused, let NineHoleCourse manage it.
     // this.group = null;
   }
+
 }

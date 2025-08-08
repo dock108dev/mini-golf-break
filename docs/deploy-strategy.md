@@ -1,5 +1,24 @@
 # Mini Golf Break - Deployment Strategy
 
+*Last Updated: 2025-08-08*
+
+This document outlines the comprehensive deployment strategy for Mini Golf Break across web, iOS, and future platforms.
+
+## Quick Deployment Commands
+
+```bash
+# Web deployment
+npm run build
+npm run deploy:web
+
+# iOS deployment
+npm run ios:build
+npm run ios:deploy
+
+# Run all tests before deployment
+npm run test:all
+```
+
 ## Deployment Overview
 
 ### Core Requirements
@@ -10,10 +29,11 @@
 - Offline capability
 
 ### Target Platforms
-- Desktop browsers
-- Mobile browsers
+- Desktop browsers (Chrome, Firefox, Safari, Edge)
+- Mobile browsers (iOS Safari, Chrome Mobile)
+- Native iOS app via Capacitor
 - Progressive Web App (PWA)
-- Future native apps
+- Future Android app via Capacitor
 
 ## Build Process
 
@@ -52,24 +72,36 @@ const buildConfig = {
 
 ### Development
 - Local development
-- Version control
-- Code review
-- Testing
-- Documentation
+- Version control (Git)
+- Code review (GitHub PRs)
+- Testing (Jest, Playwright)
+- Documentation updates
 
 ### Staging
 - Automated testing
 - Performance testing
 - Browser testing
-- Mobile testing
+- Mobile testing (iOS Simulator, Physical devices)
+- Capacitor builds for iOS
 - Bug fixing
 
 ### Production
-- CDN deployment
+- Web deployment (CDN)
+- iOS App Store deployment via Capacitor
 - Cache invalidation
 - Monitoring setup
 - Analytics setup
 - Error tracking
+
+### iOS Native App Deployment
+```bash
+# Build for iOS
+npm run build
+npx cap sync ios
+npx cap open ios
+# Build and archive in Xcode
+# Submit to App Store Connect
+```
 
 ## Performance Optimization
 
@@ -88,11 +120,17 @@ const buildConfig = {
 - Garbage collection
 
 ### Mobile Optimization
-- Touch optimization
-- Viewport scaling
-- Battery efficiency
-- Network handling
-- Storage management
+- Touch optimization (gesture handling, touch targets)
+- Viewport scaling (safe areas, notch support)
+- Battery efficiency (performance throttling)
+- Network handling (offline capability)
+- Storage management (cache optimization)
+- iOS-specific optimizations:
+  - Adaptive quality settings
+  - Dynamic resolution scaling
+  - Haptic feedback
+  - Native splash screen
+  - Safe area support
 
 ## Monitoring and Analytics
 

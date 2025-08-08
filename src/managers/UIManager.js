@@ -201,16 +201,11 @@ export class UIManager {
       // Listen for events needed for the final scorecard buttons
       subscribe(EventTypes.UI_REQUEST_MAIN_MENU, () => {
         debug.log('[UIManager] Received UI_REQUEST_MAIN_MENU');
-        // TODO: Implement logic to switch state to main menu
-        // TEMP DISABLE: this.game.stateManager?.setGameState('MAIN_MENU');
-        console.warn('[UIManager] TEMP: State change to MAIN_MENU disabled for debugging.');
+        this.game.stateManager?.setGameState('MAIN_MENU');
       });
       subscribe(EventTypes.UI_REQUEST_RESTART_GAME, () => {
         debug.log('[UIManager] Received UI_REQUEST_RESTART_GAME');
-        // TEMP DISABLE: window.location.reload();
-        console.warn('[UIManager] TEMP: window.location.reload() disabled for debugging.');
-        // FIX: Implement restart via full page reload for simplicity
-        // OLD: // TODO: Implement logic to restart the game
+        window.location.reload();
       });
 
       debug.log('[UIManager.setupEventListeners] Finished.');
@@ -368,6 +363,26 @@ export class UIManager {
     canvas.style.zIndex = '100'; // Below ui-overlay (1000) but above background
     canvas.style.touchAction = 'auto';
     canvas.style.pointerEvents = 'auto';
+
+    // Log canvas configuration for debugging
+    const rect = canvas.getBoundingClientRect();
+    console.log('🖼️ Canvas Configuration:', {
+      position: canvas.style.position,
+      dimensions: `${canvas.style.width} x ${canvas.style.height}`,
+      zIndex: canvas.style.zIndex,
+      pointerEvents: canvas.style.pointerEvents,
+      touchAction: canvas.style.touchAction,
+      boundingRect: {
+        left: rect.left,
+        top: rect.top,
+        width: rect.width,
+        height: rect.height
+      },
+      windowSize: {
+        width: window.innerWidth,
+        height: window.innerHeight
+      }
+    });
   }
 
   /**

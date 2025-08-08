@@ -3,6 +3,9 @@ import { debug } from '../../utils/debug';
 
 /**
  * UIScoreOverlay - Handles score, strokes, hole info, and final scorecard UI.
+ * Manages the display of game scoring information and end-game scorecard presentation.
+ * 
+ * @class UIScoreOverlay
  */
 export class UIScoreOverlay {
   constructor(game, parentContainer) {
@@ -35,9 +38,10 @@ export class UIScoreOverlay {
   init() {
     // Create score container
     this.scoreContainer = document.createElement('div');
-    this.scoreContainer.style.position = 'absolute';
-    this.scoreContainer.style.top = '10px';
-    this.scoreContainer.style.right = '10px';
+    this.scoreContainer.style.position = 'relative'; // Change to relative so it doesn't create a large invisible area
+    // Add display-ui class to prevent touch event interception
+    this.scoreContainer.classList.add('display-ui');
+    this.scoreContainer.style.pointerEvents = 'none'; // Explicitly set pointer-events
 
     // Create top-right container if it doesn't exist (should be handled by UIManager ideally)
     let topRightContainer = this.parentContainer.querySelector(
@@ -54,17 +58,17 @@ export class UIScoreOverlay {
 
     // 1. Create hole info element
     this.holeInfoElement = document.createElement('div');
-    this.holeInfoElement.classList.add(this.INFO_BOX_CLASS);
+    this.holeInfoElement.classList.add(this.INFO_BOX_CLASS, 'display-ui'); // Add display-ui class
     this.scoreContainer.appendChild(this.holeInfoElement);
 
     // 2. Create strokes element
     this.strokesElement = document.createElement('div');
-    this.strokesElement.classList.add(this.INFO_BOX_CLASS);
+    this.strokesElement.classList.add(this.INFO_BOX_CLASS, 'display-ui'); // Add display-ui class
     this.scoreContainer.appendChild(this.strokesElement);
 
     // 3. Create score element (Total Strokes)
     this.scoreElement = document.createElement('div');
-    this.scoreElement.classList.add(this.INFO_BOX_CLASS);
+    this.scoreElement.classList.add(this.INFO_BOX_CLASS, 'display-ui'); // Add display-ui class
     this.scoreContainer.appendChild(this.scoreElement);
 
     this.updateScore();
@@ -129,11 +133,26 @@ export class UIScoreOverlay {
     debug.log(`[UIScoreOverlay.updateHoleInfo] Updated to: Hole ${holeNumber}: ${description}`);
   }
 
-  // Placeholder - UIManager will call this
+  /**
+   * Updates the scorecard with current game stats
+   * Called during gameplay to keep track of progress
+   */
   updateScorecard() {
-    // This was originally part of UIManager, intended for maybe a dynamic scorecard
-    // Keep as placeholder or integrate into showFinalScorecard if needed.
-    debug.log('[UIScoreOverlay.updateScorecard] Placeholder called.');
+    if (!this.game.scoringSystem) {
+      debug.warn('[UIScoreOverlay.updateScorecard] Scoring system not available.');
+      return;
+    }
+    
+    const currentHole = this.game.holeManager?.getCurrentHoleNumber() || 1;
+    const totalStrokes = this.game.scoringSystem.getTotalStrokes();
+    const currentHoleStrokes = this.game.scoringSystem.getCurrentHoleStrokes();
+    
+    debug.log(`[UIScoreOverlay.updateScorecard] Hole ${currentHole}: ${currentHoleStrokes} strokes, Total: ${totalStrokes}`);
+    
+    // Update score display if it exists
+    if (this.scoreElement) {
+      this.scoreElement.textContent = `Strokes: ${totalStrokes}`;
+    }
   }
 
   /**
@@ -162,12 +181,59 @@ export class UIScoreOverlay {
     // Display final score details
     const scoreTable = document.createElement('table');
     scoreTable.classList.add(this.SCORECARD_TABLE_CLASS);
+    
+    // Add table header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    headerRow.innerHTML = '<th>Hole</th><th>Par</th><th>Strokes</th><th>Score</th>';
+    thead.appendChild(headerRow);
+    scoreTable.appendChild(thead);
+    
     const tbody = document.createElement('tbody');
-
-    // Example: Add total score row
+    
+    // Get hole scores if available
+    const holeScores = this.game.scoringSystem.getHoleScores ? 
+      this.game.scoringSystem.getHoleScores() : [];
+    
+    let totalPar = 0;
+    let totalStrokes = 0;
+    
+    // Add row for each hole
+    if (holeScores.length > 0) {
+      holeScores.forEach((score, index) => {
+        const holeNum = index + 1;
+        const par = score.par || 3;
+        const strokes = score.strokes || 0;
+        const scoreDiff = strokes - par;
+        
+        totalPar += par;
+        totalStrokes += strokes;
+        
+        let scoreText = '';
+        if (strokes === 1) scoreText = 'Hole in One!';
+        else if (scoreDiff <= -2) scoreText = 'Eagle';
+        else if (scoreDiff === -1) scoreText = 'Birdie';
+        else if (scoreDiff === 0) scoreText = 'Par';
+        else if (scoreDiff === 1) scoreText = 'Bogey';
+        else if (scoreDiff === 2) scoreText = 'Double Bogey';
+        else scoreText = `+${scoreDiff}`;
+        
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>Hole ${holeNum}</td><td>${par}</td><td>${strokes}</td><td>${scoreText}</td>`;
+        tbody.appendChild(row);
+      });
+    }
+    
+    // Add separator row
+    const separatorRow = document.createElement('tr');
+    separatorRow.innerHTML = '<td colspan="4"><hr></td>';
+    tbody.appendChild(separatorRow);
+    
+    // Add total score row
     const totalStrokesValue = this.game.scoringSystem.getTotalStrokes();
     const scoreRow = document.createElement('tr');
-    scoreRow.innerHTML = `<td>Total Strokes</td><td>${totalStrokesValue}</td>`;
+    scoreRow.style.fontWeight = 'bold';
+    scoreRow.innerHTML = `<td>Total</td><td>${totalPar || 27}</td><td>${totalStrokesValue}</td><td>${totalStrokesValue - (totalPar || 27) > 0 ? '+' : ''}${totalStrokesValue - (totalPar || 27)}</td>`;
     tbody.appendChild(scoreRow);
 
     scoreTable.appendChild(tbody);

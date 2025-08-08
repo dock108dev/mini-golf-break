@@ -82,7 +82,19 @@ export class Game {
   }
 
   /**
-   * Initialize the game
+   * Initialize the game - Sets up all managers, systems, and game objects
+   * This method orchestrates the entire game initialization process in a specific order:
+   * 1. iOS optimizations
+   * 2. Renderer setup
+   * 3. Core managers (debug, events)
+   * 4. Secondary systems (performance, state, UI)
+   * 5. Game systems (camera, physics, audio)
+   * 6. Game objects (course, ball)
+   * 7. Input and game loop
+   * 
+   * @async
+   * @returns {Promise<void>}
+   * @throws {Error} If any critical component fails to initialize
    */
   async init() {
     try {
@@ -189,6 +201,15 @@ export class Game {
       // Set game state to PLAYING after successful initialization
       this.stateManager.setGameState(GameState.PLAYING);
 
+      // CRITICAL FIX: Publish HOLE_STARTED event for the first hole
+      // The InputController waits for this event to enable input, but it's only published
+      // in StateManager.resetForNextHole() which is for hole transitions, not initial setup
+      this.eventManager.publish(EventTypes.HOLE_STARTED, { 
+        holeNumber: 1, 
+        timestamp: Date.now() 
+      }, this);
+      debug.log('[Game.init] Published HOLE_STARTED event for initial hole');
+
       // Publish game initialized event
       this.eventManager.publish(EventTypes.GAME_INITIALIZED, { timestamp: Date.now() }, this);
     } catch (error) {
@@ -199,6 +220,7 @@ export class Game {
 
   /**
    * Enable game input, used after unpausing
+   * @public
    */
   enableGameInput() {
     if (this.inputController) {
@@ -207,7 +229,9 @@ export class Game {
   }
 
   /**
-   * Create starfield background
+   * Create starfield background for space theme
+   * Generates 10,000 random star points in 3D space
+   * @private
    */
   createStarfield() {
     // Create star points for background starfield
@@ -236,7 +260,8 @@ export class Game {
   }
 
   /**
-   * Set up scene lights
+   * Set up scene lights - Configures ambient and directional lighting with shadows
+   * @private
    */
   setupLights() {
     // Add ambient light
@@ -263,6 +288,13 @@ export class Game {
 
   /**
    * Create the golf course environment
+   * Initializes either a NineHoleCourse or BasicCourse based on configuration
+   * Also creates the ball and positions the camera for the first hole
+   * 
+   * @async
+   * @returns {Promise<void>}
+   * @throws {Error} If course or ball creation fails
+   * @private
    */
   async createCourse() {
     try {
@@ -311,7 +343,8 @@ export class Game {
   }
 
   /**
-   * Handle window resize
+   * Handle window resize - Updates renderer and camera dimensions
+   * @private
    */
   handleResize() {
     if (this.renderer && this.camera) {

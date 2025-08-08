@@ -13,18 +13,18 @@
     "sourceType": "module"
   },
   "rules": {
-    // Code Quality - Temporarily relaxed for CI unblocking
-    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    // Code Quality
+    "no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
     "no-undef": "error",
     "no-redeclare": "error",
     "no-unreachable": "error",
     "no-duplicate-case": "error",
     
-    // Game Development Specific - Temporarily relaxed
-    "no-console": "off",
-    "no-debugger": "warn",
-    "no-alert": "warn",
-    "no-prototype-builtins": "warn",
+    // Game Development Specific
+    "no-console": "warn",
+    "no-debugger": "error",
+    "no-alert": "error",
+    "no-prototype-builtins": "error",
     
     // Performance & Memory
     "no-loop-func": "error",
@@ -53,11 +53,11 @@
     "arrow-spacing": "warn",
     "object-shorthand": "warn",
     
-    // Function Complexity - Temporarily increased limits
-    "complexity": ["warn", 25],
-    "max-depth": ["warn", 6],
-    "max-params": ["warn", 8],
-    "max-statements": ["warn", 50]
+    // Function Complexity
+    "complexity": ["warn", 20],
+    "max-depth": ["warn", 4],
+    "max-params": ["warn", 5],
+    "max-statements": ["warn", 30]
   },
   "globals": {
     "THREE": "readonly",

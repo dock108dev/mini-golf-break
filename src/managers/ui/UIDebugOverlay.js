@@ -2,6 +2,9 @@ import { debug } from '../../utils/debug';
 
 /**
  * UIDebugOverlay - Handles the debug information overlay UI.
+ * Displays runtime debug information such as FPS, ball position, physics state, etc.
+ * 
+ * @class UIDebugOverlay
  */
 export class UIDebugOverlay {
   constructor(game, parentContainer) {
@@ -23,7 +26,7 @@ export class UIDebugOverlay {
     this.debugElement = this.parentContainer.querySelector(`.${this.DEBUG_OVERLAY_CLASS}`);
     if (!this.debugElement) {
       this.debugElement = document.createElement('div');
-      this.debugElement.classList.add(this.DEBUG_OVERLAY_CLASS);
+      this.debugElement.classList.add(this.DEBUG_OVERLAY_CLASS, 'debug-ui'); // Add debug-ui class
       this.parentContainer.appendChild(this.debugElement);
     }
     this.debugElement.style.display = 'none'; // Hidden by default

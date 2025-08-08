@@ -2,9 +2,25 @@ import * as THREE from 'three';
 import { CoursesManager } from '../managers/CoursesManager.js';
 import { HoleEntity } from './HoleEntity';
 import { debug } from '../utils/debug';
+import {
+  createCircularShape,
+  createKidneyShape,
+  createLShape,
+  createTriangleShape,
+  createFigure8Shape,
+  createStarShape,
+  createSpiralShape,
+  createCrossShape,
+  createDiamondShape,
+  createSnakeShape
+} from '../utils/holeShapes';
 
 /**
  * NineHoleCourse - A mini golf course with 9 distinct holes.
+ * Each hole has unique space-themed challenges and obstacles.
+ * 
+ * @class NineHoleCourse
+ * @extends CoursesManager
  */
 export class NineHoleCourse extends CoursesManager {
   /**
@@ -51,389 +67,337 @@ export class NineHoleCourse extends CoursesManager {
     }
     // --- End 9 Hole Setup ---
 
-    // Define hole configurations for 9 holes - Space Theme
+    // Define hole configurations for 9 holes - Space Theme with VARIED SIZES and SHAPES
     this.holeConfigs = [
-      // 🚀 1. Launch Pad - Welcome to space golf!
+      // 🚀 1. Launch Pad - Simple circular shape for beginners
       {
         index: 0,
-        description: '1. Launch Pad',
+        description: '1. Launch Pad - Circular',
         par: 2,
-        boundaryShape: [
-          new THREE.Vector2(-5, -10),
-          new THREE.Vector2(-5, 10),
-          new THREE.Vector2(5, 10),
-          new THREE.Vector2(5, -10),
-          new THREE.Vector2(-5, -10)
-        ],
-        startPosition: new THREE.Vector3(0, 0, 8), // World
-        holePosition: new THREE.Vector3(0, 0, -7), // World
+        // Perfect circle for a gentle introduction
+        shapeType: 'circle',
+        shapeParams: { radiusX: 5, radiusZ: 5 },
+        startPosition: new THREE.Vector3(0, 0, 3.5), // World
+        holePosition: new THREE.Vector3(0, 0, -3.5), // World
         hazards: [], // Clean launch!
-        bumpers: [
-          {
-            position: new THREE.Vector3(-2, 0.25, 0),
-            size: new THREE.Vector3(0.5, 0.5, 3),
-            rotation: new THREE.Euler(0, Math.PI / 6, 0)
-          },
-          {
-            position: new THREE.Vector3(2, 0.25, 0),
-            size: new THREE.Vector3(0.5, 0.5, 3),
-            rotation: new THREE.Euler(0, -Math.PI / 6, 0)
-          }
-        ]
+        bumpers: []
       },
-      // 🌙 2. Lunar Bend - Navigate the crater field
+      // 🌙 2. Lunar Bend - Kidney/bean shape for gentle curves
       {
         index: 1,
-        description: '2. Lunar Bend',
+        description: '2. Lunar Bend - Kidney Shape',
         par: 3,
-        boundaryShape: [
-          new THREE.Vector2(-6, -12),
-          new THREE.Vector2(-6, 12),
-          new THREE.Vector2(6, 12),
-          new THREE.Vector2(6, -12),
-          new THREE.Vector2(-6, -12)
-        ],
-        startPosition: new THREE.Vector3(-3, 0, 10), // World
-        holePosition: new THREE.Vector3(3, 0, -10), // World
+        // Kidney/bean shape for flowing curves
+        shapeType: 'kidney',
+        shapeParams: { width: 6, height: 8 },
+        startPosition: new THREE.Vector3(-4, 0, 5), // World
+        holePosition: new THREE.Vector3(4, 0, -5), // World
         hazards: [
-          {
-            type: 'sand', // Lunar dust
-            shape: 'circle',
-            position: new THREE.Vector3(-2, 0, 5), // World
-            size: { radius: 2 },
-            depth: 0.1
-          },
           {
             type: 'sand',
             shape: 'circle',
-            position: new THREE.Vector3(2, 0, -5), // World
-            size: { radius: 2 },
+            position: new THREE.Vector3(0, 0, 0), // World
+            size: { radius: 1.5 },
             depth: 0.1
           }
         ],
-        bumpers: [
-          {
-            position: new THREE.Vector3(0, 0.25, 0),
-            size: new THREE.Vector3(4, 0.5, 0.5),
-            rotation: new THREE.Euler(0, Math.PI / 4, 0)
-          }
-        ]
+        bumpers: []
       },
-      // ☄️ 3. Asteroid Belt - Two paths through the field
+      // ☄️ 3. Asteroid Belt - L-shape for strategic corners
       {
         index: 2,
-        description: '3. Asteroid Belt',
+        description: '3. Asteroid Belt - L-Shape',
         par: 3,
-        boundaryShape: [
-          new THREE.Vector2(-7, -10),
-          new THREE.Vector2(-7, 10),
-          new THREE.Vector2(7, 10),
-          new THREE.Vector2(7, -10),
-          new THREE.Vector2(-7, -10)
-        ],
-        startPosition: new THREE.Vector3(0, 0, 9), // World
-        holePosition: new THREE.Vector3(0, 0, -9), // World
+        // L-shaped boundary for corner navigation
+        shapeType: 'lshape',
+        shapeParams: { width: 12, height: 12, thickness: 4 },
+        startPosition: new THREE.Vector3(-5, 0, -5), // World - bottom left corner
+        holePosition: new THREE.Vector3(5, 0, 5), // World - top right corner
         hazards: [
           {
-            type: 'water', // Space void
+            type: 'water', // Space void at the corner
             shape: 'rectangle',
-            position: new THREE.Vector3(0, 0, 0), // World
-            size: { width: 8, length: 4 },
+            position: new THREE.Vector3(-2, 0, 2), // World
+            size: { width: 3, length: 3 },
             depth: 0.15
           }
         ],
         bumpers: [
-          // Asteroid obstacles
+          // Asteroid obstacles at strategic points
           {
-            position: new THREE.Vector3(-3, 0.25, 3),
+            position: new THREE.Vector3(-5, 0.25, 0),
             size: new THREE.Vector3(1, 0.5, 1),
             rotation: new THREE.Euler(0, 0, 0)
           },
           {
-            position: new THREE.Vector3(3, 0.25, -3),
+            position: new THREE.Vector3(0, 0.25, -5),
             size: new THREE.Vector3(1, 0.5, 1),
             rotation: new THREE.Euler(0, 0, 0)
-          },
-          {
-            position: new THREE.Vector3(0, 0.25, 0),
-            size: new THREE.Vector3(1.5, 0.5, 1.5),
-            rotation: new THREE.Euler(0, Math.PI / 4, 0)
           }
         ]
       },
-      // 🔴 4. Olympus Mons - Mars mountain challenge
+      // 🔴 4. Olympus Mons - Triangle mountain challenge
       {
         index: 3,
-        description: '4. Olympus Mons',
+        description: '4. Olympus Mons - Triangle',
         par: 3,
-        boundaryShape: [
-          new THREE.Vector2(-6, -10),
-          new THREE.Vector2(-6, 10),
-          new THREE.Vector2(6, 10),
-          new THREE.Vector2(6, -10),
-          new THREE.Vector2(-6, -10)
-        ],
-        startPosition: new THREE.Vector3(0, 0, 9), // World
-        holePosition: new THREE.Vector3(0, 0, -9), // World
+        // Triangle shaped boundary for angular challenge
+        shapeType: 'triangle',
+        shapeParams: { size: 8 },
+        startPosition: new THREE.Vector3(0, 0, 6), // World - bottom center
+        holePosition: new THREE.Vector3(0, 0, -6), // World - top center
         hazards: [
           {
-            type: 'sand', // Martian dust
+            type: 'sand', // Martian dust at corners
             shape: 'circle',
-            position: new THREE.Vector3(-3, 0, 3), // World
-            size: { radius: 1.5 },
+            position: new THREE.Vector3(-4, 0, 2), // World - left corner
+            size: { radius: 1.2 },
             depth: 0.1
           },
           {
             type: 'sand',
             shape: 'circle',
-            position: new THREE.Vector3(3, 0, -3), // World
-            size: { radius: 1.5 },
+            position: new THREE.Vector3(4, 0, 2), // World - right corner
+            size: { radius: 1.2 },
             depth: 0.1
           }
         ],
         bumpers: [
-          // Central mountain
+          // Central mountain obstacle
           {
             position: new THREE.Vector3(0, 0.35, 0),
-            size: new THREE.Vector3(3, 0.7, 3),
-            rotation: new THREE.Euler(0, Math.PI / 4, 0)
+            size: new THREE.Vector3(2, 0.7, 2),
+            rotation: new THREE.Euler(0, 0, 0)
           }
         ]
       },
-      // 💫 5. Saturn's Rings - Timing challenge
+      // 💫 5. Saturn's Rings - Figure-8 dual loop challenge
       {
         index: 4,
-        description: "5. Saturn's Rings",
-        par: 3,
-        boundaryShape: [
-          new THREE.Vector2(-5, -10),
-          new THREE.Vector2(-5, 10),
-          new THREE.Vector2(5, 10),
-          new THREE.Vector2(5, -10),
-          new THREE.Vector2(-5, -10)
-        ],
-        startPosition: new THREE.Vector3(0, 0, 9),
-        holePosition: new THREE.Vector3(0, 0, -9),
+        description: "5. Saturn's Rings - Figure-8",
+        par: 4,
+        // Figure-8/lemniscate shape for dual loops
+        shapeType: 'figure8',
+        shapeParams: { width: 4, height: 6 }, // Smaller for clearer paths
+        startPosition: new THREE.Vector3(-4, 0, 0), // World - left side
+        holePosition: new THREE.Vector3(4, 0, 0), // World - right side
         hazards: [],
         bumpers: [
-          // Ring obstacles
-          {
-            position: new THREE.Vector3(-2, 0.25, 4),
-            size: new THREE.Vector3(4, 0.5, 0.3),
-            rotation: new THREE.Euler(0, Math.PI / 3, 0)
-          },
-          {
-            position: new THREE.Vector3(2, 0.25, 0),
-            size: new THREE.Vector3(4, 0.5, 0.3),
-            rotation: new THREE.Euler(0, -Math.PI / 3, 0)
-          },
-          {
-            position: new THREE.Vector3(-2, 0.25, -4),
-            size: new THREE.Vector3(4, 0.5, 0.3),
-            rotation: new THREE.Euler(0, Math.PI / 3, 0)
-          }
-        ]
-      },
-
-      // 🌌 6. Cosmic Rapids - Navigate the nebula
-      {
-        index: 5,
-        description: '6. Cosmic Rapids',
-        par: 4,
-        boundaryShape: [
-          new THREE.Vector2(-5, -12),
-          new THREE.Vector2(-5, 12),
-          new THREE.Vector2(5, 12),
-          new THREE.Vector2(5, -12),
-          new THREE.Vector2(-5, -12)
-        ],
-        startPosition: new THREE.Vector3(-3, 0, 11),
-        holePosition: new THREE.Vector3(3, 0, -11),
-        hazards: [
-          {
-            type: 'water', // Nebula gas
-            shape: 'circle',
-            position: new THREE.Vector3(-2, 0, 6),
-            size: { radius: 2 },
-            depth: 0.15
-          },
-          {
-            type: 'water',
-            shape: 'circle',
-            position: new THREE.Vector3(2, 0, 0),
-            size: { radius: 2 },
-            depth: 0.15
-          },
-          {
-            type: 'water',
-            shape: 'circle',
-            position: new THREE.Vector3(-2, 0, -6),
-            size: { radius: 2 },
-            depth: 0.15
-          }
-        ],
-        bumpers: [
+          // Ring obstacles at crossing points
           {
             position: new THREE.Vector3(0, 0.25, 3),
-            size: new THREE.Vector3(1, 0.5, 1),
-            rotation: new THREE.Euler(0, 0, 0)
+            size: new THREE.Vector3(2, 0.5, 0.3),
+            rotation: new THREE.Euler(0, Math.PI / 2, 0)
           },
           {
             position: new THREE.Vector3(0, 0.25, -3),
+            size: new THREE.Vector3(2, 0.5, 0.3),
+            rotation: new THREE.Euler(0, Math.PI / 2, 0)
+          },
+          // Central crossing obstacle
+          {
+            position: new THREE.Vector3(0, 0.25, 0),
             size: new THREE.Vector3(1, 0.5, 1),
-            rotation: new THREE.Euler(0, 0, 0)
+            rotation: new THREE.Euler(0, Math.PI / 4, 0)
           }
         ]
       },
 
-      // 🌀 7. Wormhole Tunnel - Space-time bending passage
+      // 🌌 6. Cosmic Rapids - Star shape with multiple paths
       {
-        index: 6,
-        description: '7. Wormhole Tunnel',
+        index: 5,
+        description: '6. Cosmic Rapids - Star',
         par: 4,
-        boundaryShape: [
-          new THREE.Vector2(-4, -12),
-          new THREE.Vector2(-4, 12),
-          new THREE.Vector2(4, 12),
-          new THREE.Vector2(4, -12),
-          new THREE.Vector2(-4, -12)
-        ],
-        startPosition: new THREE.Vector3(0, 0, 11),
-        holePosition: new THREE.Vector3(0, 0, -11),
-        hazards: [],
-        bumpers: [
-          // Narrowing tunnel walls
-          {
-            position: new THREE.Vector3(-2, 0.25, 6),
-            size: new THREE.Vector3(0.3, 0.5, 4),
-            rotation: new THREE.Euler(0, 0, 0)
-          },
-          {
-            position: new THREE.Vector3(2, 0.25, 6),
-            size: new THREE.Vector3(0.3, 0.5, 4),
-            rotation: new THREE.Euler(0, 0, 0)
-          },
-          {
-            position: new THREE.Vector3(-1.5, 0.25, 0),
-            size: new THREE.Vector3(0.3, 0.5, 4),
-            rotation: new THREE.Euler(0, 0, 0)
-          },
-          {
-            position: new THREE.Vector3(1.5, 0.25, 0),
-            size: new THREE.Vector3(0.3, 0.5, 4),
-            rotation: new THREE.Euler(0, 0, 0)
-          },
-          {
-            position: new THREE.Vector3(-1, 0.25, -6),
-            size: new THREE.Vector3(0.3, 0.5, 4),
-            rotation: new THREE.Euler(0, 0, 0)
-          },
-          {
-            position: new THREE.Vector3(1, 0.25, -6),
-            size: new THREE.Vector3(0.3, 0.5, 4),
-            rotation: new THREE.Euler(0, 0, 0)
-          }
-        ]
-      },
-
-      // ⚫ 8. Gravity Well - Black hole spiral
-      {
-        index: 7,
-        description: '8. Gravity Well',
-        par: 3,
-        boundaryShape: [
-          new THREE.Vector2(-7, -7),
-          new THREE.Vector2(-7, 7),
-          new THREE.Vector2(7, 7),
-          new THREE.Vector2(7, -7),
-          new THREE.Vector2(-7, -7)
-        ],
-        startPosition: new THREE.Vector3(-5, 0, 5),
-        holePosition: new THREE.Vector3(0, 0, 0),
+        // Star shape offering multiple path choices
+        shapeType: 'star',
+        shapeParams: { outerRadius: 8, innerRadius: 4, points: 5 }, // Slightly smaller for better control
+        startPosition: new THREE.Vector3(0, 0, 9), // World - bottom center
+        holePosition: new THREE.Vector3(0, 0, 0), // World - center
         hazards: [
           {
-            type: 'water', // Event horizon
+            type: 'water', // Nebula gas at star points
+            shape: 'circle',
+            position: new THREE.Vector3(0, 0, -7),
+            size: { radius: 1.5 },
+            depth: 0.15
+          },
+          {
+            type: 'water',
+            shape: 'circle',
+            position: new THREE.Vector3(-6, 0, 4),
+            size: { radius: 1.5 },
+            depth: 0.15
+          },
+          {
+            type: 'water',
+            shape: 'circle',
+            position: new THREE.Vector3(6, 0, 4),
+            size: { radius: 1.5 },
+            depth: 0.15
+          }
+        ],
+        bumpers: [
+          // Bumpers at inner vertices
+          {
+            position: new THREE.Vector3(0, 0.25, -3),
+            size: new THREE.Vector3(0.8, 0.5, 0.8),
+            rotation: new THREE.Euler(0, 0, 0)
+          },
+          {
+            position: new THREE.Vector3(-2.5, 0.25, 1.5),
+            size: new THREE.Vector3(0.8, 0.5, 0.8),
+            rotation: new THREE.Euler(0, 0, 0)
+          },
+          {
+            position: new THREE.Vector3(2.5, 0.25, 1.5),
+            size: new THREE.Vector3(0.8, 0.5, 0.8),
+            rotation: new THREE.Euler(0, 0, 0)
+          }
+        ]
+      },
+
+      // 🌀 7. Wormhole Tunnel - Spiral winding passage
+      {
+        index: 6,
+        description: '7. Wormhole Tunnel - Spiral',
+        par: 5,
+        // Spiral shape that winds inward
+        shapeType: 'spiral',
+        shapeParams: { innerRadius: 2, outerRadius: 8, turns: 2 }, // Reduced size for better playability
+        startPosition: new THREE.Vector3(7, 0, 0), // World - outer edge (adjusted for smaller radius)
+        holePosition: new THREE.Vector3(0, 0, 0), // World - center
+        hazards: [],
+        bumpers: [
+          // Obstacles along the spiral path
+          {
+            position: new THREE.Vector3(5, 0.25, 0),
+            size: new THREE.Vector3(0.8, 0.5, 0.8),
+            rotation: new THREE.Euler(0, 0, 0)
+          },
+          {
+            position: new THREE.Vector3(0, 0.25, 5),
+            size: new THREE.Vector3(0.8, 0.5, 0.8),
+            rotation: new THREE.Euler(0, 0, 0)
+          },
+          {
+            position: new THREE.Vector3(-5, 0.25, 0),
+            size: new THREE.Vector3(0.8, 0.5, 0.8),
+            rotation: new THREE.Euler(0, 0, 0)
+          },
+          {
+            position: new THREE.Vector3(0, 0.25, -5),
+            size: new THREE.Vector3(0.8, 0.5, 0.8),
+            rotation: new THREE.Euler(0, 0, 0)
+          }
+        ]
+      },
+
+      // ⚫ 8. Gravity Well - Cross shape intersection
+      {
+        index: 7,
+        description: '8. Gravity Well - Cross',
+        par: 3,
+        // Cross/plus shape offering intersection choices
+        shapeType: 'cross',
+        shapeParams: { armLength: 7, armWidth: 3 }, // Slightly shorter arms
+        startPosition: new THREE.Vector3(0, 0, 7), // World - bottom arm
+        holePosition: new THREE.Vector3(0, 0, 0), // World - center intersection
+        hazards: [
+          {
+            type: 'water', // Event horizon at center
             shape: 'circle',
             position: new THREE.Vector3(0, 0, 0),
-            size: { radius: 3 },
+            size: { radius: 2 },
             depth: 0.2
           }
         ],
         bumpers: [
-          // Spiral path
+          // Corner bumpers to guide toward center
           {
-            position: new THREE.Vector3(-3, 0.25, 3),
-            size: new THREE.Vector3(0.5, 0.5, 2),
+            position: new THREE.Vector3(-4, 0.25, 4),
+            size: new THREE.Vector3(1, 0.5, 1),
             rotation: new THREE.Euler(0, Math.PI / 4, 0)
           },
           {
-            position: new THREE.Vector3(3, 0.25, 3),
-            size: new THREE.Vector3(0.5, 0.5, 2),
+            position: new THREE.Vector3(4, 0.25, 4),
+            size: new THREE.Vector3(1, 0.5, 1),
             rotation: new THREE.Euler(0, -Math.PI / 4, 0)
           },
           {
-            position: new THREE.Vector3(3, 0.25, -3),
-            size: new THREE.Vector3(0.5, 0.5, 2),
+            position: new THREE.Vector3(4, 0.25, -4),
+            size: new THREE.Vector3(1, 0.5, 1),
             rotation: new THREE.Euler(0, Math.PI / 4, 0)
           },
           {
-            position: new THREE.Vector3(-3, 0.25, -3),
-            size: new THREE.Vector3(0.5, 0.5, 2),
+            position: new THREE.Vector3(-4, 0.25, -4),
+            size: new THREE.Vector3(1, 0.5, 1),
             rotation: new THREE.Euler(0, -Math.PI / 4, 0)
           }
         ]
       },
 
-      // ⭐ 9. Galactic Core - Epic finale at the center
+      // ⭐ 9. Galactic Core - Diamond with circular center (compound shape)
       {
         index: 8,
-        description: '9. Galactic Core',
+        description: '9. Galactic Core - Diamond',
         par: 5,
-        boundaryShape: [
-          new THREE.Vector2(-10, -10),
-          new THREE.Vector2(-10, 10),
-          new THREE.Vector2(10, 10),
-          new THREE.Vector2(10, -10),
-          new THREE.Vector2(-10, -10)
-        ],
-        startPosition: new THREE.Vector3(0, 0, 9),
-        holePosition: new THREE.Vector3(0, 0, 0),
+        // Diamond shape with circular hole in center - compound shape
+        shapeType: 'diamond',
+        shapeParams: { width: 10, height: 12 },
+        // Keep the compound shape definition for now
+        boundaryShapeDef: {
+          outer: createDiamondShape(10, 12), // outer diamond
+          holes: [createCircularShape(3, 3)] // circular hole in center
+        },
+        startPosition: new THREE.Vector3(0, 0, 10), // World - bottom tip
+        holePosition: new THREE.Vector3(0, 0, 0), // World - center
         hazards: [
           {
-            type: 'sand', // Stardust ring 1
+            type: 'sand', // Stardust corners
             shape: 'circle',
-            position: new THREE.Vector3(0, 0, 0),
-            size: { radius: 8 },
+            position: new THREE.Vector3(-7, 0, 0),
+            size: { radius: 1.5 },
             depth: 0.1
           },
           {
-            type: 'sand', // Stardust ring 2
+            type: 'sand',
             shape: 'circle',
-            position: new THREE.Vector3(0, 0, 0),
-            size: { radius: 5 },
-            depth: 0.05
+            position: new THREE.Vector3(7, 0, 0),
+            size: { radius: 1.5 },
+            depth: 0.1
           }
         ],
         bumpers: [
-          // Orbiting planets
+          // Orbiting obstacles around the central hole
           {
-            position: new THREE.Vector3(-4, 0.25, 4),
-            size: new THREE.Vector3(1.5, 0.5, 1.5),
+            position: new THREE.Vector3(-5, 0.25, 5),
+            size: new THREE.Vector3(1.2, 0.5, 1.2),
+            rotation: new THREE.Euler(0, Math.PI / 4, 0)
+          },
+          {
+            position: new THREE.Vector3(5, 0.25, 5),
+            size: new THREE.Vector3(1.2, 0.5, 1.2),
+            rotation: new THREE.Euler(0, -Math.PI / 4, 0)
+          },
+          {
+            position: new THREE.Vector3(5, 0.25, -5),
+            size: new THREE.Vector3(1.2, 0.5, 1.2),
+            rotation: new THREE.Euler(0, Math.PI / 4, 0)
+          },
+          {
+            position: new THREE.Vector3(-5, 0.25, -5),
+            size: new THREE.Vector3(1.2, 0.5, 1.2),
+            rotation: new THREE.Euler(0, -Math.PI / 4, 0)
+          },
+          // Center ring bumpers
+          {
+            position: new THREE.Vector3(0, 0.25, 4),
+            size: new THREE.Vector3(2, 0.5, 0.3),
             rotation: new THREE.Euler(0, 0, 0)
           },
           {
-            position: new THREE.Vector3(4, 0.25, 4),
-            size: new THREE.Vector3(1.5, 0.5, 1.5),
-            rotation: new THREE.Euler(0, 0, 0)
-          },
-          {
-            position: new THREE.Vector3(4, 0.25, -4),
-            size: new THREE.Vector3(1.5, 0.5, 1.5),
-            rotation: new THREE.Euler(0, 0, 0)
-          },
-          {
-            position: new THREE.Vector3(-4, 0.25, -4),
-            size: new THREE.Vector3(1.5, 0.5, 1.5),
+            position: new THREE.Vector3(0, 0.25, -4),
+            size: new THREE.Vector3(2, 0.5, 0.3),
             rotation: new THREE.Euler(0, 0, 0)
           }
         ]
@@ -451,6 +415,59 @@ export class NineHoleCourse extends CoursesManager {
     // Initialize tracking - start at first hole (index 0)
     this.currentHoleIndex = 0;
     this.currentHoleEntity = null; // Renamed from currentHole to avoid confusion with groups
+  }
+
+  /**
+   * Generate boundary shape from hole configuration
+   * Provides a unified pipeline for shape generation
+   * 
+   * @param {Object} config - Hole configuration object
+   * @returns {THREE.Vector2[]|Object} Shape boundary or compound shape definition
+   * @private
+   */
+  generateBoundaryShape(config) {
+    // First check if we already have a boundaryShape
+    if (config.boundaryShape) {
+      return config.boundaryShape;
+    }
+    
+    // Check for compound shapes (like hole 9)
+    if (config.boundaryShapeDef) {
+      return config.boundaryShapeDef;
+    }
+    
+    // Generate from shapeType and shapeParams
+    if (!config.shapeType || !config.shapeParams) {
+      console.warn(`[NineHoleCourse] Hole ${config.index + 1} missing shapeType or shapeParams`);
+      return null;
+    }
+    
+    const params = config.shapeParams;
+    switch(config.shapeType) {
+      case 'circle':
+        return createCircularShape(params.radiusX, params.radiusZ, params.segments || 32);
+      case 'triangle':
+        return createTriangleShape(params.size);
+      case 'star':
+        return createStarShape(params.outerRadius, params.innerRadius, params.points);
+      case 'cross':
+        return createCrossShape(params.armLength, params.armWidth);
+      case 'kidney':
+        return createKidneyShape(params.width, params.height);
+      case 'figure8':
+        return createFigure8Shape(params.width, params.height);
+      case 'spiral':
+        return createSpiralShape(params.innerRadius, params.outerRadius, params.turns);
+      case 'snake':
+        return createSnakeShape(params.length, params.width, params.curves);
+      case 'diamond':
+        return createDiamondShape(params.width, params.height);
+      case 'lshape':
+        return createLShape(params.width, params.height, params.thickness);
+      default:
+        console.warn(`[NineHoleCourse] Unknown shape type: ${config.shapeType}`);
+        return null;
+    }
   }
 
   /**
@@ -492,8 +509,11 @@ export class NineHoleCourse extends CoursesManager {
 
   /**
    * Initialize a specific hole by index
-   * @param {number} holeIndex - Index of the hole to initialize
-   * @returns {boolean} Success
+   * Creates the HoleEntity for the specified hole and sets up its visual/physics elements
+   * 
+   * @param {number} holeIndex - Index of the hole to initialize (0-based)
+   * @returns {Promise<boolean>} True if successful, false otherwise
+   * @async
    */
   async initializeHole(holeIndex) {
     debug.log(`[NineHoleCourse.initializeHole] Start (Index: ${holeIndex})`);
@@ -544,6 +564,7 @@ export class NineHoleCourse extends CoursesManager {
       );
 
       // If we already have a hole entity for this hole, just make it visible
+      // This optimization avoids recreating holes that were previously initialized
       if (this.currentHoleEntity && this.currentHoleEntity.config.index === holeIndex) {
         console.log(
           `[NineHoleCourse.initializeHole] Hole ${holeIndex + 1} already initialized, making visible.`
@@ -566,8 +587,22 @@ export class NineHoleCourse extends CoursesManager {
       console.log(
         `[NineHoleCourse.initializeHole] Creating HoleEntity for hole ${holeIndex + 1}...`
       );
+      
+      // Generate boundary shape if needed
+      const configWithShape = { ...holeConfig };
+      if (!configWithShape.boundaryShape && !configWithShape.boundaryShapeDef) {
+        const generatedShape = this.generateBoundaryShape(configWithShape);
+        if (generatedShape) {
+          configWithShape.boundaryShape = generatedShape;
+          console.log(`[NineHoleCourse.initializeHole] Generated boundary shape for hole ${holeIndex + 1}`);
+        } else {
+          console.error(`[NineHoleCourse.initializeHole] Failed to generate boundary shape for hole ${holeIndex + 1}`);
+          return false;
+        }
+      }
+      
       try {
-        this.currentHoleEntity = new HoleEntity(physicsWorld, holeConfig, scene);
+        this.currentHoleEntity = new HoleEntity(physicsWorld, configWithShape, scene);
 
         // Initialize the hole (create visual and physics elements)
         await this.currentHoleEntity.init();
@@ -662,8 +697,9 @@ export class NineHoleCourse extends CoursesManager {
   }
 
   /**
-   * Handle ball entering hole
+   * Handle ball entering hole - Sets completion flag for deferred transition
    * @param {number} holeIndex - The index of the hole the ball entered
+   * @public
    */
   onBallInHole(holeIndex) {
     console.log(`[NineHoleCourse] Ball entered hole ${holeIndex + 1}`);
@@ -683,7 +719,10 @@ export class NineHoleCourse extends CoursesManager {
 
   /**
    * Load the next hole in the 9-hole sequence.
-   * @returns {Promise<boolean>} True if successful, false otherwise
+   * Clears the current hole and initializes the next one with proper ball positioning
+   * 
+   * @returns {Promise<boolean>} True if next hole was loaded, false if at end of course
+   * @async
    */
   async loadNextHole() {
     if (this.isTransitioning) {
@@ -698,7 +737,8 @@ export class NineHoleCourse extends CoursesManager {
       const nextHoleIndex = this.currentHoleIndex + 1;
       if (nextHoleIndex >= this.totalHoles) {
         console.warn('[NineHoleCourse] No more holes available. End of course.');
-        // Handle end of game scenario here? e.g., show final scorecard
+        // Handle end of game scenario here - trigger game completion event
+        // The event will be handled by managers to show final scorecard
         this.game.stateManager.setState('GAME_OVER'); // Example state
         return false; // Indicate no *new* hole was loaded
       }
@@ -742,7 +782,10 @@ export class NineHoleCourse extends CoursesManager {
 
   /**
    * Clear the current hole's resources (visuals, physics).
-   * Makes the corresponding THREE.Group invisible.
+   * Makes the corresponding THREE.Group invisible and destroys the HoleEntity.
+   * 
+   * @returns {Promise<void>}
+   * @private
    */
   clearCurrentHole() {
     console.log(`[NineHoleCourse] Clearing resources for hole ${this.currentHoleIndex + 1}`);
@@ -815,15 +858,20 @@ export class NineHoleCourse extends CoursesManager {
 
   /**
    * Update loop for the course. Handles deferred hole transitions.
+   * Called every frame to check for pending hole completions and update hole entities
+   * 
    * @param {number} dt - Delta time in seconds
+   * @public
    */
   update(dt) {
     // Handle deferred hole completion transition
+    // This deferred approach prevents race conditions with physics updates
     if (this.isHoleComplete && !this.pendingHoleTransition && !this.isTransitioning) {
       console.log('[NineHoleCourse] Processing deferred hole completion');
       this.pendingHoleTransition = true; // Prevents re-triggering
 
-      // Schedule the transition for the next frame/tick to avoid issues during physics step etc.
+      // Schedule the transition for the next frame/tick to avoid issues during physics step
+      // This ensures physics has settled and prevents conflicts with ongoing updates
       requestAnimationFrame(async () => {
         try {
           await this.loadNextHole();

@@ -96,6 +96,29 @@ export class InputController {
   }
 
   /**
+   * Normalize screen coordinates to NDC using canvas bounding rect
+   * This accounts for iOS safe-area insets and canvas positioning
+   * @param {MouseEvent|TouchEvent} event - The pointer event
+   * @returns {Object} Normalized coordinates {x, y} in NDC space (-1 to 1)
+   */
+  normalizePointerCoordinates(event) {
+    const canvas = this.game.renderer?.domElement;
+    if (!canvas) {
+      // Fallback to window dimensions if canvas not available
+      return {
+        x: (event.clientX / window.innerWidth) * 2 - 1,
+        y: -(event.clientY / window.innerHeight) * 2 + 1
+      };
+    }
+
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: ((event.clientX - rect.left) / rect.width) * 2 - 1,
+      y: -((event.clientY - rect.top) / rect.height) * 2 + 1
+    };
+  }
+
+  /**
    * Initialize DOM event listeners
    */
   initEventListeners() {
@@ -103,6 +126,7 @@ export class InputController {
       // Get the DOM element to attach events to
       const domElement = this.renderer ? this.renderer.domElement : window;
 
+      console.log('🔥🔥🔥 INPUT CONTROLLER INITIALIZATION STARTING');
       console.log(
         '🔥 INPUT CONTROLLER INIT - domElement:',
         domElement?.tagName || 'WINDOW',
@@ -110,6 +134,10 @@ export class InputController {
         !!this.renderer
       );
       console.log('🔥 INPUT CONTROLLER INIT - domElement id:', domElement?.id || 'no-id');
+      console.log('🔥 INPUT CONTROLLER INIT - domElement parent:', domElement?.parentNode?.tagName || 'no-parent');
+      console.log('🔥 INPUT CONTROLLER INIT - domElement style.zIndex:', domElement?.style?.zIndex || 'no-z-index');
+      console.log('🔥 INPUT CONTROLLER INIT - domElement getBoundingClientRect:', domElement?.getBoundingClientRect?.() || 'no-rect');
+      console.log('🔥 INPUT CONTROLLER INIT - Current input enabled state:', this.isInputEnabled);
 
       // Bind methods to ensure 'this' context is preserved
       this.onMouseDown = this.onMouseDown.bind(this);
@@ -201,7 +229,9 @@ export class InputController {
   }
 
   /**
-   * Handle ball stopped event
+   * Handle ball stopped event - Re-enables input if hole is not completed
+   * @param {GameEvent} _event - The ball stopped event (unused)
+   * @private
    */
   handleBallStopped(_event) {
     // Re-enable input when ball stops (if hole is not completed)
@@ -211,7 +241,9 @@ export class InputController {
   }
 
   /**
-   * Handle ball in hole event
+   * Handle ball in hole event - Disables input when ball enters hole
+   * @param {GameEvent} _event - The ball in hole event (unused)
+   * @private
    */
   handleBallInHole(_event) {
     // Disable input when ball goes in hole
@@ -219,13 +251,24 @@ export class InputController {
   }
 
   /**
-   * Handle hole started event
+   * Handle hole started event - Enables input for new hole
+   * @param {GameEvent} event - The hole started event containing hole information
+   * @private
    */
-  handleHoleStarted(_event) {
+  handleHoleStarted(event) {
+    console.log('🔥🔥🔥 [InputController.handleHoleStarted] HOLE_STARTED event received!', event);
+    console.log('🔥 Current input state before enabling:', this.isInputEnabled);
     // Enable input when a new hole starts
     this.enableInput();
+    console.log('🔥 Input state after enabling:', this.isInputEnabled);
   }
 
+  /**
+   * Check if a mouse/touch event occurred within the canvas bounds
+   * @param {MouseEvent|TouchEvent} event - The pointer event to check
+   * @returns {boolean} True if event is inside canvas, false otherwise
+   * @private
+   */
   isEventInsideCanvas(event) {
     const canvas = this.renderer.domElement;
     const rect = canvas.getBoundingClientRect();
@@ -238,6 +281,11 @@ export class InputController {
     );
   }
 
+  /**
+   * Handle mouse down event - Starts drag interaction for aiming
+   * @param {MouseEvent} event - The mouse down event
+   * @private
+   */
   onMouseDown(event) {
     // Check if input is allowed and if the ball is stopped
     const ball = this.game.ballManager?.ball;
@@ -274,9 +322,10 @@ export class InputController {
     this.isPointerDown = true;
     this.isDragging = false; // Reset drag state
 
-    // Update mouse position
-    this.pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-    this.pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    // Update mouse position using robust coordinate normalization
+    const coords = this.normalizePointerCoordinates(event);
+    this.pointer.x = coords.x;
+    this.pointer.y = coords.y;
 
     // Cast ray into the scene
     this.raycaster.setFromCamera(this.pointer, this.camera);
@@ -342,6 +391,11 @@ export class InputController {
     event.preventDefault();
   }
 
+  /**
+   * Handle mouse move event - Updates aim direction and power during drag
+   * @param {MouseEvent} event - The mouse move event
+   * @private
+   */
   onMouseMove(event) {
     // Skip if input is not active or no drag started
     if (!this.isInputEnabled || !this.isPointerDown) {
@@ -351,11 +405,13 @@ export class InputController {
     // Set dragging flag
     this.isDragging = true;
 
-    // Get mouse position
-    this.pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-    this.pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    // Get mouse position using robust coordinate normalization
+    const coords = this.normalizePointerCoordinates(event);
+    this.pointer.x = coords.x;
+    this.pointer.y = coords.y;
 
     // --- Edge Detection for Camera Panning ---
+    // When dragging near screen edges, automatically pan the camera to follow
     if (this.isDragging) {
       const edgeThreshold = 0.15; // How close to the edge before panning (0-1)
       const panSpeed = 0.03; // How fast to pan
@@ -363,6 +419,7 @@ export class InputController {
       let panZ = 0;
 
       // Convert normalized pointer (-1 to 1) to 0-1 range for easier edge detection
+      // NDC: -1 = left/bottom, 1 = right/top → Screen: 0 = left/top, 1 = right/bottom
       const screenX = (this.pointer.x + 1) / 2;
       const screenY = (this.pointer.y + 1) / 2;
 
@@ -373,6 +430,7 @@ export class InputController {
       const nearBottom = screenY < edgeThreshold;
 
       // Calculate pan direction and strength
+      // Pan speed increases as cursor gets closer to edge (linear interpolation)
       if (nearLeft) {
         panX = -panSpeed * (1 - screenX / edgeThreshold);
       }
@@ -402,19 +460,23 @@ export class InputController {
     this.raycaster.setFromCamera(this.pointer, this.camera);
 
     // Create a plane at ball height for consistent dragging
+    // The plane is horizontal (normal = Y-up) and positioned at ball's Y coordinate
     const ballPosition = this.game.ballManager.ball.mesh.position.clone();
     const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -ballPosition.y);
 
     // Find intersection with the drag plane
+    // This projects the mouse position onto the horizontal plane at ball height
     const intersection = new THREE.Vector3();
     this.raycaster.ray.intersectPlane(dragPlane, intersection);
 
     if (intersection) {
       // Calculate direction FROM the intersection point TO the ball
       // This way, pulling back from the ball creates a forward shot
+      // Example: Ball at (0,0,0), drag to (0,0,5) → direction = (0,0,-1) = forward
       this.hitDirection = new THREE.Vector3().subVectors(ballPosition, intersection).normalize();
 
       // Calculate power based on distance (limit to max range)
+      // Power scales linearly with drag distance up to maxDragDistance
       const dragDistance = ballPosition.distanceTo(intersection);
       this.hitPower = Math.min(dragDistance / this.maxDragDistance, 1.0);
 
@@ -429,6 +491,11 @@ export class InputController {
     event.preventDefault();
   }
 
+  /**
+   * Handle mouse up event - Releases shot if dragging, or checks for ad clicks
+   * @param {MouseEvent} event - The mouse up event
+   * @private
+   */
   onMouseUp(event) {
     const currentState = this.stateManager ? this.stateManager.getGameState() : 'UNKNOWN';
     console.log(
@@ -443,9 +510,10 @@ export class InputController {
     let adClicked = false;
     // --- Ad Click Check (Only perform if NOT dragging for a shot) ---
     if (!this.isDragging && this.isEventInsideCanvas(event)) {
-      // Perform raycast for ad banners
-      this.pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-      this.pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      // Perform raycast for ad banners using robust coordinate normalization
+      const coords = this.normalizePointerCoordinates(event);
+      this.pointer.x = coords.x;
+      this.pointer.y = coords.y;
       this.raycaster.setFromCamera(this.pointer, this.camera);
 
       const adBannerMeshes = [] // this.adShipManager?.ships removed
@@ -546,14 +614,27 @@ export class InputController {
     event.preventDefault();
   }
 
+  /**
+   * Handle touch start event - Converts touch to mouse events for unified handling
+   * @param {TouchEvent} event - The touch start event
+   * @private
+   */
   onTouchStart(event) {
+    console.log('🔥🔥🔥🔥🔥 [InputController.onTouchStart] TOUCH EVENT RECEIVED!');
     console.log(
-      `[InputController.onTouchStart] Touch event received, touches: ${event.touches.length}, target: ${event.target.tagName}`
+      `🔥 Touch details: touches=${event.touches.length}, target=${event.target?.tagName || 'unknown'}, id=${event.target?.id || 'no-id'}`
     );
+    console.log('🔥 Touch coordinates:', event.touches[0] ? `(${event.touches[0].clientX}, ${event.touches[0].clientY})` : 'none');
+    console.log('🔥 Event target details:', {
+      tagName: event.target?.tagName || 'unknown',
+      id: event.target?.id || 'no-id',
+      className: event.target?.className || 'no-class',
+      parentNode: event.target?.parentNode?.tagName || 'no-parent'
+    });
 
     // Handle multi-touch events for camera control
     if (event.touches.length > 1) {
-      console.log('[InputController.onTouchStart] Delegating multi-touch to camera controller');
+      console.log('🔥 [InputController.onTouchStart] Delegating multi-touch to camera controller');
       // Delegate to TouchCameraController if available
       if (this.game.cameraController?.touchController) {
         this.game.cameraController.touchController.handleTouchStart(event);
@@ -563,14 +644,21 @@ export class InputController {
 
     // Check if input is allowed and if the ball is stopped
     const ball = this.game.ballManager?.ball;
+    console.log('🔥 Ball state check:', {
+      ballExists: !!ball,
+      ballStopped: ball ? ball.isStopped() : 'N/A',
+      inputEnabled: this.isInputEnabled
+    });
+    
     if (!this.isInputEnabled || (ball && !ball.isStopped())) {
+      console.log('🔥🔥🔥 [InputController.onTouchStart] INPUT REJECTED!');
       console.log(
-        `[InputController.onTouchStart] Input ignored: InputEnabled=${this.isInputEnabled}, Ball Stopped=${ball ? ball.isStopped() : 'N/A'}`
+        `🔥 Rejection reason: InputEnabled=${this.isInputEnabled}, Ball Stopped=${ball ? ball.isStopped() : 'N/A'}`
       );
       return; // Ignore touch if input disabled or ball is moving
     }
 
-    console.log('[InputController.onTouchStart] Processing single touch for game interaction');
+    console.log('🔥🔥🔥 [InputController.onTouchStart] PROCESSING SINGLE TOUCH FOR GAME INTERACTION!');
 
     // Only handle single touch events for aiming/shooting
     if (event.touches.length === 1) {
@@ -593,6 +681,11 @@ export class InputController {
     }
   }
 
+  /**
+   * Handle touch move event - Updates drag state for mobile input
+   * @param {TouchEvent} event - The touch move event
+   * @private
+   */
   onTouchMove(event) {
     // Handle multi-touch events for camera control
     if (event.touches.length > 1) {
@@ -620,6 +713,11 @@ export class InputController {
     }
   }
 
+  /**
+   * Handle touch end event - Completes the touch interaction
+   * @param {TouchEvent} event - The touch end event
+   * @private
+   */
   onTouchEnd(event) {
     console.log(
       `[InputController.onTouchEnd] Touch end received, remaining touches: ${event.touches.length}, changed: ${event.changedTouches.length}, isPointerDown: ${this.isPointerDown}`
@@ -806,14 +904,22 @@ export class InputController {
    * Enable user input for hitting the ball
    */
   enableInput() {
+    console.log('🔥🔥🔥 [InputController.enableInput] Called!');
+    console.log('🔥 Current state before enable:', this.isInputEnabled);
+    
     if (!this.isInputEnabled) {
       this.isInputEnabled = true;
+      console.log('🔥 INPUT ENABLED - State changed to true');
 
       // Publish input enabled event
       this.game.eventManager.publish(EventTypes.INPUT_ENABLED, {}, this);
 
       this.game.debugManager.log('Input enabled');
+    } else {
+      console.log('🔥 INPUT ALREADY ENABLED - No state change needed');
     }
+    
+    console.log('🔥 Final input enabled state:', this.isInputEnabled);
   }
 
   /**
@@ -842,6 +948,13 @@ export class InputController {
     }
   }
 
+  /**
+   * Update the visual aim line showing shot direction and power
+   * @param {THREE.Vector3} ballPosition - Current ball position
+   * @param {THREE.Vector3} direction - Normalized shot direction
+   * @param {number} power - Shot power (0-1)
+   * @private
+   */
   updateAimLine(ballPosition, direction, power) {
     // Remove existing line
     if (this.directionLine) {
@@ -887,6 +1000,10 @@ export class InputController {
     this.game.scene.add(this.directionLine);
   }
 
+  /**
+   * Remove the aim line from the scene and clean up resources
+   * @private
+   */
   removeAimLine() {
     if (this.directionLine) {
       this.game.scene.remove(this.directionLine);

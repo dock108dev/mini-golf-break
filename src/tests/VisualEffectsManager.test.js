@@ -88,13 +88,13 @@ describe('VisualEffectsManager', () => {
       visualEffectsManager.init();
     });
 
-    test('should log rejection effect placeholder message', () => {
+    test('should log rejection effect message', () => {
       const position = new THREE.Vector3(10, 5, 15);
 
       visualEffectsManager.triggerRejectionEffect(position);
 
       expect(console.log).toHaveBeenCalledWith(
-        '[VisualEffectsManager] Placeholder: Trigger rejection effect at (10.00, 5.00, 15.00)'
+        '[VisualEffectsManager] Triggering rejection effect at (10.00, 5.00, 15.00)'
       );
     });
 

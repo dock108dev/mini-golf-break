@@ -1,6 +1,6 @@
 # Developer Guide for Mini Golf Break
 
-*Last Updated: 2025-04-10*
+*Last Updated: 2025-08-08*
 
 This guide provides comprehensive information for developers who want to understand, modify, or extend the Mini Golf Break project.
 
@@ -12,6 +12,9 @@ This guide provides comprehensive information for developers who want to underst
 5. [Nine-Hole Course Status](#nine-hole-course-status)
 6. [Development Workflow](#development-workflow)
 7. [Testing and Debugging](#testing-and-debugging)
+8. [Performance Optimization](#performance-optimization)
+9. [Mobile Development](#mobile-development)
+10. [Common Patterns](#common-patterns)
 
 ## Architecture Overview
 
@@ -76,15 +79,21 @@ Mini Golf Break follows a component-based architecture where different systems i
 
 ### Input System
 - Managed by `InputController`.
-- **Core Mechanic**: Drag-and-release mouse/touch input.
+- **Core Mechanic**: Unified drag-and-release input for both mouse and touch.
     - Click/touch and drag to aim (determines direction).
     - Drag distance determines power (linear scaling, clamped).
     - Release to shoot.
+- **Touch-Specific Features**:
+    - Long-press detection for mobile aiming
+    - Direction arrow visualization during touch aiming
+    - Touch-friendly hit zones and UI elements
+    - Gesture conflict prevention with camera controls
 - **Visual Feedback**:
     - Aim direction line displayed during drag.
-    - Power indicator (likely DOM element) shows shot strength during drag.
+    - Power indicator shows shot strength during drag.
+    - Touch-specific visual cues for mobile users.
 - **State Handling**: Input is disabled by `InputController` during ball movement, hole transitions, and potentially UI interactions based on events like `BALL_STOPPED`, `HOLE_STARTED`, `BALL_IN_HOLE`.
-- Integrates with `CameraController` to disable orbit controls during aiming/dragging.
+- Integrates with `CameraController` and `TouchCameraController` to manage control modes.
 
 ### Performance Monitoring System
 - Managed by `PerformanceManager`.
@@ -176,11 +185,27 @@ Mini Golf Break follows a component-based architecture where different systems i
     *   **Offset Viewport**: Camera is intentionally shifted down by approximately 15% to show more of the course at the top of the screen and less starfield at the bottom.
     *   **Transitions**: Improved transitions with the camera intelligently following behind the ball's movement direction with increased responsiveness.
     *   **Orbit Controls**: Integrates `OrbitControls` for free look when the player is not aiming/hitting.
+    *   **Mobile Support**: Integrates with `TouchCameraController` for touch gestures.
     *   **Initialization**: Sets initial camera position with a high angle and good framing of the course.
     *   **Cleanup**: Disposes of controls and event listeners.
     - Respects user camera adjustments until the ball moves again
     - Subtly blends camera target towards nearest ad ship while the ball is in motion.
     - Resets ad focus blend state when positioning for a new hole.
+*   **`TouchCameraController` (`src/controls/TouchCameraController.js`)**:
+    *   **Touch Gestures**: Handles pinch-to-zoom, two-finger rotation, and pan gestures.
+    *   **Momentum**: Implements physics-based momentum for natural feeling controls.
+    *   **Edge Panning**: Allows camera panning by touching screen edges.
+    *   **Haptic Feedback**: Provides tactile feedback on supported devices.
+*   **`CameraStateManager` (`src/controls/CameraStateManager.js`)**:
+    *   **State Management**: Manages different camera view states (overview, aiming, following).
+    *   **Smart Transitions**: Smooth transitions between camera states.
+    *   **Context Awareness**: Automatically selects appropriate view based on game state.
+    *   **User Preferences**: Tracks and applies user camera preferences.
+*   **`UICameraControls` (`src/managers/ui/UICameraControls.js`)**:
+    *   **Manual Controls**: Provides UI overlay for manual camera adjustment.
+    *   **Preset Views**: Quick access to predefined camera positions.
+    *   **Mobile Optimized**: Touch-friendly button layout and sizing.
+    *   **Auto-hide**: Automatically hides after period of inactivity.
 *   **`ScoringSystem` (`src/game/ScoringSystem.js`)**: Simple system to track strokes per hole and total strokes for the course.
 *   **`HoleCompletionManager` (`src/managers/HoleCompletionManager.js`)**: Central handler for the `BALL_IN_HOLE` event. Triggers effects, sound, UI messages, updates score, sets state, and initiates hole transitions or game completion.
 *   **`AdShipManager` (`src/ads/AdShipManager.js`)**: Manages the ad ship system.
@@ -224,22 +249,69 @@ The `NineHoleCourse.js` system provides the foundation for a full 9-hole game.
 ## Development Workflow
 
 ### Setting Up
-1.  Clone repo: `git clone ...`
+1.  Clone repo: `git clone https://github.com/yourusername/mini-golf-break.git`
 2.  Install dependencies: `npm install`
 3.  Start dev server: `npm start`
+4.  Open browser to `http://localhost:8080`
 
 ### Making Changes
-- Identify the responsible manager(s) for the feature.
-- Modify manager logic and utilize the `EventManager` for cross-component communication.
-- Add/modify UI elements via `UIManager`.
-- Add/modify 3D objects via `HoleEntity`, `Ball`, or `Game`.
-- Update relevant documentation.
+
+#### 1. Feature Planning
+- Identify the responsible manager(s) for the feature
+- Check if existing events can be used or new ones are needed
+- Plan the data flow between components
+- Consider mobile/iOS implications
+
+#### 2. Implementation
+- Modify manager logic and utilize the `EventManager` for cross-component communication
+- Add/modify UI elements via `UIManager` and its submodules
+- Add/modify 3D objects via `HoleEntity`, `Ball`, or `Game`
+- Follow existing code patterns and conventions
+- Add appropriate error handling
+
+#### 3. Testing
+- Write unit tests for new components
+- Add integration tests for component interactions
+- Test on multiple browsers and devices
+- Check performance impact with the Performance Monitor (press 'p')
+
+#### 4. Documentation
+- Update relevant documentation
+- Add JSDoc comments to new functions/classes
+- Update CHANGELOG.md with your changes
 
 ### Debugging
-*   Press 'd' to toggle `DebugManager` features (3D helpers, course debug UI).
-*   Press 'p' to toggle `PerformanceManager` overlay.
-*   Use browser developer console for extensive logs.
-*   **Ad Inspect Mode:** Press 'i' key when ball stopped to toggle. Enables orbit controls and ad clicking.
+
+#### Debug Keys
+*   **'d'** - Toggle debug mode (3D helpers, physics wireframes, course debug UI)
+*   **'p'** - Toggle performance overlay (FPS, frame times, component metrics)
+*   **'i'** - Toggle Ad Inspect mode (free camera, clickable ads)
+
+#### Debug Tools
+*   **CannonDebugRenderer** - Visualizes physics bodies as green wireframes
+*   **DebugManager** - Centralized error tracking and reporting
+*   **Performance Monitor** - Real-time performance metrics
+*   **Browser DevTools** - Console logs, network monitoring, profiling
+
+#### Common Debug Scenarios
+
+**Ball falls through floor:**
+1. Enable physics debug ('d' key)
+2. Check if floor physics body exists
+3. Verify collision groups and masks
+4. Check physics world configuration
+
+**Camera issues:**
+1. Check CameraController state
+2. Verify camera position/target calculations
+3. Check for user adjustment detection
+4. Review touch controller integration
+
+**Performance problems:**
+1. Enable performance overlay ('p' key)
+2. Identify slow components (red metrics)
+3. Check object count and memory usage
+4. Review update loop efficiency
 
 ## Testing and Debugging
 
@@ -263,12 +335,153 @@ The project includes `CannonDebugRenderer` (from `src/utils/CannonDebugRenderer.
 3.  **State/Flow**: Event publishing/subscriptions, manager initialization order (`Game.init`), state transitions (`StateManager`), race conditions during transitions.
 4.  **CSG Issues**: Ensure correct geometry subtraction order, apply matrix transforms *before* CSG conversion, recalculate normals (`computeVertexNormals`) on the final mesh.
 
+## Performance Optimization
+
+### Key Optimization Areas
+
+#### 1. Rendering
+- **LOD (Level of Detail)**: Reduce complexity for distant objects
+- **Frustum Culling**: Don't render objects outside camera view
+- **Batch Draw Calls**: Combine similar geometries
+- **Texture Atlasing**: Reduce texture switching
+
+#### 2. Physics
+- **Sleep States**: Let static bodies sleep
+- **Collision Groups**: Minimize collision checks
+- **Simplified Shapes**: Use primitives over trimeshes
+- **Update Frequency**: Balance accuracy vs performance
+
+#### 3. Mobile Specific
+- **Dynamic Resolution**: Scale based on device capability
+- **Reduced Shadows**: Lower quality or disable on weak devices
+- **Touch Optimization**: Larger hit zones, gesture debouncing
+- **Battery Management**: Throttle when low battery
+
+### Performance Budgets
+
+```javascript
+// Target metrics (from PerformanceManager)
+const PERFORMANCE_BUDGETS = {
+    fps: { target: 60, minimum: 30 },
+    frameTime: { target: 16.67, maximum: 33.33 },
+    physics: { maximum: 5 },
+    rendering: { maximum: 10 },
+    memory: { maximum: 500 } // MB
+};
+```
+
+## Mobile Development
+
+### iOS Optimization
+
+The game includes comprehensive iOS optimizations via `iOSOptimizations.js`:
+
+```javascript
+// Device tier detection
+const deviceTier = iOSOptimizations.getDeviceTier();
+
+// Apply optimizations
+if (deviceTier === 'low') {
+    iOSOptimizations.applyLowEndOptimizations(renderer, scene);
+} else if (deviceTier === 'medium') {
+    iOSOptimizations.applyMediumOptimizations(renderer, scene);
+}
+```
+
+### Touch Controls
+
+**TouchCameraController** features:
+- Pinch-to-zoom
+- Two-finger rotation
+- Edge-based panning
+- Momentum physics
+- Haptic feedback
+
+### Safe Area Support
+
+CSS for notch/home indicator:
+```css
+.game-ui {
+    padding: env(safe-area-inset-top) 
+             env(safe-area-inset-right) 
+             env(safe-area-inset-bottom) 
+             env(safe-area-inset-left);
+}
+```
+
+## Common Patterns
+
+### Event-Driven Communication
+
+```javascript
+// Publishing events
+this.eventManager.publish(EventTypes.BALL_HIT, {
+    position: ball.position,
+    velocity: shotVelocity,
+    timestamp: Date.now()
+});
+
+// Subscribing to events
+this.eventManager.subscribe(EventTypes.BALL_STOPPED, (event) => {
+    this.handleBallStopped(event.data);
+});
+```
+
+### Manager Initialization
+
+```javascript
+class MyManager {
+    constructor(game) {
+        this.game = game;
+        this.isInitialized = false;
+    }
+    
+    init() {
+        if (this.isInitialized) {
+            console.warn('MyManager already initialized');
+            return;
+        }
+        
+        try {
+            // Initialization logic
+            this.isInitialized = true;
+        } catch (error) {
+            console.error('Failed to initialize MyManager:', error);
+            throw error;
+        }
+    }
+    
+    cleanup() {
+        // Cleanup logic
+        this.isInitialized = false;
+    }
+}
+```
+
+### Error Handling
+
+```javascript
+// Use DebugManager for centralized error reporting
+try {
+    // Risky operation
+} catch (error) {
+    this.debugManager.reportError(
+        'Component failed',
+        error,
+        { context: 'additional info' },
+        'ComponentName'
+    );
+}
+```
+
 ## Additional Resources
 - [Architecture Standards](../technical/architecture-standards.md)
 - [Physics Parameters](../technical/physics-parameters.md)
 - [Event System Documentation](../technical/event-system.md)
 - [Error Handling Guidelines](../technical/error-handling-guidelines.md)
-- [CHANGELOG.md](../../CHANGELOG.md)
+- [Testing Guide](testing.md)
+- [Deployment Strategy](deploy-strategy.md)
+- [CHANGELOG.md](../CHANGELOG.md)
 
 ## Physics Implementation
 
@@ -342,17 +555,18 @@ mini-golf-break/
 │   │   ├── AdShipManager.js
 │   │   └── adConfig.js
 │   ├── config/          # Game configuration files (e.g., course layouts - if separated)
-│   ├── controls/        # InputController, CameraController
+│   ├── controls/        # InputController, CameraController, TouchCameraController, CameraStateManager
 │   ├── events/          # Event types and EventManager
 │   ├── game/            # Game-specific logic (e.g., ScoringSystem)
 │   ├── managers/        # Core game system managers (UI, Physics, Audio, State, etc.)
+│   │   └── ui/          # UI submodules (UIScoreOverlay, UIDebugOverlay, UICameraControls)
 │   ├── objects/         # Game objects (Ball, HoleEntity, BaseElement, Course, hazards/, etc.)
 │   │   └── hazards/
 │   ├── physics/         # Physics world setup and utilities
 │   ├── scenes/          # Main game scene (Game.js)
 │   ├── states/          # Game state definitions (GameState.js)
 │   ├── styles/          # CSS styles
-│   └── utils/           # Utility functions (math, helpers, debug renderers)
+│   └── utils/           # Utility functions (math, helpers, debug renderers, holeShapes, iOSOptimizations)
 ├── docs/                # Project documentation
 ├── node_modules/        # NPM dependencies
 ├── public/              # Static files served by dev server (index.html)
@@ -433,5 +647,34 @@ Represents a single ad ship:
 
 *   Exports a `mockAds` array containing ad objects (`{ title, url, ... }`).
 *   (Currently uses dummy URLs).
+
+### Utility Modules
+
+*   **`holeShapes.js` (`src/utils/holeShapes.js`)**: Provides functions for generating various geometric shapes for hole boundaries:
+    *   Circle and oval shapes with configurable segments
+    *   Triangle, star, hexagon, and other polygons
+    *   L-shape, T-shape, and cross configurations
+    *   Kidney bean and figure-8 patterns
+    *   Serpentine and zigzag paths
+    *   All functions return arrays of THREE.Vector2 points defining shape perimeters
+
+*   **`iOSOptimizations.js` (`src/utils/iOSOptimizations.js`)**: Comprehensive iOS performance optimization module:
+    *   Device detection and capability assessment
+    *   Adaptive quality settings based on device tier
+    *   Dynamic resolution scaling for performance
+    *   Physics optimization (reduced iterations, simplified collisions)
+    *   Rendering optimization (LOD, shadow quality, texture resolution)
+    *   Memory management and cleanup utilities
+    *   Battery-aware performance throttling
+    *   Frame rate targeting and dynamic adjustment
+
+*   **`VisualEffectsManager` (`src/managers/VisualEffectsManager.js`)**: Enhanced visual effects system:
+    *   Trail effects for ball movement with particle systems
+    *   Impact effects for collisions with walls and obstacles
+    *   Environmental particles (ambient dust, sparkles)
+    *   Celebration animations for hole completion
+    *   Power-up visual indicators
+    *   Smooth effect transitions and lifecycle management
+    *   Performance-aware effect scaling
 
 // ... rest of Key Classes ...

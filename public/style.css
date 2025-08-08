@@ -145,18 +145,37 @@ body {
     pointer-events: none !important; /* Debug overlays should not block touches */
 }
 
-/* TEMPORARY: Visual debugging for pointer-events classes */
+/* Ensure dynamically created UI elements don't block touches */
+.message-container {
+    pointer-events: none !important;
+}
+
+.power-indicator {
+    pointer-events: none !important;
+}
+
+.power-indicator-fill {
+    pointer-events: none !important;
+}
+
+.debug-overlay {
+    pointer-events: none !important;
+}
+
+/* Visual debugging for pointer-events classes - DISABLED */
+/* Uncomment these rules to debug touch event issues
 .interactive-ui {
-    outline: 2px solid lime !important; /* Green outline for interactive elements */
+    outline: 2px solid lime !important;
 }
 
 .display-ui {
-    outline: 2px solid orange !important; /* Orange outline for display elements */
+    outline: 2px solid orange !important;
 }
 
 .debug-ui {
-    outline: 2px solid red !important; /* Red outline for debug elements */
+    outline: 2px solid red !important;
 }
+*/
 
 #power-indicator {
     --power-width: 0%;
@@ -170,6 +189,7 @@ body {
     border-radius: 5px;
     overflow: hidden;
     display: none;
+    pointer-events: none; /* Ensure power indicator doesn't block touches */
 }
 
 #power-indicator::before {
@@ -197,6 +217,7 @@ body {
     opacity: 0;
     transition: opacity 0.3s;
     z-index: 100;
+    pointer-events: none; /* Ensure ready indicator doesn't block touches */
 }
 
 #ready-indicator.visible {
@@ -300,6 +321,7 @@ body {
     flex-direction: column;
     align-items: flex-end;
     z-index: 10;
+    pointer-events: none; /* Ensure container doesn't block touches */
 }
 
 /* Info boxes for hole info, strokes, score */
@@ -313,6 +335,7 @@ body {
     min-width: 120px;
     text-align: right;
     font-size: 14px;
+    pointer-events: none; /* Ensure info boxes don't block touches */
 }
 
 /* Remove margin from last info box */

@@ -174,24 +174,8 @@ export class PhysicsWorld {
           }
         });
 
-        // Temporarily remove collision callback if it exists
-        let tempCallback = null;
-        if (this._collisionCallback) {
-          tempCallback = this._collisionCallback;
-          this.world.removeEventListener('beginContact', this._collisionCallback);
-        }
-
         // Step the world
         this.world.step(this.fixedTimeStep, dt, this.maxSubSteps);
-
-        // Re-add collision callback if it was removed
-        if (
-          tempCallback &&
-          this.world.addEventListener &&
-          typeof this.world.addEventListener === 'function'
-        ) {
-          this.world.addEventListener('beginContact', tempCallback);
-        }
       } catch (error) {
         console.error('Error in physics update:', error);
         // If we get an error, try to recover by resetting all bodies

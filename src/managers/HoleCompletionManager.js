@@ -76,11 +76,27 @@ export class HoleCompletionManager {
         if (ball.handleHoleSuccess) {
           ball.handleHoleSuccess();
         }
+        // Trigger visual celebration effect
+        if (this.game.visualEffectsManager) {
+          const holePosition = this.game.holeManager.currentHole.position;
+          const strokes = this.game.scoringSystem.getCurrentHoleStrokes();
+          if (strokes === 1) {
+            this.game.visualEffectsManager.triggerHoleInOneEffect(holePosition);
+            this.game.uiManager.showMessage('HOLE IN ONE!', 3000);
+          } else {
+            this.game.visualEffectsManager.triggerHoleCompleteEffect(holePosition);
+            this.game.uiManager.showMessage('Great Shot!', 2000);
+          }
+        } else {
+          // Fallback if no visual effects manager
+          this.game.uiManager.showMessage('Great Shot!', 2000);
+        }
+      } else {
+        // Show UI message (moved from Game.js)
+        setTimeout(() => {
+          this.game.uiManager.showMessage('Great Shot!', 2000);
+        }, 500); // Small delay still seems appropriate
       }
-      // Show UI message (moved from Game.js)
-      setTimeout(() => {
-        this.game.uiManager.showMessage('Great Shot!', 2000);
-      }, 500); // Small delay still seems appropriate
     } catch (error) {
       console.error('[HoleCompletionManager] Error during immediate feedback actions:', error);
     }
@@ -91,6 +107,9 @@ export class HoleCompletionManager {
 
     // Get score data
     const totalStrokes = this.game.scoringSystem.getTotalStrokes();
+    
+    // Save hole score
+    this.game.scoringSystem.completeHole(currentHoleNumber, 3);
 
     // Update score
     this.updateScore(currentHoleNumber, totalStrokes);
@@ -226,13 +245,6 @@ export class HoleCompletionManager {
    * @param {number} dt - Delta time in seconds
    */
   update(dt) {
-    // REMOVE commented-out, redundant ball-in-hole check
-  }
-
-  /**
-   * @deprecated Logic moved to Ball.js
-   */
-  completeHole() {
-    console.warn('[HoleCompletionManager.completeHole] is deprecated. Logic moved to Ball.js');
+    // Currently no update logic needed
   }
 }

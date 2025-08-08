@@ -773,7 +773,7 @@ export class CameraController {
    * @param {CANNON.Body} ballBody - Ball physics body
    * @param {number} deltaTime - Time delta
    */
-  updateDynamicBallFollow(ballPosition, ballBody, deltaTime) {
+  updateDynamicBallFollow(ballPosition, ballBody, _deltaTime) {
     const velocity = ballBody.velocity;
     const speed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
 

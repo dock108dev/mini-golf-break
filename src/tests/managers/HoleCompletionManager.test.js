@@ -66,7 +66,8 @@ describe('HoleCompletionManager', () => {
         remove: jest.fn()
       },
       scoringSystem: {
-        getTotalStrokes: jest.fn(() => 15)
+        getTotalStrokes: jest.fn(() => 15),
+        completeHole: jest.fn()
       }
     };
 
@@ -99,7 +100,7 @@ describe('HoleCompletionManager', () => {
     });
 
     // Mock requestAnimationFrame - don't execute the callback to avoid infinite loops
-    global.requestAnimationFrame = jest.fn(fn => {
+    global.requestAnimationFrame = jest.fn(_fn => {
       return 'raf-id';
     });
   });
@@ -202,7 +203,6 @@ describe('HoleCompletionManager', () => {
       expect(mockGame.audioManager.playSound).toHaveBeenCalledWith('success', 0.7);
       expect(mockGame.ballManager.ball.handleHoleSuccess).toHaveBeenCalled();
       expect(mockGame.stateManager.setHoleCompleted).toHaveBeenCalledWith(true);
-      expect(global.setTimeout).toHaveBeenCalledWith(expect.any(Function), 500);
       expect(global.setTimeout).toHaveBeenCalledWith(expect.any(Function), 1500);
     });
 
@@ -473,19 +473,7 @@ describe('HoleCompletionManager', () => {
     });
   });
 
-  describe('completeHole', () => {
-    beforeEach(() => {
-      holeCompletionManager = new HoleCompletionManager(mockGame);
-    });
-
-    test('should log deprecation warning', () => {
-      holeCompletionManager.completeHole();
-
-      expect(console.warn).toHaveBeenCalledWith(
-        '[HoleCompletionManager.completeHole] is deprecated. Logic moved to Ball.js'
-      );
-    });
-  });
+  // completeHole method was removed
 
   describe('integration scenarios', () => {
     beforeEach(() => {

@@ -343,9 +343,7 @@ describe('App DOM Integration Tests', () => {
       expect(mockGame.enableGameInput).toHaveBeenCalled(); // But should still enable input
     });
 
-    test.skip('should handle initialization failure gracefully in full workflow', async () => {
-      // Temporarily skip this test as it appears to have an issue with Jest's error handling
-      // The test logic is correct but Jest is misreporting the error location
+    test('should handle initialization failure gracefully in full workflow', async () => {
       const app = new App();
       const error = new Error('Initialization failed');
       mockGame.init.mockRejectedValue(error);

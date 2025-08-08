@@ -2,6 +2,81 @@
 
 All notable changes to the Mini Golf Break project will be documented in this file.
 
+## [Unreleased] - 2025-08-07
+
+### Added
+- **Enhanced Mobile Touch Controls:** Implemented comprehensive touch gesture support with intuitive mobile-first controls:
+  - Pinch-to-zoom for camera distance adjustment
+  - Two-finger drag for camera rotation
+  - Long-press with direction arrow for aiming
+  - Improved touch target sizing for mobile devices
+  - Visual feedback for all touch interactions
+- **Camera State Management System:** Created `CameraStateManager` for intelligent camera behavior:
+  - Multiple camera view states (overview, aiming, following, close-up)
+  - Smooth transitions between camera states
+  - Automatic view selection based on game context
+  - Persistent user preference tracking
+- **Touch Camera Controller:** New `TouchCameraController` class for mobile-specific camera handling:
+  - Natural touch gestures with momentum
+  - Edge-based camera panning
+  - Smart zoom boundaries
+  - Haptic feedback integration
+- **iOS Optimizations:** Comprehensive performance improvements for iOS devices:
+  - Adaptive quality settings based on device capabilities
+  - Dynamic resolution scaling
+  - Optimized physics and rendering
+  - Memory usage optimization
+  - Battery-aware performance throttling
+- **Hole Shape Utilities:** New `holeShapes.js` module for generating diverse hole geometries:
+  - Circle, triangle, star, hexagon shapes
+  - L-shape, T-shape, cross configurations
+  - Kidney bean and figure-8 patterns
+  - Procedural shape generation system
+- **UI Camera Controls:** New overlay for manual camera control:
+  - Pan, rotate, and zoom controls
+  - Reset and preset view buttons
+  - Mobile-optimized button layout
+  - Auto-hide functionality
+- **Visual Effects Enhancements:** Expanded `VisualEffectsManager` with new effects:
+  - Trail effects for ball movement
+  - Impact effects for collisions
+  - Environmental particle systems
+  - Improved celebration animations
+- **Splash Screen Integration:** Native splash screen support for iOS app
+- **Safe Area Support:** UI elements now respect device safe areas (notch, home indicator)
+
+### Changed
+- **Camera System Overhaul:** Complete redesign of camera positioning and movement:
+  - Higher default camera angle for better course visibility
+  - Improved framing to show entire hole
+  - Better ball tracking during movement
+  - Respects manual user adjustments
+- **UI Responsiveness:** Improved UI layout for various screen sizes:
+  - Flexible button positioning
+  - Scalable font sizes
+  - Touch-friendly spacing
+  - Viewport-based sizing
+- **Score Display:** Enhanced score overlay with better mobile visibility:
+  - Larger, clearer text
+  - Improved contrast
+  - Better positioning for small screens
+- **Input System:** Unified input handling for mouse and touch:
+  - Consistent aiming mechanics
+  - Improved shot power calculation
+  - Better visual feedback
+
+### Fixed
+- **Mobile Performance:** Resolved frame rate issues on mobile devices
+- **Touch Input:** Fixed inconsistent touch detection and gesture conflicts
+- **Camera Jitter:** Eliminated camera shake during rapid movements
+- **UI Scaling:** Fixed UI elements being cut off on small screens
+- **Memory Leaks:** Fixed several memory leaks in effects and camera systems
+
+### Technical
+- Updated dependencies including Capacitor to 7.4.2
+- Added comprehensive JSDoc documentation for new modules
+- Improved test coverage for camera and touch systems
+
 ## [Unreleased] - 2025-04-12
 
 ### Added
