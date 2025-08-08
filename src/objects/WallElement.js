@@ -35,8 +35,6 @@ export class WallElement extends BaseElement {
     // Call base implementation first
     super.create();
 
-    console.log(`[WallElement] Creating wall ${this.name}`);
-
     // Create visuals
     this.createVisuals();
 
@@ -78,7 +76,6 @@ export class WallElement extends BaseElement {
     // Optionally add some detail like beveled edges or texture
     this.addWallDetails(wallMesh);
 
-    console.log(`[WallElement] Created wall visuals: ${this.width}x${this.height}x${this.depth}`);
     return true;
   }
 
@@ -107,17 +104,15 @@ export class WallElement extends BaseElement {
   /**
    * Add stone pattern to wall (example detail method)
    */
-  addStonePattern(wallMesh) {
+  addStonePattern(_wallMesh) {
     // In a real implementation, this would add a stone texture or geometry detail
-    console.log('[WallElement] Adding stone pattern to wall (not implemented)');
   }
 
   /**
    * Add wood pattern to wall (example detail method)
    */
-  addWoodPattern(wallMesh) {
+  addWoodPattern(_wallMesh) {
     // In a real implementation, this would add a wood texture or geometry detail
-    console.log('[WallElement] Adding wood pattern to wall (not implemented)');
   }
 
   /**
@@ -152,9 +147,6 @@ export class WallElement extends BaseElement {
     this.world.addBody(wallBody);
     this.bodies.push(wallBody);
 
-    console.log(
-      `[WallElement] Created wall physics body at (${this.position.x}, ${this.position.y}, ${this.position.z})`
-    );
     return true;
   }
 }

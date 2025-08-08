@@ -33,8 +33,6 @@ export class BunkerElement extends BaseElement {
     // Call base implementation first
     super.create();
 
-    console.log(`[BunkerElement] Creating sand bunker ${this.name}`);
-
     // Create visuals
     this.createVisuals();
 
@@ -92,7 +90,6 @@ export class BunkerElement extends BaseElement {
     // Optionally add some detail like sand pebbles or footprints
     this.addSandDetails();
 
-    console.log(`[BunkerElement] Created sand bunker visuals with radius ${this.radius}`);
     return true;
   }
 
@@ -180,9 +177,6 @@ export class BunkerElement extends BaseElement {
     this.world.addBody(triggerBody);
     this.bodies.push(triggerBody);
 
-    console.log(
-      `[BunkerElement] Created bunker physics trigger at (${this.position.x}, ${this.position.y}, ${this.position.z})`
-    );
     return true;
   }
 }

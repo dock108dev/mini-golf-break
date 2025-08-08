@@ -1,5 +1,3 @@
-import * as CANNON from 'cannon-es';
-import * as THREE from 'three';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { debug } from '../utils/debug';
 
@@ -53,9 +51,6 @@ export class PhysicsManager {
 
     if (this.ballBody) {
       this.setupContactListeners();
-    } else {
-      console.warn('[PhysicsManager] Could not get ball body during init. Listeners not set up.');
-      // Consider setting up listeners later, e.g., after course creation
     }
 
     return this.world;
@@ -119,7 +114,7 @@ export class PhysicsManager {
    * Handle collision end events
    * @param {object} event - Collision event
    */
-  handleCollisionEnd(event) {
+  handleCollisionEnd(_event) {
     // Handle end of collision if needed
   }
 
@@ -127,7 +122,7 @@ export class PhysicsManager {
    * Update the physics simulation
    * @param {number} deltaTime - Time since last update in seconds
    */
-  update(deltaTime) {
+  update(_deltaTime) {
     // Skip update if we're in the middle of resetting
     if (this.isResetting) {
       return this;
@@ -154,8 +149,6 @@ export class PhysicsManager {
           error,
           true // Show in UI
         );
-      } else {
-        console.error('ERROR: PhysicsManager.update: Error updating physics world', error);
       }
     }
 
@@ -283,7 +276,6 @@ export class PhysicsManager {
 
       return this.world; // Return the new world instance
     } catch (error) {
-      console.error('[PhysicsManager] Error during physics world reset:', error);
       return null; // Return null on error
     } finally {
       this.isResetting = false;
@@ -294,7 +286,6 @@ export class PhysicsManager {
   // Method to set up listeners, can be called later if ball isn't ready during init
   setupContactListeners() {
     if (!this.ballBody) {
-      console.error('[PhysicsManager] Cannot set up listeners: ballBody is null.');
       return;
     }
 

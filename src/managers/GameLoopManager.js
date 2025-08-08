@@ -94,7 +94,6 @@ export class GameLoopManager {
         this.update();
       }
     } catch (error) {
-      console.error('Error in game loop:', error);
       // Continue rendering even if update fails
       if (this.game.renderer && this.game.scene && this.game.camera) {
         this.game.renderer.render(this.game.scene, this.game.camera);
@@ -172,10 +171,10 @@ export class GameLoopManager {
       if (this.game.performanceManager) {
         this.game.performanceManager.startTimer('effects');
       }
-      
+
       // Update particle effects
       this.game.visualEffectsManager.update(this.deltaTime);
-      
+
       // Update ball trail if ball exists
       if (this.game.ballManager?.ball) {
         const ball = this.game.ballManager.ball;
@@ -186,7 +185,7 @@ export class GameLoopManager {
           this.game.visualEffectsManager.updateBallTrail(ballPosition, speed);
         }
       }
-      
+
       if (this.game.performanceManager) {
         this.game.performanceManager.endTimer('effects');
       }

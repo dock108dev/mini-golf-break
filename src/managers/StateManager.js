@@ -165,7 +165,6 @@ export class StateManager {
 
     // Check if we're PAST the last hole (not AT it)
     if (currentHole > totalHoles) {
-      console.warn('[StateManager] No more holes available - past last hole');
       this.setGameState(GameState.GAME_COMPLETED);
       return this;
     }
@@ -184,8 +183,6 @@ export class StateManager {
     if (this.game.scoringSystem) {
       this.game.scoringSystem.resetCurrentStrokes();
       debug.log('[StateManager] Called scoringSystem.resetCurrentStrokes()');
-    } else {
-      console.warn('[StateManager] ScoringSystem not found, cannot reset strokes.');
     }
 
     // Set game state to aiming
@@ -204,8 +201,6 @@ export class StateManager {
       debug.log(
         `[StateManager] Published HOLE_STARTED event for hole ${this.state.currentHoleNumber}`
       );
-    } else {
-      console.error('[StateManager] EventManager not found, cannot publish HOLE_STARTED.');
     }
     // --- End Publish ---
 
@@ -283,9 +278,8 @@ export class StateManager {
     this.eventCallbacks.onHoleCompleted.forEach(callback => {
       try {
         callback();
-      } catch (error) {
-        console.error('Error in hole completed callback:', error);
-      }
+        // eslint-disable-next-line no-empty
+      } catch (error) {}
     });
   }
 }

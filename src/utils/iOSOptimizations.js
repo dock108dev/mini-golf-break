@@ -325,7 +325,6 @@ export class IOSOptimizations {
       return 'low';
     }
 
-    const renderer = gl.getParameter(gl.RENDERER);
     const cores = navigator.hardwareConcurrency || 4;
     const memory = navigator.deviceMemory || 4;
 

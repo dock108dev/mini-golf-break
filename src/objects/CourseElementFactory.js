@@ -16,8 +16,8 @@ export class CourseElementFactory {
   static createHole(scene, physicsWorld, position, options = {}) {
     const elements = {};
     // Realistic proportion: Hole radius should be ~2.53 * ball radius (0.2)
-    const ballRadius = 0.2;
-    const realisticHoleRadius = ballRadius * 2.53; // ~0.506
+    // const ballRadius = 0.2;
+    // const realisticHoleRadius = ballRadius * 2.53; // ~0.506
     const holeRadius = options.radius || 0.5; // Use 0.5 (was 0.35)
     const holeDepth = options.depth || 0.3;
 
@@ -121,7 +121,7 @@ export class CourseElementFactory {
   /**
    * Create physics bodies for hole
    */
-  static createHolePhysics(physicsWorld, position, radius, depth) {
+  static createHolePhysics(physicsWorld, position, radius, _depth) {
     const bodies = {};
 
     // Create a funnel effect leading to the hole
@@ -328,7 +328,7 @@ export class CourseElementFactory {
     const elements = {};
 
     // Calculate direction vector between start and end
-    const direction = new THREE.Vector3().subVectors(endPos, startPos).normalize();
+    // const direction = new THREE.Vector3().subVectors(endPos, startPos).normalize();
 
     // Create outer border - brighter for visibility in space
     elements.border = this.createFairwayBorder(scene, startPos, endPos, width, length);

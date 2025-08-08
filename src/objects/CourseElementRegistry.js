@@ -1,4 +1,4 @@
-import * as THREE from 'three';
+// import * as THREE from 'three';
 import { HoleEntity } from './HoleEntity';
 import { BaseElement } from './BaseElement';
 import { BunkerElement } from './BunkerElement';
@@ -22,11 +22,6 @@ export class CourseElementRegistry {
     this.register('hole', HoleEntity);
     this.register('bunker', BunkerElement);
     this.register('wall', WallElement);
-
-    console.log(
-      '[CourseElementRegistry] Registered built-in element types:',
-      Object.keys(this.elementTypes)
-    );
   }
 
   /**
@@ -36,10 +31,8 @@ export class CourseElementRegistry {
    */
   register(elementType, ElementClass) {
     // Validate that the class extends BaseElement
+    // eslint-disable-next-line no-empty
     if ((!ElementClass.prototype) instanceof BaseElement) {
-      console.warn(
-        `[CourseElementRegistry] Element class for "${elementType}" may not be a BaseElement subclass.`
-      );
     }
 
     this.elementTypes[elementType] = ElementClass;
@@ -52,7 +45,7 @@ export class CourseElementRegistry {
    * @returns {boolean} Whether the type is registered
    */
   hasElementType(elementType) {
-    return this.elementTypes.hasOwnProperty(elementType);
+    return Object.prototype.hasOwnProperty.call(this.elementTypes, elementType);
   }
 
   /**
@@ -83,10 +76,6 @@ export class CourseElementRegistry {
     // Create and return the element
     const element = new ElementClass(world, config, scene);
 
-    console.log(
-      `[CourseElementRegistry] Created element of type "${elementType}": ${element.name} (${element.id})`
-    );
-
     return element;
   }
 
@@ -104,10 +93,8 @@ export class CourseElementRegistry {
     // Initialize the element
     const success = element.create();
 
+    // eslint-disable-next-line no-empty
     if (!success) {
-      console.error(
-        `[CourseElementRegistry] Failed to initialize element of type "${elementType}": ${element.name} (${element.id})`
-      );
     }
 
     return element;
@@ -127,21 +114,16 @@ export class CourseElementRegistry {
       try {
         // Ensure each config has a type
         if (!config.type) {
-          console.error(
-            `[CourseElementRegistry] Element config missing 'type': ${JSON.stringify(config)}`
-          );
           continue;
         }
 
         // Create and initialize the element
         const element = this.createAndInitializeElement(config.type, config, world, scene);
         elements.push(element);
-      } catch (error) {
-        console.error('[CourseElementRegistry] Failed to create element:', error, config);
-      }
+        // eslint-disable-next-line no-empty
+      } catch (error) {}
     }
 
-    console.log(`[CourseElementRegistry] Created ${elements.length} elements from config`);
     return elements;
   }
 

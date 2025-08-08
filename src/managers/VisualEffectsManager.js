@@ -11,15 +11,12 @@ export class VisualEffectsManager {
     this.ballTrail = null;
     this.trailPositions = [];
     this.maxTrailLength = 20;
-    console.log('[VisualEffectsManager] Initialized.');
   }
 
   /**
    * Initializes the manager (if needed for complex setup).
    */
-  init() {
-    console.log('[VisualEffectsManager] init() called.');
-  }
+  init() {}
 
   /**
    * Creates a particle burst effect at the specified position
@@ -41,23 +38,25 @@ export class VisualEffectsManager {
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(particleCount * 3);
     const velocities = [];
-    
+
     for (let i = 0; i < particleCount; i++) {
       positions[i * 3] = position.x;
       positions[i * 3 + 1] = position.y;
       positions[i * 3 + 2] = position.z;
-      
+
       const theta = Math.random() * spread;
       const phi = Math.random() * Math.PI * 2;
-      velocities.push(new THREE.Vector3(
-        Math.sin(theta) * Math.cos(phi) * speed,
-        Math.cos(theta) * speed + Math.random() * 2,
-        Math.sin(theta) * Math.sin(phi) * speed
-      ));
+      velocities.push(
+        new THREE.Vector3(
+          Math.sin(theta) * Math.cos(phi) * speed,
+          Math.cos(theta) * speed + Math.random() * 2,
+          Math.sin(theta) * Math.sin(phi) * speed
+        )
+      );
     }
-    
+
     geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    
+
     const material = new THREE.PointsMaterial({
       color,
       size,
@@ -65,19 +64,21 @@ export class VisualEffectsManager {
       opacity: 1,
       sizeAttenuation: true
     });
-    
+
     const particles = new THREE.Points(geometry, material);
     this.scene.add(particles);
-    
+
     return {
       mesh: particles,
       velocities,
       startTime: Date.now(),
       lifetime,
-      update: (dt) => {
+      update: dt => {
         const age = (Date.now() - this.startTime) / this.lifetime;
-        if (age > 1) return true;
-        
+        if (age > 1) {
+          return true;
+        }
+
         const positions = particles.geometry.attributes.position.array;
         for (let i = 0; i < velocities.length; i++) {
           positions[i * 3] += velocities[i].x * dt;
@@ -86,7 +87,7 @@ export class VisualEffectsManager {
         }
         particles.geometry.attributes.position.needsUpdate = true;
         particles.material.opacity = Math.max(0, 1 - age);
-        
+
         return age >= 1;
       }
     };
@@ -106,23 +107,23 @@ export class VisualEffectsManager {
         opacity: 0.5,
         linewidth: 2
       });
-      
+
       this.ballTrail = new THREE.Line(geometry, material);
       this.scene.add(this.ballTrail);
     }
-    
+
     this.trailPositions.push(position.clone());
     if (this.trailPositions.length > this.maxTrailLength) {
       this.trailPositions.shift();
     }
-    
+
     const positions = new Float32Array(this.trailPositions.length * 3);
     this.trailPositions.forEach((pos, i) => {
       positions[i * 3] = pos.x;
       positions[i * 3 + 1] = pos.y + 0.1;
       positions[i * 3 + 2] = pos.z;
     });
-    
+
     this.ballTrail.geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
     this.ballTrail.geometry.attributes.position.needsUpdate = true;
   }
@@ -133,12 +134,8 @@ export class VisualEffectsManager {
    */
   triggerRejectionEffect(position) {
     if (!this.scene) {
-      console.error('[VisualEffectsManager] Cannot trigger effect: Scene not available.');
       return;
     }
-    console.log(
-      `[VisualEffectsManager] Triggering rejection effect at (${position.x.toFixed(2)}, ${position.y.toFixed(2)}, ${position.z.toFixed(2)})`
-    );
 
     const effect = this.createParticleBurst(position, {
       color: 0xff0000,
@@ -146,7 +143,7 @@ export class VisualEffectsManager {
       speed: 2,
       lifetime: 800
     });
-    
+
     this.effects.push(effect);
   }
 
@@ -156,10 +153,8 @@ export class VisualEffectsManager {
    */
   triggerHoleCompleteEffect(position) {
     if (!this.scene) {
-      console.error('[VisualEffectsManager] Cannot trigger effect: Scene not available.');
       return;
     }
-    console.log('[VisualEffectsManager] Triggering hole complete celebration');
 
     const colors = [0xffff00, 0x00ff00, 0x00ffff, 0xff00ff];
     colors.forEach((color, i) => {
@@ -181,10 +176,10 @@ export class VisualEffectsManager {
    * @param {THREE.Vector3} position - The world position where the effect should occur
    */
   triggerHoleInOneEffect(position) {
-    if (!this.scene) return;
-    
-    console.log('[VisualEffectsManager] Triggering hole-in-one celebration!');
-    
+    if (!this.scene) {
+      return;
+    }
+
     for (let i = 0; i < 5; i++) {
       setTimeout(() => {
         const effect = this.createParticleBurst(position, {
@@ -209,7 +204,10 @@ export class VisualEffectsManager {
       this.createBallTrail(ballPosition);
     } else if (this.ballTrail && this.trailPositions.length > 0) {
       this.trailPositions = [];
-      this.ballTrail.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(0), 3));
+      this.ballTrail.geometry.setAttribute(
+        'position',
+        new THREE.BufferAttribute(new Float32Array(0), 3)
+      );
     }
   }
 
@@ -219,14 +217,16 @@ export class VisualEffectsManager {
    */
   resetBallVisuals(ball) {
     if (ball && ball.mesh && ball.defaultMaterial) {
-      console.log('[VisualEffectsManager] Resetting ball visuals.');
       ball.mesh.material = ball.defaultMaterial;
       ball.mesh.scale.set(1, 1, 1);
     }
-    
+
     this.trailPositions = [];
     if (this.ballTrail) {
-      this.ballTrail.geometry.setAttribute('position', new THREE.BufferAttribute(new Float32Array(0), 3));
+      this.ballTrail.geometry.setAttribute(
+        'position',
+        new THREE.BufferAttribute(new Float32Array(0), 3)
+      );
     }
   }
 
@@ -238,11 +238,15 @@ export class VisualEffectsManager {
     for (let i = this.effects.length - 1; i >= 0; i--) {
       const effect = this.effects[i];
       const finished = effect.update(dt);
-      
+
       if (finished) {
         this.scene.remove(effect.mesh);
-        if (effect.mesh.geometry) effect.mesh.geometry.dispose();
-        if (effect.mesh.material) effect.mesh.material.dispose();
+        if (effect.mesh.geometry) {
+          effect.mesh.geometry.dispose();
+        }
+        if (effect.mesh.material) {
+          effect.mesh.material.dispose();
+        }
         this.effects.splice(i, 1);
       }
     }
@@ -252,23 +256,29 @@ export class VisualEffectsManager {
    * Cleans up resources used by the manager.
    */
   cleanup() {
-    console.log('[VisualEffectsManager] Cleaning up effects.');
-    
     this.effects.forEach(effect => {
       if (effect.mesh) {
         this.scene.remove(effect.mesh);
-        if (effect.mesh.geometry) effect.mesh.geometry.dispose();
-        if (effect.mesh.material) effect.mesh.material.dispose();
+        if (effect.mesh.geometry) {
+          effect.mesh.geometry.dispose();
+        }
+        if (effect.mesh.material) {
+          effect.mesh.material.dispose();
+        }
       }
     });
-    
+
     if (this.ballTrail) {
       this.scene.remove(this.ballTrail);
-      if (this.ballTrail.geometry) this.ballTrail.geometry.dispose();
-      if (this.ballTrail.material) this.ballTrail.material.dispose();
+      if (this.ballTrail.geometry) {
+        this.ballTrail.geometry.dispose();
+      }
+      if (this.ballTrail.material) {
+        this.ballTrail.material.dispose();
+      }
       this.ballTrail = null;
     }
-    
+
     this.effects = [];
     this.trailPositions = [];
   }

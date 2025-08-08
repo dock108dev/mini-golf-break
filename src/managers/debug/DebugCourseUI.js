@@ -46,7 +46,6 @@ export class DebugCourseUI {
     // Check if UI already exists
     this.courseDebugUI = document.getElementById(this.OVERLAY_ID);
     if (this.courseDebugUI) {
-      console.log('[DebugCourseUI] Found existing course debug overlay.');
       // Ensure event listener is attached even if UI exists
       this.removeInputListener(); // Remove first to prevent duplicates
       this.addInputListener();
@@ -54,7 +53,6 @@ export class DebugCourseUI {
       return;
     }
 
-    console.log('[DebugCourseUI] Creating course debug overlay element...');
     this.courseDebugUI = document.createElement('div');
     this.courseDebugUI.id = this.OVERLAY_ID;
     this.courseDebugUI.style.cssText = this.STYLE;
@@ -95,7 +93,6 @@ export class DebugCourseUI {
 
     // Update initial display state
     this.updateDisplay();
-    console.log('[DebugCourseUI] Initialized.');
   }
 
   /**
@@ -105,7 +102,6 @@ export class DebugCourseUI {
     // Only add if course debug is enabled in config
     if (DEBUG_CONFIG.courseDebug.enabled) {
       window.addEventListener('keydown', this.boundHandleKeyPress);
-      console.log('[DebugCourseUI] Added keydown listener.');
     }
   }
 
@@ -114,7 +110,6 @@ export class DebugCourseUI {
    */
   removeInputListener() {
     window.removeEventListener('keydown', this.boundHandleKeyPress);
-    console.log('[DebugCourseUI] Removed keydown listener.');
   }
 
   /**
@@ -123,20 +118,20 @@ export class DebugCourseUI {
    */
   handleKeyPress(e) {
     // IMPORTANT: Only process keys if the main debug mode is enabled
-    if (!this.debugManager.enabled) return;
+    if (!this.debugManager.enabled) {
+      return;
+    }
 
     const courseDebugConfig = DEBUG_CONFIG.courseDebug;
 
     // Toggle course type (c key)
     if (e.key === courseDebugConfig.toggleCourseTypeKey) {
-      console.log('[DebugCourseUI] Toggle Course Type key pressed.');
       this.debugManager.toggleCourseType(); // Delegate to parent manager
       e.preventDefault(); // Prevent potential browser shortcuts
     }
 
     // Load specific hole (h key)
     if (e.key === courseDebugConfig.loadSpecificHoleKey) {
-      console.log('[DebugCourseUI] Load Specific Hole key pressed.');
       this.debugManager.promptForHoleNumber(); // Delegate to parent manager
       e.preventDefault();
     }
@@ -144,7 +139,7 @@ export class DebugCourseUI {
     // Quick load specific hole (number keys 1-9)
     if (Object.keys(courseDebugConfig.quickLoadKeys).includes(e.key)) {
       const holeNumber = courseDebugConfig.quickLoadKeys[e.key];
-      console.log(`[DebugCourseUI] Quick Load key pressed: ${holeNumber}`);
+
       this.debugManager.loadSpecificHole(holeNumber); // Delegate to parent manager
       e.preventDefault();
     }
@@ -154,7 +149,9 @@ export class DebugCourseUI {
    * Update the displayed information in the course debug UI.
    */
   updateDisplay() {
-    if (!this.courseDebugUI) return;
+    if (!this.courseDebugUI) {
+      return;
+    }
 
     // Show/hide based on main debug manager state
     this.courseDebugUI.style.display = this.debugManager.enabled ? 'block' : 'none';
@@ -170,7 +167,6 @@ export class DebugCourseUI {
       if (holeElement) {
         holeElement.textContent = `Current Hole: ${state.currentHole}`;
       }
-      // console.log('[DebugCourseUI] Updated display.'); // Can be noisy
     }
   }
 
@@ -181,6 +177,5 @@ export class DebugCourseUI {
     this.removeInputListener();
     this.courseDebugUI?.remove();
     this.courseDebugUI = null;
-    console.log('[DebugCourseUI] Cleaned up.');
   }
 }

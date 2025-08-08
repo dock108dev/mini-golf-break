@@ -91,7 +91,7 @@ export class Game {
    * 5. Game systems (camera, physics, audio)
    * 6. Game objects (course, ball)
    * 7. Input and game loop
-   * 
+   *
    * @async
    * @returns {Promise<void>}
    * @throws {Error} If any critical component fails to initialize
@@ -204,17 +204,20 @@ export class Game {
       // CRITICAL FIX: Publish HOLE_STARTED event for the first hole
       // The InputController waits for this event to enable input, but it's only published
       // in StateManager.resetForNextHole() which is for hole transitions, not initial setup
-      this.eventManager.publish(EventTypes.HOLE_STARTED, { 
-        holeNumber: 1, 
-        timestamp: Date.now() 
-      }, this);
+      this.eventManager.publish(
+        EventTypes.HOLE_STARTED,
+        {
+          holeNumber: 1,
+          timestamp: Date.now()
+        },
+        this
+      );
       debug.log('[Game.init] Published HOLE_STARTED event for initial hole');
 
       // Publish game initialized event
       this.eventManager.publish(EventTypes.GAME_INITIALIZED, { timestamp: Date.now() }, this);
     } catch (error) {
       this.debugManager.error('Game.init', 'Failed to initialize game', error, true);
-      console.error('CRITICAL: Failed to initialize game:', error);
     }
   }
 
@@ -290,7 +293,7 @@ export class Game {
    * Create the golf course environment
    * Initializes either a NineHoleCourse or BasicCourse based on configuration
    * Also creates the ball and positions the camera for the first hole
-   * 
+   *
    * @async
    * @returns {Promise<void>}
    * @throws {Error} If course or ball creation fails
@@ -302,7 +305,6 @@ export class Game {
 
       // Ensure PhysicsManager is ready before creating the course
       if (!this.physicsManager || !this.physicsManager.getWorld()) {
-        console.error('[Game.createCourse] PhysicsManager not ready. Aborting course creation.');
         throw new Error('PhysicsManager must be initialized before creating the course.');
       }
 
@@ -338,7 +340,6 @@ export class Game {
       this.eventManager.publish(EventTypes.COURSE_CREATED, { course: this.course }, this);
     } catch (error) {
       this.debugManager.error('Game.createCourse', 'Failed to create course', error, true);
-      console.error('CRITICAL: Failed to create course:', error);
     }
   }
 
@@ -445,8 +446,6 @@ export class Game {
     } catch (error) {
       if (this.debugManager) {
         this.debugManager.error('Game.cleanup', 'Error during cleanup', error);
-      } else {
-        console.error('Error during cleanup:', error);
       }
     }
   }

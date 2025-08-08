@@ -58,7 +58,6 @@ export class AudioManager {
    */
   playSound(soundName, volume = 1.0) {
     if (!this.sounds || !this.sounds[soundName]) {
-      console.warn(`Sound '${soundName}' not found`);
       return;
     }
 
@@ -75,7 +74,6 @@ export class AudioManager {
       // Removed default case that logged warnings for unimplemented sounds
       // default:
       //     // Just log a warning for unimplemented sounds
-      //     console.warn(`Sound type '${soundName}' not implemented`);
     }
   }
 
@@ -186,7 +184,6 @@ export class AudioManager {
     ) {
       // In a real implementation, we would call context.resume()
       // For now, just log the action
-      console.log('[AudioManager] Would resume audio context');
     }
   }
 

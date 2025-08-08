@@ -18,7 +18,7 @@ import {
 /**
  * NineHoleCourse - A mini golf course with 9 distinct holes.
  * Each hole has unique space-themed challenges and obstacles.
- * 
+ *
  * @class NineHoleCourse
  * @extends CoursesManager
  */
@@ -405,9 +405,6 @@ export class NineHoleCourse extends CoursesManager {
     ];
     // Ensure totalHoles matches the number of configs provided
     if (this.holeConfigs.length !== this.totalHoles) {
-      console.warn(
-        `[NineHoleCourse] Mismatch between totalHoles (${this.totalHoles}) and provided holeConfigs (${this.holeConfigs.length}). Adjusting totalHoles.`
-      );
       this.totalHoles = this.holeConfigs.length;
     }
     debug.log(`[NineHoleCourse] Configured ${this.totalHoles} holes.`);
@@ -420,7 +417,7 @@ export class NineHoleCourse extends CoursesManager {
   /**
    * Generate boundary shape from hole configuration
    * Provides a unified pipeline for shape generation
-   * 
+   *
    * @param {Object} config - Hole configuration object
    * @returns {THREE.Vector2[]|Object} Shape boundary or compound shape definition
    * @private
@@ -430,20 +427,19 @@ export class NineHoleCourse extends CoursesManager {
     if (config.boundaryShape) {
       return config.boundaryShape;
     }
-    
+
     // Check for compound shapes (like hole 9)
     if (config.boundaryShapeDef) {
       return config.boundaryShapeDef;
     }
-    
+
     // Generate from shapeType and shapeParams
     if (!config.shapeType || !config.shapeParams) {
-      console.warn(`[NineHoleCourse] Hole ${config.index + 1} missing shapeType or shapeParams`);
       return null;
     }
-    
+
     const params = config.shapeParams;
-    switch(config.shapeType) {
+    switch (config.shapeType) {
       case 'circle':
         return createCircularShape(params.radiusX, params.radiusZ, params.segments || 32);
       case 'triangle':
@@ -465,7 +461,6 @@ export class NineHoleCourse extends CoursesManager {
       case 'lshape':
         return createLShape(params.width, params.height, params.thickness);
       default:
-        console.warn(`[NineHoleCourse] Unknown shape type: ${config.shapeType}`);
         return null;
     }
   }
@@ -499,7 +494,6 @@ export class NineHoleCourse extends CoursesManager {
     // --- END CRITICAL CHECK ---
 
     if (!success || !course.startPosition || !course.currentHoleEntity) {
-      console.error('[NineHoleCourse.create] Initialization failed or state not set correctly!');
       throw new Error('Failed to initialize first hole or required state missing');
     }
 
@@ -510,7 +504,7 @@ export class NineHoleCourse extends CoursesManager {
   /**
    * Initialize a specific hole by index
    * Creates the HoleEntity for the specified hole and sets up its visual/physics elements
-   * 
+   *
    * @param {number} holeIndex - Index of the hole to initialize (0-based)
    * @returns {Promise<boolean>} True if successful, false otherwise
    * @async
@@ -520,7 +514,6 @@ export class NineHoleCourse extends CoursesManager {
     try {
       // Validate index
       if (holeIndex < 0 || holeIndex >= this.totalHoles) {
-        console.error(`[NineHoleCourse.initializeHole] Invalid hole index: ${holeIndex}`);
         return false;
       }
 
@@ -530,27 +523,19 @@ export class NineHoleCourse extends CoursesManager {
 
       // Check if we have a valid configuration
       if (!holeConfig) {
-        console.error(
-          `[NineHoleCourse.initializeHole] No configuration found for hole ${holeIndex + 1}`
-        );
         return false;
       }
 
       // Verify that the holeGroup is a valid THREE.Group and connected to the scene
       if (!holeGroup || !(holeGroup instanceof THREE.Group)) {
-        console.error(`[NineHoleCourse.initializeHole] Invalid holeGroup for index ${holeIndex}`);
         return false;
       }
 
       // Verify that the holeGroup has a valid parent (the scene)
       if (!holeGroup.parent) {
-        console.error(
-          '[NineHoleCourse.initializeHole] holeGroup has no parent! Re-adding to scene...'
-        );
         // Try to re-add it to the scene
         this.scene.add(holeGroup);
         if (!holeGroup.parent) {
-          console.error('[NineHoleCourse.initializeHole] Failed to re-add holeGroup to scene!');
           return false;
         }
       }
@@ -559,16 +544,9 @@ export class NineHoleCourse extends CoursesManager {
       const scene = holeGroup; // Use the group as the "scene"
       const physicsWorld = this.game.physicsManager.getWorld();
 
-      console.log(
-        `[NineHoleCourse.initializeHole] Found config for hole ${holeIndex + 1}: ${holeConfig.description}`
-      );
-
       // If we already have a hole entity for this hole, just make it visible
       // This optimization avoids recreating holes that were previously initialized
       if (this.currentHoleEntity && this.currentHoleEntity.config.index === holeIndex) {
-        console.log(
-          `[NineHoleCourse.initializeHole] Hole ${holeIndex + 1} already initialized, making visible.`
-        );
         // Just ensure it's visible
         this.holeGroups[holeIndex].visible = true;
 
@@ -584,61 +562,40 @@ export class NineHoleCourse extends CoursesManager {
       });
 
       // Create a new HoleEntity for this hole
-      console.log(
-        `[NineHoleCourse.initializeHole] Creating HoleEntity for hole ${holeIndex + 1}...`
-      );
-      
+
       // Generate boundary shape if needed
       const configWithShape = { ...holeConfig };
       if (!configWithShape.boundaryShape && !configWithShape.boundaryShapeDef) {
         const generatedShape = this.generateBoundaryShape(configWithShape);
         if (generatedShape) {
           configWithShape.boundaryShape = generatedShape;
-          console.log(`[NineHoleCourse.initializeHole] Generated boundary shape for hole ${holeIndex + 1}`);
         } else {
-          console.error(`[NineHoleCourse.initializeHole] Failed to generate boundary shape for hole ${holeIndex + 1}`);
           return false;
         }
       }
-      
+
       try {
         this.currentHoleEntity = new HoleEntity(physicsWorld, configWithShape, scene);
 
         // Initialize the hole (create visual and physics elements)
         await this.currentHoleEntity.init();
-
-        console.log(
-          `[NineHoleCourse.initializeHole] Called HoleEntity.init() for hole ${holeIndex + 1}`
-        );
       } catch (error) {
-        console.error(
-          `[NineHoleCourse.initializeHole] Failed to create or initialize HoleEntity: ${error.message}`
-        );
         return false;
       }
 
       // Make the current hole group visible
       holeGroup.visible = true;
-      console.log(`[NineHoleCourse.initializeHole] Made ${holeGroup.name} visible.`);
 
       // Set current hole
       this.currentHoleIndex = holeIndex;
       this.currentHole = this.currentHoleEntity; // Set currentHole for BallManager compatibility
-      console.log(`[NineHoleCourse.initializeHole] Set currentHoleIndex: ${holeIndex}`);
 
       // Set start position for the ball
-      console.log('[NineHoleCourse.initializeHole] Calling setStartPosition...');
-      this.setStartPosition(holeConfig.startPosition);
-      console.log('[NineHoleCourse.initializeHole] Returned from setStartPosition.');
 
-      console.log('[NineHoleCourse.initializeHole] End (Success: true)');
+      this.setStartPosition(holeConfig.startPosition);
+
       return true;
     } catch (error) {
-      console.error(
-        `[NineHoleCourse.initializeHole] Error initializing hole ${holeIndex + 1}:`,
-        error
-      );
-      console.log('[NineHoleCourse.initializeHole] End (Success: false)');
       return false;
     }
   }
@@ -648,19 +605,11 @@ export class NineHoleCourse extends CoursesManager {
    * @param {THREE.Vector3} position - The start position
    */
   setStartPosition(position) {
-    console.log('[NineHoleCourse.setStartPosition] Start');
     if (!position || !(position instanceof THREE.Vector3)) {
-      console.error('[NineHoleCourse.setStartPosition] Invalid position received:', position);
-      console.log('[NineHoleCourse.setStartPosition] End (Invalid)');
       return;
     }
     // This sets the *course's* overall start position, used by BallManager
     this.startPosition = position.clone();
-    console.log(
-      '[NineHoleCourse.setStartPosition] Set course startPosition to:',
-      this.startPosition.toArray().join(',')
-    );
-    console.log('[NineHoleCourse.setStartPosition] End (Success)');
   }
 
   /**
@@ -669,10 +618,7 @@ export class NineHoleCourse extends CoursesManager {
    * @returns {Promise<boolean>} - True if successful, false otherwise
    */
   async createCourse(targetHoleNumber) {
-    console.log(`[NineHoleCourse] Creating course for hole #${targetHoleNumber}`);
-
     if (!targetHoleNumber || targetHoleNumber < 1 || targetHoleNumber > this.totalHoles) {
-      console.error(`[NineHoleCourse] Invalid hole number: ${targetHoleNumber}`);
       return false;
     }
 
@@ -684,14 +630,11 @@ export class NineHoleCourse extends CoursesManager {
       const success = await this.initializeHole(holeIndex);
 
       if (!success) {
-        console.error(`[NineHoleCourse] Failed to initialize hole #${targetHoleNumber}`);
         return false;
       }
 
-      console.log(`[NineHoleCourse] Successfully prepared hole #${targetHoleNumber}`);
       return true;
     } catch (error) {
-      console.error('[NineHoleCourse] Error creating course:', error);
       return false;
     }
   }
@@ -702,50 +645,34 @@ export class NineHoleCourse extends CoursesManager {
    * @public
    */
   onBallInHole(holeIndex) {
-    console.log(`[NineHoleCourse] Ball entered hole ${holeIndex + 1}`);
-
     // Only process if this is the current hole and we're not already transitioning
     if (holeIndex === this.currentHoleIndex && !this.isTransitioning) {
-      console.log('[NineHoleCourse] Setting hole completion flag');
       this.isHoleComplete = true;
-    } else {
-      console.log('[NineHoleCourse] Ignoring ball in hole - already transitioning or wrong hole', {
-        currentHole: this.currentHoleIndex,
-        ballHole: holeIndex,
-        isTransitioning: this.isTransitioning
-      });
     }
   }
 
   /**
    * Load the next hole in the 9-hole sequence.
    * Clears the current hole and initializes the next one with proper ball positioning
-   * 
+   *
    * @returns {Promise<boolean>} True if next hole was loaded, false if at end of course
    * @async
    */
   async loadNextHole() {
     if (this.isTransitioning) {
-      console.warn('[NineHoleCourse] Already transitioning to next hole, ignoring request');
       return false;
     }
 
-    console.log('[NineHoleCourse] Attempting to load next hole');
     this.isTransitioning = true;
 
     try {
       const nextHoleIndex = this.currentHoleIndex + 1;
       if (nextHoleIndex >= this.totalHoles) {
-        console.warn('[NineHoleCourse] No more holes available. End of course.');
         // Handle end of game scenario here - trigger game completion event
         // The event will be handled by managers to show final scorecard
         this.game.stateManager.setState('GAME_OVER'); // Example state
         return false; // Indicate no *new* hole was loaded
       }
-
-      console.log(
-        `[NineHoleCourse] Transitioning from hole ${this.currentHoleIndex + 1} to ${nextHoleIndex + 1}`
-      );
 
       // Clear current hole and initialize new one
       await this.clearCurrentHole();
@@ -758,20 +685,14 @@ export class NineHoleCourse extends CoursesManager {
       // Get the start position from the newly initialized course/hole config
       const startPosition = this.startPosition; // Reads the position set by initializeHole
       if (!startPosition) {
-        console.error(
-          `[NineHoleCourse] Start position not set after initializing hole ${nextHoleIndex + 1}`
-        );
         throw new Error('Failed to get start position for ball creation');
       }
 
       // Reset ball using BallManager, which should use this.startPosition
       await this.game.ballManager.resetBall(startPosition);
-      console.log('[NineHoleCourse] Ball reset to start position for new hole.');
 
-      console.log(`[NineHoleCourse] Successfully loaded hole ${nextHoleIndex + 1}`);
       return true;
     } catch (error) {
-      console.error('[NineHoleCourse] Failed to load next hole:', error);
       return false;
     } finally {
       // Always reset flags
@@ -783,21 +704,16 @@ export class NineHoleCourse extends CoursesManager {
   /**
    * Clear the current hole's resources (visuals, physics).
    * Makes the corresponding THREE.Group invisible and destroys the HoleEntity.
-   * 
+   *
    * @returns {Promise<void>}
    * @private
    */
   clearCurrentHole() {
-    console.log(`[NineHoleCourse] Clearing resources for hole ${this.currentHoleIndex + 1}`);
-
     // Destroy the HoleEntity (which should clean up its CANNON bodies)
     if (this.currentHoleEntity) {
       this.currentHoleEntity.destroy();
       this.currentHoleEntity = null;
       this.currentHole = null; // Also clear the currentHole reference
-      console.log('[NineHoleCourse] Destroyed current HoleEntity.');
-    } else {
-      console.warn('[NineHoleCourse] No current HoleEntity to destroy.');
     }
 
     // Hide the THREE.Group associated with the hole
@@ -807,19 +723,9 @@ export class NineHoleCourse extends CoursesManager {
         holeGroup.visible = false;
         // Don't remove the group from the scene - just make it invisible
         // This keeps the parent references intact
-        console.log(`[NineHoleCourse] Made ${holeGroup.name} invisible.`);
-      } else {
-        console.warn(
-          `[NineHoleCourse] No THREE.Group found for index ${this.currentHoleIndex} to hide.`
-        );
       }
-    } else {
-      console.warn(
-        `[NineHoleCourse] Invalid currentHoleIndex (${this.currentHoleIndex}) for hiding group.`
-      );
     }
 
-    console.log('[NineHoleCourse] Hole resource cleanup complete');
     // Note: We resolve immediately, actual async cleanup might need Promises
     return Promise.resolve();
   }
@@ -838,7 +744,6 @@ export class NineHoleCourse extends CoursesManager {
    */
   getCurrentHoleConfig() {
     if (this.currentHoleIndex < 0 || this.currentHoleIndex >= this.holeConfigs.length) {
-      console.warn(`[NineHoleCourse] Invalid hole index: ${this.currentHoleIndex}`);
       return null;
     }
     return this.holeConfigs[this.currentHoleIndex];
@@ -850,16 +755,13 @@ export class NineHoleCourse extends CoursesManager {
    */
   hasNextHole() {
     const hasNext = this.currentHoleIndex < this.totalHoles - 1;
-    console.log(
-      `[NineHoleCourse] Checking for next hole: ${hasNext} (current: ${this.currentHoleIndex + 1}, total: ${this.totalHoles})`
-    );
     return hasNext;
   }
 
   /**
    * Update loop for the course. Handles deferred hole transitions.
    * Called every frame to check for pending hole completions and update hole entities
-   * 
+   *
    * @param {number} dt - Delta time in seconds
    * @public
    */
@@ -867,7 +769,6 @@ export class NineHoleCourse extends CoursesManager {
     // Handle deferred hole completion transition
     // This deferred approach prevents race conditions with physics updates
     if (this.isHoleComplete && !this.pendingHoleTransition && !this.isTransitioning) {
-      console.log('[NineHoleCourse] Processing deferred hole completion');
       this.pendingHoleTransition = true; // Prevents re-triggering
 
       // Schedule the transition for the next frame/tick to avoid issues during physics step
@@ -876,7 +777,6 @@ export class NineHoleCourse extends CoursesManager {
         try {
           await this.loadNextHole();
         } catch (error) {
-          console.error('[NineHoleCourse] Failed to transition to next hole:', error);
           // Consider resetting state or showing an error message
         } finally {
           // Reset flags whether successful or not, managed within loadNextHole now
@@ -900,9 +800,6 @@ export class NineHoleCourse extends CoursesManager {
   getHolePosition() {
     const config = this.getCurrentHoleConfig();
     if (!config || !config.holePosition) {
-      console.warn(
-        `[NineHoleCourse] Config or holePosition missing for index ${this.currentHoleIndex}.`
-      );
       return null;
     }
     return config.holePosition;
@@ -915,9 +812,6 @@ export class NineHoleCourse extends CoursesManager {
   getHoleStartPosition() {
     const config = this.getCurrentHoleConfig();
     if (!config || !config.startPosition) {
-      console.warn(
-        `[NineHoleCourse] Config or startPosition missing for index ${this.currentHoleIndex}.`
-      );
       return null;
     }
     return config.startPosition;
@@ -930,9 +824,6 @@ export class NineHoleCourse extends CoursesManager {
   getHolePar() {
     const config = this.getCurrentHoleConfig();
     if (!config || typeof config.par !== 'number') {
-      console.warn(
-        `[NineHoleCourse] Config or par missing/invalid for index ${this.currentHoleIndex}.`
-      );
       return 0; // Default par
     }
     return config.par;

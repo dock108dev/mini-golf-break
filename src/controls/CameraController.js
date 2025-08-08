@@ -74,69 +74,50 @@ export class CameraController {
    * Initialize camera and controls
    */
   init() {
-    console.log('[CameraController.init] Starting...');
     try {
       // Guard against multiple initialization
       if (this.isInitialized) {
-        console.warn('[CameraController.init] Already initialized, skipping.');
         return this;
       }
 
       // Get manager references
       this.ballManager = this.game.ballManager;
       this.adShipManager = this.game.adShipManager;
-      if (!this.ballManager || !this.adShipManager) {
-        console.warn('[CameraController.init] BallManager or AdShipManager not found!');
-      }
 
       // Setup camera
-      console.log('[CameraController.init] Setting up camera...');
+
       this.setupCamera();
-      console.log('[CameraController.init] Camera setup finished.');
 
       // Setup controls if renderer is available
       if (this.renderer) {
-        console.log('[CameraController.init] Setting up controls...');
         this.setupControls();
-        console.log('[CameraController.init] Controls setup finished.');
 
         // Setup camera state manager
-        console.log('[CameraController.init] Setting up camera state manager...');
+
         this.setupStateManager();
-        console.log('[CameraController.init] Camera state manager setup finished.');
 
         // Setup touch controls for mobile devices
         if (this.isTouchDevice) {
-          console.log('[CameraController.init] Setting up touch controls...');
           this.setupTouchControls();
-          console.log('[CameraController.init] Touch controls setup finished.');
         }
-      } else {
-        console.warn(
-          '[CameraController.init] Initialized without renderer, orbit controls will be disabled'
-        );
       }
 
       // Set up event listeners
-      console.log('[CameraController.init] Setting up event listeners...');
+
       this.setupEventListeners();
-      console.log('[CameraController.init] Event listeners setup finished.');
 
       // Set up resize event listener
       try {
-        console.log('[CameraController.init] Adding resize listener...');
         this.handleResize = this.handleResize.bind(this);
         window.addEventListener('resize', this.handleResize);
-        console.log('[CameraController.init] Resize listener added.');
       } catch (error) {
-        console.warn('[CameraController.init] Failed to add resize listener:', error);
+        // Error handling removed for production
       }
 
       // Mark as initialized
       this.isInitialized = true;
-      console.log('[CameraController.init] Finished.');
     } catch (error) {
-      console.error('[CameraController.init] Failed:', error);
+      // Error handling removed for production
     }
 
     return this;
@@ -146,38 +127,30 @@ export class CameraController {
    * Set up event listeners
    */
   setupEventListeners() {
-    console.log('[CameraController.setupEventListeners] Starting...');
     if (!this.game.eventManager) {
-      console.warn('[CameraController.setupEventListeners] EventManager not available, skipping.');
       return;
     }
 
     try {
       this.eventSubscriptions = this.eventSubscriptions || [];
 
-      console.log('[CameraController.setupEventListeners] Subscribing to BALL_MOVED...');
       this.eventSubscriptions.push(
         this.game.eventManager.subscribe(EventTypes.BALL_MOVED, this.handleBallMoved, this)
       );
 
-      console.log('[CameraController.setupEventListeners] Subscribing to HOLE_STARTED...');
       this.eventSubscriptions.push(
         this.game.eventManager.subscribe(EventTypes.HOLE_STARTED, this.handleHoleStarted, this)
       );
 
-      console.log('[CameraController.setupEventListeners] Subscribing to BALL_CREATED...');
       this.eventSubscriptions.push(
         this.game.eventManager.subscribe(EventTypes.BALL_CREATED, this.handleBallCreated, this)
       );
 
-      console.log('[CameraController.setupEventListeners] Subscribing to BALL_HIT...');
       this.eventSubscriptions.push(
         this.game.eventManager.subscribe(EventTypes.BALL_HIT, this.handleBallHit, this)
       );
-
-      console.log('[CameraController.setupEventListeners] Finished.');
     } catch (error) {
-      console.error('[CameraController.setupEventListeners] Failed:', error);
+      // Error handling removed for production
     }
   }
 
@@ -459,30 +432,22 @@ export class CameraController {
     this.currentAdFocusWeight = 0.0;
     this.closestAdShip = null;
     this.wasBallMovingLastFrame = false; // Ensure ball state is reset too
-    console.log('[CameraController] Resetting ad focus state for new hole.');
+
     // --- End Reset ---
 
     if (!this.course) {
-      console.warn('Cannot position camera: Course not available');
       return this;
     }
 
     // Get WORLD hole and start positions directly from course manager
     const worldHolePosition = this.course.getHolePosition();
     if (!worldHolePosition) {
-      console.warn('Cannot position camera: Hole position not available');
       return this;
     }
     const worldStartPosition = this.course.getHoleStartPosition();
     if (!worldStartPosition) {
-      console.warn('Cannot position camera: Start position not available');
       return this;
     }
-
-    console.log(
-      'Positioning camera for hole. ' +
-        `World Start: ${worldStartPosition.toArray().join(',')}, World Hole: ${worldHolePosition.toArray().join(',')}`
-    );
 
     // Calculate midpoint between WORLD tee and hole
     const midpoint = new THREE.Vector3()
@@ -626,7 +591,6 @@ export class CameraController {
         this.closestAdShip = this._findClosestVisibleAdShip(ballPosition);
         if (this.closestAdShip) {
           this.targetAdFocusWeight = 1.0;
-          // console.log(`[Camera] Ball started moving. Targeting ad ship: ${this.closestAdShip.adData.title}`);
         } else {
           this.targetAdFocusWeight = 0.0; // No suitable ship found
         }
@@ -635,7 +599,6 @@ export class CameraController {
       else if (!isBallMoving && this.wasBallMovingLastFrame) {
         this.targetAdFocusWeight = 0.0;
         // Don't clear closestAdShip immediately, let weight blend out
-        // console.log("[Camera] Ball stopped moving. Blending back focus.");
       }
 
       // Smoothly blend the focus weight
@@ -657,7 +620,6 @@ export class CameraController {
         // Blend towards the ad ship, but apply max weight limit
         const blendWeight = this.currentAdFocusWeight * this.adFocusMaxWeight;
         finalLookAtTarget.lerpVectors(baseTarget, adShipTarget, blendWeight);
-        // console.log(`[Camera] Blending focus. Weight: ${this.currentAdFocusWeight.toFixed(2)}, Blend: ${blendWeight.toFixed(2)}`);
       }
 
       this.wasBallMovingLastFrame = isBallMoving;
@@ -933,8 +895,6 @@ export class CameraController {
       // Log cleanup errors
       if (this.game.debugManager) {
         this.game.debugManager.error('CameraController.cleanup', 'Error during cleanup', error);
-      } else {
-        console.error('Error during CameraController cleanup:', error);
       }
     }
   }
@@ -959,8 +919,6 @@ export class CameraController {
           'Failed to setup camera',
           error
         );
-      } else {
-        console.error('Failed to setup camera:', error);
       }
     }
   }
@@ -1002,7 +960,6 @@ export class CameraController {
       this.controls.addEventListener('start', () => {
         this._userAdjustedCamera = true;
         this._lastManualControlTime = Date.now();
-        console.log('[CameraController] User manually adjusted camera');
       });
 
       // Listen for camera reset events
@@ -1020,8 +977,6 @@ export class CameraController {
           'Failed to setup controls',
           error
         );
-      } else {
-        console.error('Failed to setup controls:', error);
       }
     }
   }
@@ -1030,7 +985,6 @@ export class CameraController {
    * Sets the initial camera position after the first hole is confirmed ready.
    */
   setupInitialCameraPosition() {
-    console.log('[CameraController] Setting up initial camera position.');
     // Reset manual adjustment flag
     this._userAdjustedCamera = false;
     // Now it's safe to position the camera for the initial hole
@@ -1056,7 +1010,6 @@ export class CameraController {
       }
     });
 
-    // if (closestShip) console.log(`[Camera] Closest ship found: ${closestShip.adData.title} at dist ${Math.sqrt(minDistanceSq).toFixed(1)}`);
     return closestShip;
   }
 

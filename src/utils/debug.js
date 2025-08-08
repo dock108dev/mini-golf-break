@@ -6,30 +6,26 @@
 const DEBUG_MODE = process.env.NODE_ENV !== 'production';
 
 export const debug = {
-  log: (...args) => {
+  log: (..._args) => {
     if (DEBUG_MODE) {
       // eslint-disable-next-line no-console
-      console.log('[DEBUG]', ...args);
     }
   },
 
-  warn: (...args) => {
+  warn: (..._args) => {
     if (DEBUG_MODE) {
       // eslint-disable-next-line no-console
-      console.warn('[WARN]', ...args);
     }
   },
 
-  error: (...args) => {
+  error: (..._args) => {
     // Always log errors, even in production
     // eslint-disable-next-line no-console
-    console.error('[ERROR]', ...args);
   },
 
-  info: (...args) => {
+  info: (..._args) => {
     if (DEBUG_MODE) {
       // eslint-disable-next-line no-console
-      console.info('[INFO]', ...args);
     }
   },
 

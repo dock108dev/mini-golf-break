@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { CourseElementRegistry } from './CourseElementRegistry';
 
 /**
@@ -28,8 +27,6 @@ export class Course {
     this.currentHoleIndex = 0;
     this.totalHoles = 0;
     this.holes = [];
-
-    console.log(`[Course] Created new course: ${this.options.name}`);
   }
 
   /**
@@ -38,8 +35,6 @@ export class Course {
    * @returns {Promise<boolean>} Success status
    */
   async initialize(courseData) {
-    console.log(`[Course] Initializing course: ${courseData.name || this.options.name}`);
-
     try {
       // Update course metadata
       this.options.name = courseData.name || this.options.name;
@@ -69,16 +64,11 @@ export class Course {
 
         this.totalHoles = this.holes.length;
 
-        console.log(
-          `[Course] Initialized course with ${this.elements.length} elements (${this.totalHoles} holes)`
-        );
         return true;
       } else {
-        console.error('[Course] No elements in course configuration.');
         return false;
       }
     } catch (error) {
-      console.error('[Course] Failed to initialize course:', error);
       return false;
     }
   }
@@ -88,8 +78,6 @@ export class Course {
    * @returns {Promise<void>}
    */
   async clear() {
-    console.log(`[Course] Clearing course elements (${this.elements.length})`);
-
     // Destroy each element
     this.elements.forEach(element => {
       element.destroy();
@@ -103,8 +91,6 @@ export class Course {
 
     // Allow time for physics world to settle
     await new Promise(resolve => setTimeout(resolve, 100));
-
-    console.log('[Course] Course cleared');
   }
 
   /**
@@ -159,7 +145,6 @@ export class Course {
       this.totalHoles = this.holes.length;
     }
 
-    console.log(`[Course] Added element: ${element.name} (${element.id})`);
     return element;
   }
 
@@ -172,7 +157,6 @@ export class Course {
     const element = this.getElementById(elementId);
 
     if (!element) {
-      console.warn(`[Course] Element not found: ${elementId}`);
       return false;
     }
 
@@ -200,7 +184,6 @@ export class Course {
     }
     delete this.elementById[elementId];
 
-    console.log(`[Course] Removed element: ${element.name} (${element.id})`);
     return true;
   }
 

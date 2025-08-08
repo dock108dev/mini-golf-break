@@ -12,14 +12,12 @@ import { CSG } from 'three-csg-ts';
  * @returns {{meshes: THREE.Mesh[], bodies: CANNON.Body[]}} Created meshes and bodies
  */
 export function createHazard(world, group, hazardConfig, visualGreenY, courseBounds) {
-  console.log(`[HazardFactory] Creating hazard:`, hazardConfig);
   switch (hazardConfig.type) {
     case 'sand':
       return createSandHazard(world, group, hazardConfig, visualGreenY, courseBounds);
     case 'water':
       return createWaterHazard(world, group, hazardConfig, visualGreenY, courseBounds);
     default:
-      console.warn('[HazardFactory] Unknown hazard type:', hazardConfig.type);
       return { meshes: [], bodies: [] };
   }
 }
@@ -46,14 +44,12 @@ function createSandHazard(world, group, config, visualGreenY, courseBounds) {
   const useCourseBounds = courseBounds && courseBounds.width > 0 && courseBounds.length > 0;
 
   if (useCourseBounds) {
-    console.log(
-      `[HazardFactory] Will constrain hazards to course boundaries: ${courseBounds.width}x${courseBounds.length}`
-    );
+    // Course bounds will be considered for hazard placement
   }
 
   if (config.shape === 'compound' && config.subShapes) {
     // Handle compound shapes (like snowman bunker)
-    config.subShapes.forEach((subShape, index) => {
+    config.subShapes.forEach((subShape, _index) => {
       const subPos = new THREE.Vector3(
         (config.position?.x || 0) + (subShape.position?.x || 0),
         0,
@@ -111,8 +107,8 @@ function createSandHazardPart(config, world, group, material, visualY, triggerY,
 
     // Calculate course bounds
     const useCourseBounds = courseBounds && courseBounds.width > 0 && courseBounds.length > 0;
-    const halfWidth = useCourseBounds ? courseBounds.width / 2 : Infinity;
-    const halfLength = useCourseBounds ? courseBounds.length / 2 : Infinity;
+    // const halfWidth = useCourseBounds ? courseBounds.width / 2 : Infinity;
+    // const halfLength = useCourseBounds ? courseBounds.length / 2 : Infinity;
 
     // Create appropriate geometries based on shape
     if (config.shape === 'circle') {
@@ -140,10 +136,6 @@ function createSandHazardPart(config, world, group, material, visualY, triggerY,
         // Clean up temporary geometries
         circleGeom.dispose();
         boundaryGeom.dispose();
-
-        console.log(
-          `[HazardFactory] Created sand hazard with CSG intersection at ${localPos.x.toFixed(2)},${localPos.z.toFixed(2)}`
-        );
       } else {
         // No constraints, just use the circle directly
         visualGeometry = new THREE.CircleGeometry(radius, 32);
@@ -180,10 +172,6 @@ function createSandHazardPart(config, world, group, material, visualY, triggerY,
         // Clean up temporary geometries
         rectGeom.dispose();
         boundaryGeom.dispose();
-
-        console.log(
-          `[HazardFactory] Created rectangle sand hazard with CSG intersection at ${localPos.x.toFixed(2)},${localPos.z.toFixed(2)}`
-        );
       } else {
         // No constraints, just use the rectangle directly
         visualGeometry = new THREE.PlaneGeometry(width, length);
@@ -197,7 +185,6 @@ function createSandHazardPart(config, world, group, material, visualY, triggerY,
         new CANNON.Vec3(width / 2, (config.depth || 0.2) / 2, length / 2)
       );
     } else {
-      console.warn(`[HazardFactory] Unsupported shape: ${config.shape}`);
       return { meshes: [], bodies: [] };
     }
 
@@ -221,7 +208,6 @@ function createSandHazardPart(config, world, group, material, visualY, triggerY,
     world.addBody(triggerBody);
     bodies.push(triggerBody);
   } catch (error) {
-    console.error('[HazardFactory] Error creating hazard part:', error);
     return { meshes: [], bodies: [] };
   }
 
@@ -256,7 +242,7 @@ function createWaterHazard(world, group, config, visualGreenY, courseBounds) {
 
   if (config.shape === 'compound' && config.subShapes) {
     // Handle compound shapes (like snowman)
-    config.subShapes.forEach((subShape, index) => {
+    config.subShapes.forEach((subShape, _index) => {
       const subPos = new THREE.Vector3(
         (config.position?.x || 0) + (subShape.position?.x || 0),
         0,
@@ -322,8 +308,8 @@ function createSingleWaterHazardPart(
 
     // Calculate course bounds
     const useCourseBounds = courseBounds && courseBounds.width > 0 && courseBounds.length > 0;
-    const halfWidth = useCourseBounds ? courseBounds.width / 2 : Infinity;
-    const halfLength = useCourseBounds ? courseBounds.length / 2 : Infinity;
+    // const halfWidth = useCourseBounds ? courseBounds.width / 2 : Infinity;
+    // const halfLength = useCourseBounds ? courseBounds.length / 2 : Infinity;
 
     if (config.shape === 'circle') {
       const radius = config.size?.radius || 1;
@@ -350,10 +336,6 @@ function createSingleWaterHazardPart(
         // Clean up temporary geometries
         circleGeom.dispose();
         boundaryGeom.dispose();
-
-        console.log(
-          `[HazardFactory] Created water hazard with CSG intersection at ${localPos.x.toFixed(2)},${localPos.z.toFixed(2)}`
-        );
       } else {
         // No constraints, just use the circle directly
         visualGeometry = new THREE.CircleGeometry(radius, 32);
@@ -390,10 +372,6 @@ function createSingleWaterHazardPart(
         // Clean up temporary geometries
         rectGeom.dispose();
         boundaryGeom.dispose();
-
-        console.log(
-          `[HazardFactory] Created rectangle water hazard with CSG intersection at ${localPos.x.toFixed(2)},${localPos.z.toFixed(2)}`
-        );
       } else {
         // No constraints, just use the rectangle directly
         visualGeometry = new THREE.PlaneGeometry(width, length);
@@ -406,7 +384,6 @@ function createSingleWaterHazardPart(
         new CANNON.Vec3(width / 2, (config.depth || 0.2) / 2, length / 2)
       );
     } else {
-      console.warn(`[HazardFactory] Unsupported water shape: ${config.shape}`);
       return { meshes: [], bodies: [] };
     }
 
@@ -430,7 +407,6 @@ function createSingleWaterHazardPart(
     world.addBody(triggerBody);
     bodies.push(triggerBody);
   } catch (error) {
-    console.error('[HazardFactory] Error creating water hazard part:', error);
     return { meshes: [], bodies: [] };
   }
 

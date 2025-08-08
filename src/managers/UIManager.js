@@ -68,7 +68,6 @@ export class UIManager {
       debug.log('[UIManager.init] Event listeners setup finished.');
       debug.log('[UIManager.init] Finished.');
     } catch (error) {
-      console.error('[UIManager.init] Failed:', error);
       this.game.debugManager?.error('UIManager.init', 'Initialization failed', error, true);
     }
     return this;
@@ -168,7 +167,6 @@ export class UIManager {
   setupEventListeners() {
     debug.log('[UIManager.setupEventListeners] Starting...');
     if (!this.game.eventManager) {
-      console.warn('[UIManager.setupEventListeners] EventManager not available, skipping.');
       return;
     }
     try {
@@ -210,7 +208,6 @@ export class UIManager {
 
       debug.log('[UIManager.setupEventListeners] Finished.');
     } catch (error) {
-      console.error('[UIManager.setupEventListeners] Failed:', error);
       this.game.debugManager?.error('UIManager.setupEventListeners', 'Failed', error, true);
     }
   }
@@ -271,9 +268,6 @@ export class UIManager {
       debug.log('[UIManager.handleGameCompleted] Calling scoreOverlay.showFinalScorecard()');
       this.scoreOverlay.showFinalScorecard();
     } else {
-      console.error(
-        `[UIManager.handleGameCompleted] ERROR: Cannot show scorecard - scoreOverlay is ${this.scoreOverlay ? 'missing showFinalScorecard method' : 'not initialized'}`
-      );
       // Alert as a last resort to show something
       // eslint-disable-next-line no-alert
       alert('Game Complete! Total strokes: ' + this.game.scoringSystem.getTotalStrokes());
@@ -365,24 +359,7 @@ export class UIManager {
     canvas.style.pointerEvents = 'auto';
 
     // Log canvas configuration for debugging
-    const rect = canvas.getBoundingClientRect();
-    console.log('🖼️ Canvas Configuration:', {
-      position: canvas.style.position,
-      dimensions: `${canvas.style.width} x ${canvas.style.height}`,
-      zIndex: canvas.style.zIndex,
-      pointerEvents: canvas.style.pointerEvents,
-      touchAction: canvas.style.touchAction,
-      boundingRect: {
-        left: rect.left,
-        top: rect.top,
-        width: rect.width,
-        height: rect.height
-      },
-      windowSize: {
-        width: window.innerWidth,
-        height: window.innerHeight
-      }
-    });
+    // const rect = canvas.getBoundingClientRect();
   }
 
   /**
@@ -498,9 +475,8 @@ export class UIManager {
     this.eventSubscriptions.forEach(unsub => {
       try {
         unsub();
-      } catch (error) {
-        console.warn('[UIManager.cleanup] Error unsubscribing from an event:', error);
-      }
+        // eslint-disable-next-line no-empty
+      } catch (error) {}
     });
     this.eventSubscriptions = []; // Clear the array
 

@@ -14,7 +14,6 @@ jest.mock('../scenes/Game', () => ({
 jest.mock('../../public/style.css', () => {}, { virtual: true });
 
 // Mock window event listener to capture the 'load' event
-const originalAddEventListener = window.addEventListener;
 let loadEventHandler = null;
 window.addEventListener = jest.fn((event, handler) => {
   if (event === 'load') {
@@ -30,7 +29,6 @@ require('../main.js');
 
 // Extract the App class from the global scope for testing
 // Since main.js doesn't export App, we need to get it via the load event
-let App;
 
 // Create a mock App constructor that captures the class definition
 const mockApp = jest.fn(function () {
@@ -99,7 +97,8 @@ mockApp.prototype.init = async function () {
   }
 };
 
-App = mockApp;
+// Assign mockApp to App for use in tests
+const App = mockApp;
 
 describe('App Class (main.js)', () => {
   let mockGame;

@@ -28,7 +28,7 @@ global.THREE = {
       render: jest.fn(),
       dispose: jest.fn(),
       domElement: {
-        addEventListener: jest.fn((event, handler, options) => {
+        addEventListener: jest.fn((event, handler, _options) => {
           if (!eventListeners.has(event)) {
             eventListeners.set(event, []);
           }
@@ -217,7 +217,6 @@ global.CANNON = {
         // Simple physics simulation for tests
         world.bodies.forEach(body => {
           if (body.velocity && body.position) {
-            const prevPos = { x: body.position.x, y: body.position.y, z: body.position.z };
             // Update position based on velocity
             body.position.x += body.velocity.x * (dt || 1 / 60);
             body.position.y += body.velocity.y * (dt || 1 / 60);
@@ -302,7 +301,7 @@ global.CANNON = {
       addShape: jest.fn(),
       userData: {},
       wakeUp: jest.fn(),
-      applyImpulse: jest.fn(function (force, point) {
+      applyImpulse: jest.fn(function (force, _point) {
         // Simple impulse application for tests
         if (force && body.velocity) {
           body.velocity.x += force.x || 0;
@@ -366,7 +365,7 @@ global.document.createElement = jest.fn(elementType => {
       opacity: undefined,
       visibility: undefined
     },
-    addEventListener: jest.fn((event, handler, options) => {
+    addEventListener: jest.fn((event, handler, _options) => {
       if (!eventListeners.has(event)) {
         eventListeners.set(event, []);
       }

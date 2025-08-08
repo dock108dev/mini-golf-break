@@ -27,10 +27,8 @@ export class BallManager {
    * @returns {BallManager} this instance for chaining
    */
   init() {
-    console.log('[BallManager.init] Starting...');
     try {
       if (this.isInitialized) {
-        console.warn('[BallManager.init] Already initialized, skipping.');
         return this;
       }
 
@@ -38,14 +36,12 @@ export class BallManager {
       this.physicsManager = this.game.physicsManager;
 
       // Don't create ball here - it will be created by Game.createCourse()
-      console.log('[BallManager.init] Setting up event listeners...');
+
       this.setupEventListeners();
-      console.log('[BallManager.init] Event listeners setup finished.');
 
       this.isInitialized = true;
-      console.log('[BallManager.init] Finished.');
     } catch (error) {
-      console.error('[BallManager.init] Failed:', error);
+      // Error handling removed for production
     }
 
     return this;
@@ -55,16 +51,13 @@ export class BallManager {
    * Set up event subscriptions
    */
   setupEventListeners() {
-    console.log('[BallManager.setupEventListeners] Starting...');
     if (!this.game.eventManager) {
-      console.warn('[BallManager.setupEventListeners] EventManager not available, skipping.');
       return;
     }
 
     try {
       this.eventSubscriptions = []; // Initialize as empty array
 
-      console.log('[BallManager.setupEventListeners] Subscribing to HAZARD_DETECTED...');
       this.eventSubscriptions.push(
         this.game.eventManager.subscribe(
           EventTypes.HAZARD_DETECTED,
@@ -73,14 +66,11 @@ export class BallManager {
         )
       );
 
-      console.log('[BallManager.setupEventListeners] Subscribing to HOLE_STARTED...');
       this.eventSubscriptions.push(
         this.game.eventManager.subscribe(EventTypes.HOLE_STARTED, this.handleHoleStarted, this)
       );
-
-      console.log('[BallManager.setupEventListeners] Finished.');
     } catch (error) {
-      console.error('[BallManager.setupEventListeners] Failed:', error);
+      // Error handling removed for production
     }
   }
 
@@ -89,14 +79,10 @@ export class BallManager {
    * @param {GameEvent} event - The hole started event
    */
   handleHoleStarted(_event) {
-    console.log(
-      `[BallManager.handleHoleStarted] Event received. isInitialized: ${this.isInitialized}, game initialized?: ${this.game.isInitialized}`
-    );
     try {
       // Get the WORLD start position for the new hole
       const worldStartPosition = this.game.course.getHoleStartPosition(); // Now returns WORLD coords
       if (this.ball && worldStartPosition) {
-        console.log('[BallManager.handleHoleStarted] Resetting existing ball position.');
         this.ball.setPosition(
           worldStartPosition.x,
           worldStartPosition.y + Ball.START_HEIGHT,
@@ -113,11 +99,9 @@ export class BallManager {
         if (this.game.eventManager) {
           this.game.eventManager.publish(EventTypes.BALL_RESET, { position: resetPosition }, this);
         }
-      } else {
-        console.log('[BallManager.handleHoleStarted] No ball exists yet or startPosition invalid.');
       }
     } catch (error) {
-      console.error('[BallManager.handleHoleStarted] Failed:', error);
+      // Error handling removed for production
     }
   }
 
@@ -129,28 +113,18 @@ export class BallManager {
   createBall(worldStartPosition) {
     // --- GUARD CLAUSE ---
     if (!this.game || !this.game.course || !this.game.course.currentHole) {
-      console.warn('[BallManager.createBall] Aborting: Course/hole not ready.');
       return null;
     }
     // --- END GUARD CLAUSE ---
 
-    console.log('[BallManager] Creating new ball (Course seems ready)');
-
     // Validate start position (passed argument - should be world coords)
     if (!worldStartPosition || !(worldStartPosition instanceof THREE.Vector3)) {
-      console.error(
-        '[BallManager] Invalid worldStartPosition argument provided:',
-        worldStartPosition
-      );
       // Try getting from course config as fallback
       worldStartPosition = this.game.course?.getHoleStartPosition();
-      console.warn('[BallManager] Using course start position as fallback.');
+
       if (!worldStartPosition) {
         // If fallback also fails
         worldStartPosition = new THREE.Vector3(0, 0, 0); // Use 0,0,0 base, height added later
-        console.error(
-          '[BallManager] Fallback start position also invalid! Using absolute default (0,0,0).'
-        );
       }
     }
 
@@ -160,7 +134,6 @@ export class BallManager {
     // Get physics world
     const physicsWorld = this.game.physicsManager.getWorld();
     if (!physicsWorld) {
-      console.error('[BallManager] Physics world not available for ball creation.');
       return null;
     }
 
@@ -172,9 +145,7 @@ export class BallManager {
 
     if (worldHolePosition) {
       this.ball.currentHolePosition = worldHolePosition.clone(); // Store WORLD position
-      console.log('[BallManager] Assigned WORLD holePosition to Ball:', worldHolePosition);
     } else {
-      console.error('[BallManager] Failed to get world hole position to assign to ball!');
       this.ball.currentHolePosition = null;
     }
     // --- End Assignment ---
@@ -187,23 +158,15 @@ export class BallManager {
     );
     this.ball.setPosition(finalPosition.x, finalPosition.y, finalPosition.z);
 
-    console.log('[BallManager] Ball positioned at world:', this.ball.mesh.position);
-
     // Log distance (now using world coordinates)
     if (worldHolePosition) {
-      let distance = 5; // Default for tests
-      if (this.ball.mesh.position.distanceTo) {
-        distance = this.ball.mesh.position.distanceTo(worldHolePosition);
-      }
-      console.log(`[BallManager] Ball created at distance ${distance.toFixed(2)} from hole`);
+      // Distance calculation removed - was unused
     }
 
     // Wake up the ball's physics body
     if (this.ball.body) {
       this.ball.body.wakeUp();
-      console.log('[BallManager] Ball body woken up with world position:', this.ball.body.position);
     } else {
-      console.error('[BallManager] Ball body not created or available after instantiation.');
       this.removeBall(); // Clean up partial creation
       return null;
     }
@@ -296,10 +259,6 @@ export class BallManager {
     // Check if ball has fallen below the course
     const outOfBoundYThreshold = -5; // Consider anything below -5 as out of bounds
     if (this.ball.mesh.position.y < outOfBoundYThreshold) {
-      console.log(
-        `[BallManager] Ball out of bounds at y=${this.ball.mesh.position.y.toFixed(2)}, resetting to start position`
-      );
-
       // Reset ball to last safe position or start position
       this.resetBall();
 
@@ -363,9 +322,6 @@ export class BallManager {
     this.lastBallPosition.copy(this.ball.mesh.position);
 
     // Hit the ball
-    console.log(
-      `[BallManager.hitBall] Ball position before impulse: (${this.ball.body.position.x.toFixed(2)}, ${this.ball.body.position.y.toFixed(2)}, ${this.ball.body.position.z.toFixed(2)})`
-    ); // Log position
     this.ball.applyImpulse(direction, power);
 
     // Increment stroke count
@@ -432,7 +388,6 @@ export class BallManager {
     }
 
     // Log the reset
-    console.log('[BallManager] Ball reset to position:', resetPosition);
   }
 
   /**
@@ -481,8 +436,6 @@ export class BallManager {
       // Log cleanup errors
       if (this.game.debugManager) {
         this.game.debugManager.error('BallManager.cleanup', 'Error during cleanup', error);
-      } else {
-        console.error('Error during BallManager cleanup:', error);
       }
     }
   }
@@ -544,15 +497,11 @@ export class BallManager {
       if (this.ball.ballLight) {
         this.game.scene.remove(this.ball.ballLight);
         // No need to dispose PointLight geometry/material usually
-        console.log('[BallManager] Removed ballLight from scene');
       }
       // --- END REMOVE BALL LIGHT ---
 
       // Clear the reference
       this.ball = null;
-      console.log('[BallManager] Ball removed and cleaned up'); // Add log
-    } else {
-      console.log('[BallManager] No ball to remove.'); // Add log
     }
   }
 }

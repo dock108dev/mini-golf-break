@@ -1,7 +1,3 @@
-import * as THREE from 'three';
-import * as CANNON from 'cannon-es';
-import { CSG } from 'three-csg-ts';
-
 /**
  * CoursesManager - Base class for managing multiple holes in a mini golf course
  */
@@ -45,7 +41,6 @@ export class CoursesManager {
    */
   getCurrentHoleMesh() {
     if (this.currentHoleIndex < 0 || this.currentHoleIndex >= this.holes.length) {
-      console.warn(`[CoursesManager] Invalid hole index for mesh: ${this.currentHoleIndex}`);
       return null;
     }
     return this.holes[this.currentHoleIndex].mesh;
@@ -57,21 +52,14 @@ export class CoursesManager {
    */
   getHolePosition() {
     if (this.holes.length === 0) {
-      console.warn('[CoursesManager] getHolePosition called when holes array is empty.');
       return null;
     }
     if (this.currentHoleIndex < 0 || this.currentHoleIndex >= this.holes.length) {
-      console.warn(
-        `[CoursesManager] Invalid hole index (${this.currentHoleIndex}) for getting position.`
-      );
       return null;
     }
     // Ensure the hole object itself and the position exist
     const holeData = this.holes[this.currentHoleIndex];
     if (!holeData || !holeData.holePosition) {
-      console.warn(
-        `[CoursesManager] Hole data or position missing for index ${this.currentHoleIndex}.`
-      );
       return null;
     }
     return holeData.holePosition;
@@ -83,21 +71,14 @@ export class CoursesManager {
    */
   getHoleStartPosition() {
     if (this.holes.length === 0) {
-      console.warn('[CoursesManager] getHoleStartPosition called when holes array is empty.');
       return null;
     }
     if (this.currentHoleIndex < 0 || this.currentHoleIndex >= this.holes.length) {
-      console.warn(
-        `[CoursesManager] Invalid hole index (${this.currentHoleIndex}) for getting start position.`
-      );
       return null;
     }
     // Ensure the hole object itself and the position exist
     const holeData = this.holes[this.currentHoleIndex];
     if (!holeData || !holeData.startPosition) {
-      console.warn(
-        `[CoursesManager] Hole data or startPosition missing for index ${this.currentHoleIndex}.`
-      );
       return null;
     }
     return holeData.startPosition;
@@ -109,21 +90,14 @@ export class CoursesManager {
    */
   getHolePar() {
     if (this.holes.length === 0) {
-      console.warn('[CoursesManager] getHolePar called when holes array is empty.');
       return 0;
     }
     if (this.currentHoleIndex < 0 || this.currentHoleIndex >= this.holes.length) {
-      console.warn(
-        `[CoursesManager] Invalid hole index (${this.currentHoleIndex}) for getting par.`
-      );
       return 0;
     }
     // Ensure the hole object itself and par exist
     const holeData = this.holes[this.currentHoleIndex];
     if (!holeData || typeof holeData.par !== 'number') {
-      console.warn(
-        `[CoursesManager] Hole data or par missing/invalid for index ${this.currentHoleIndex}.`
-      );
       return 0;
     }
     return holeData.par;
@@ -151,7 +125,6 @@ export class CoursesManager {
    */
   loadNextHole() {
     if (!this.hasNextHole()) {
-      console.warn('[CoursesManager] No next hole available');
       return false;
     }
 
@@ -167,7 +140,6 @@ export class CoursesManager {
 
       return true;
     } catch (error) {
-      console.error('[CoursesManager] Failed to load next hole:', error);
       return false;
     }
   }
@@ -176,8 +148,6 @@ export class CoursesManager {
    * Clear the current hole and its resources
    */
   clearCurrentHole() {
-    console.log('[CoursesManager] Clearing current hole resources');
-
     // Remove existing hole meshes and dispose of resources
     this.courseObjects.forEach(obj => {
       if (obj.geometry) {
@@ -210,7 +180,7 @@ export class CoursesManager {
    * Update loop for the course
    * @param {number} dt - Delta time in seconds
    */
-  update(dt) {
+  update(_dt) {
     // Any per-frame updates for the course can go here
   }
 
@@ -246,9 +216,8 @@ export class CoursesManager {
    * Create a hazard on the course
    * @param {Object} hazardConfig - Configuration for the hazard
    */
-  createHazard(hazardConfig) {
+  createHazard(_hazardConfig) {
     // Base implementation - to be overridden by specific courses
-    console.warn('createHazard not implemented in this course');
   }
 
   /**

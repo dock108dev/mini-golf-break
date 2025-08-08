@@ -68,7 +68,6 @@ export class CannonDebugRenderer {
       // Optionally dispose geometry/material if not reused, but basic removal is key
     });
     this._meshes.length = 0; // Clear the tracking array
-    console.log('[CannonDebugRenderer] Cleared tracked meshes.');
   }
 
   _createMesh(shape) {
@@ -113,7 +112,6 @@ export class CannonDebugRenderer {
       }
 
       default:
-        console.warn(`Unhandled shape type: ${shape.type}`);
         break;
     }
 

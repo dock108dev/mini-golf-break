@@ -15,9 +15,7 @@ export class ScoringSystem {
   addStroke() {
     this.continuousStrokeCount++;
     this.currentHoleStrokes++;
-    console.log(
-      `[ScoringSystem] Stroke Added. Current Hole: ${this.currentHoleStrokes}, Total: ${this.continuousStrokeCount}`
-    );
+
     return this;
   }
 
@@ -34,7 +32,7 @@ export class ScoringSystem {
   getCurrentStrokes() {
     return this.currentHoleStrokes;
   }
-  
+
   /**
    * Alias for getCurrentStrokes for consistency
    */
@@ -46,9 +44,6 @@ export class ScoringSystem {
    * Resets the stroke count for the current hole.
    */
   resetCurrentStrokes() {
-    console.log(
-      `[ScoringSystem] Resetting current hole strokes from ${this.currentHoleStrokes} to 0.`
-    );
     this.currentHoleStrokes = 0;
     return this;
   }
@@ -60,25 +55,22 @@ export class ScoringSystem {
     const score = {
       hole: holeNumber,
       strokes: this.currentHoleStrokes,
-      par: par,
+      par,
       score: this.currentHoleStrokes - par
     };
-    
+
     this.holeScores.push(score);
-    console.log(
-      `[ScoringSystem] Hole ${holeNumber} completed: ${this.currentHoleStrokes} strokes (Par ${par})`
-    );
-    
+
     return this;
   }
-  
+
   /**
    * Get scores for all completed holes
    */
   getHoleScores() {
     return this.holeScores;
   }
-  
+
   /**
    * Reset all scores (for new game)
    */
@@ -86,7 +78,7 @@ export class ScoringSystem {
     this.continuousStrokeCount = 0;
     this.currentHoleStrokes = 0;
     this.holeScores = [];
-    console.log('[ScoringSystem] All scores reset');
+
     return this;
   }
 }

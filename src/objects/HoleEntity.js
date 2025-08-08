@@ -103,16 +103,10 @@ export class HoleEntity extends BaseElement {
             config.holePosition?.y || 0,
             config.holePosition?.z || 0
           );
-
-    console.log(`[HoleEntity] Created for hole index ${config.index + 1}. Group at (0,0,0).`);
-    console.log(
-      `[HoleEntity] World Start: (${this.worldStartPosition.x}, ${this.worldStartPosition.z}), World Hole: (${this.worldHolePosition.x}, ${this.worldHolePosition.z})`
-    );
   }
 
   init() {
     if (!this.world || !this.scene || !this.group) {
-      console.error('[HoleEntity] Missing world, scene, or group reference during init');
       return Promise.reject('Missing references');
     }
 
@@ -126,13 +120,9 @@ export class HoleEntity extends BaseElement {
       this.createStartPosition();
       this.createHazards();
       this.createBumpers();
-      console.log(`[HoleEntity] Initialization complete for hole index ${this.config.index}.`);
+
       return Promise.resolve();
     } catch (error) {
-      console.error(
-        `[HoleEntity] Error during initialization for hole ${this.config.index}:`,
-        error
-      );
       this.destroy();
       return Promise.reject(error);
     }
@@ -171,12 +161,8 @@ export class HoleEntity extends BaseElement {
       // Original method: Use a single boundary path
       shape = new THREE.Shape(this.config.boundaryShape);
     } else {
-      console.error(
-        `[HoleEntity] No valid boundaryShape or boundaryShapeDef found for hole ${this.config.index}`
-      );
       return; // Cannot create green without shape definition
     }
-
 
     // Extrude the shape slightly to give it depth
     const extrudeSettings = { depth: greenDepth, bevelEnabled: false };
@@ -401,11 +387,13 @@ export class HoleEntity extends BaseElement {
     }
 
     // Use merged segments for complex shapes, original segments for simple shapes
-    const segmentsToUse = mergedSegments.length > 0 ? mergedSegments : 
-      this.boundaryShape.slice(0, -1).map((p, i) => ({ 
-        start: p, 
-        end: this.boundaryShape[i + 1] 
-      }));
+    const segmentsToUse =
+      mergedSegments.length > 0
+        ? mergedSegments
+        : this.boundaryShape.slice(0, -1).map((p, i) => ({
+            start: p,
+            end: this.boundaryShape[i + 1]
+          }));
 
     // Create walls for each segment
     segmentsToUse.forEach((segment, i) => {
@@ -414,7 +402,9 @@ export class HoleEntity extends BaseElement {
 
       const segmentVector = new THREE.Vector2().subVectors(endPoint, startPoint);
       const length = segmentVector.length();
-      if (length < 0.01) return; // Skip tiny segments
+      if (length < 0.01) {
+        return;
+      } // Skip tiny segments
 
       const angle = Math.atan2(segmentVector.y, segmentVector.x); // Angle in XZ plane
 
@@ -457,8 +447,6 @@ export class HoleEntity extends BaseElement {
       this.bodies.push(body);
     });
 
-    console.log(`[HoleEntity] Created ${segmentsToUse.length} wall segments for hole ${this.config.index + 1} (original points: ${this.boundaryShape.length})`);
-    
     // Add special handling for self-intersecting shapes
     if (this.isSelfIntersectingShape()) {
       this.addInvisibleGuideWalls();
@@ -473,7 +461,7 @@ export class HoleEntity extends BaseElement {
     // For figure-8, add small invisible walls at the crossing point
     if (this.config.shapeType === 'figure8') {
       const crossingY = this.surfaceHeight + this.wallHeight / 2;
-      
+
       // Add small diagonal guide walls at center to prevent ball getting stuck
       const guideConfigs = [
         { pos: new THREE.Vector3(0.3, crossingY, 0.3), angle: Math.PI / 4, length: 0.5 },
@@ -488,21 +476,23 @@ export class HoleEntity extends BaseElement {
           type: CANNON.Body.STATIC,
           material: this.world.bumperMaterial
         });
-        
-        const halfExtents = new CANNON.Vec3(config.length / 2, this.wallHeight / 2, this.wallThickness / 4);
+
+        const halfExtents = new CANNON.Vec3(
+          config.length / 2,
+          this.wallHeight / 2,
+          this.wallThickness / 4
+        );
         body.addShape(new CANNON.Box(halfExtents));
         body.position.copy(config.pos);
-        
+
         const guideQuaternion = new CANNON.Quaternion();
         guideQuaternion.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), config.angle);
         body.quaternion.copy(guideQuaternion);
-        
+
         body.userData = { type: `guide_wall_${idx}`, holeIndex: this.config.index };
         this.world.addBody(body);
         this.bodies.push(body);
       });
-      
-      console.log(`[HoleEntity] Added invisible guide walls for figure-8 shape at hole ${this.config.index + 1}`);
     }
   }
 
@@ -536,9 +526,9 @@ export class HoleEntity extends BaseElement {
     // Use shape-specific geometry for tee markers
     let teeGeometry;
     let teeColor = 0x0077cc; // Default blue
-    
+
     // Create shape-specific tee markers for visual interest
-    switch(this.config.shapeType) {
+    switch (this.config.shapeType) {
       case 'circle':
         teeGeometry = new THREE.CylinderGeometry(0.6, 0.6, 0.05, 32);
         teeColor = 0x0088ff; // Bright blue for launch pad
@@ -567,7 +557,7 @@ export class HoleEntity extends BaseElement {
         teeGeometry = new THREE.CylinderGeometry(0.6, 0.6, 0.05, 24);
         break;
     }
-    
+
     const teeMaterial = new THREE.MeshStandardMaterial({
       color: teeColor,
       roughness: 0.5,
@@ -575,17 +565,17 @@ export class HoleEntity extends BaseElement {
       emissive: teeColor,
       emissiveIntensity: 0.1 // Slight glow
     });
-    
+
     const teeMesh = new THREE.Mesh(teeGeometry, teeMaterial);
     // Position mesh at WORLD start position, adjusted for local Y offset
     teeMesh.position.copy(this.worldStartPosition);
     teeMesh.position.y = this.visualGreenY + 0.03; // Y offset relative to surface
-    
+
     // Add rotation for visual interest on some shapes
     if (this.config.shapeType === 'diamond' || this.config.shapeType === 'cross') {
       teeMesh.rotation.y = Math.PI / 4; // 45 degree rotation
     }
-    
+
     teeMesh.castShadow = true;
     teeMesh.receiveShadow = true;
     this.group.add(teeMesh); // Add to group at (0,0,0)
@@ -629,9 +619,8 @@ export class HoleEntity extends BaseElement {
         );
         this.meshes.push(...meshes); // Track meshes created by factory
         this.bodies.push(...bodies); // Track bodies created by factory
-      } catch (error) {
-        console.error('[HoleEntity] Failed to create hazard:', error, hazardConfig);
-      }
+        // eslint-disable-next-line no-empty
+      } catch (error) {}
     });
   }
 
@@ -642,7 +631,7 @@ export class HoleEntity extends BaseElement {
       return;
     }
 
-    bumperConfigs.forEach((bumperConfig, index) => {
+    bumperConfigs.forEach((bumperConfig, _index) => {
       try {
         // Ensure bumper position is WORLD Vector3
         const worldBumperPos =
@@ -713,9 +702,8 @@ export class HoleEntity extends BaseElement {
         bumperBody.userData = { type: 'bumper', holeIndex: this.config.index };
         this.world.addBody(bumperBody);
         this.bodies.push(bumperBody);
-      } catch (error) {
-        console.error(`[HoleEntity] Failed to create bumper ${index}:`, error, bumperConfig);
-      }
+        // eslint-disable-next-line no-empty
+      } catch (error) {}
     });
   }
 
@@ -724,8 +712,6 @@ export class HoleEntity extends BaseElement {
    * but leaves the main container group (this.group or this.parentGroup) intact.
    */
   destroy() {
-    console.log(`[HoleEntity] Destroying components for Hole ${this.config.index + 1}`);
-
     // Remove physics bodies
     for (let i = this.bodies.length - 1; i >= 0; i--) {
       const body = this.bodies[i];
@@ -745,7 +731,7 @@ export class HoleEntity extends BaseElement {
           containerGroup.remove(mesh);
         } else if (mesh.parent) {
           // If parented elsewhere unexpectedly, still remove
-          console.warn(`[HoleEntity] Mesh ${mesh.name} had unexpected parent during cleanup.`);
+
           mesh.parent.remove(mesh);
         }
 
@@ -766,9 +752,8 @@ export class HoleEntity extends BaseElement {
 
     // DO NOT remove this.group or this.parentGroup from the scene here.
     // The NineHoleCourse manages those groups.
-    console.log(`[HoleEntity] Component cleanup complete for Hole ${this.config.index + 1}`);
+
     // Setting group to null might cause issues if reused, let NineHoleCourse manage it.
     // this.group = null;
   }
-
 }

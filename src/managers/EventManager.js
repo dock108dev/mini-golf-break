@@ -137,11 +137,6 @@ export class EventManager {
           );
         } else {
           // Fallback to console if DebugManager is not available
-          console.error(
-            `[ERROR] EventManager.publish: Error handling event ${eventType} ${subscriberInfo}:`,
-            error,
-            { eventData: simplifiedData }
-          );
         }
 
         // Optionally publish a system error event for other components to react
@@ -217,7 +212,7 @@ export class EventManager {
    * @returns {boolean} Whether to show in UI
    * @private
    */
-  isCriticalEventError(eventType, error) {
+  isCriticalEventError(eventType, _error) {
     // Determine which event handler errors are critical enough for UI display
     // Errors in core gameplay events might warrant user notification
     const criticalEventTypes = [

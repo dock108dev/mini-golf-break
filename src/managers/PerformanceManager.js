@@ -1,5 +1,3 @@
-import * as THREE from 'three';
-
 /**
  * Configuration options for the PerformanceManager
  */
@@ -112,7 +110,6 @@ export class PerformanceManager {
         this.createPerformanceDisplay();
       }
     } catch (error) {
-      console.warn('PerformanceManager initialization error:', error);
       // Disable if we encounter errors during initialization
       this.enabled = false;
     }
@@ -139,8 +136,6 @@ export class PerformanceManager {
     if (this.performanceDisplay) {
       this.performanceDisplay.style.display = this.displayEnabled ? 'block' : 'none';
     }
-
-    console.log(`Performance display: ${this.displayEnabled ? 'ON' : 'OFF'}`);
   }
 
   /**
@@ -218,7 +213,6 @@ export class PerformanceManager {
         const warningMessage = `${name} ${value.toFixed(2)} ${name === 'fps' ? 'below' : 'exceeds'} target of ${threshold}`;
 
         // Always log to console
-        console.warn(`Performance warning: ${warningMessage}`);
 
         // Count violations
         this.budgetViolations.set(name, (this.budgetViolations.get(name) || 0) + 1);
@@ -345,7 +339,6 @@ export class PerformanceManager {
       }
     } catch (error) {
       // Log error but don't crash
-      console.warn('Error updating memory stats:', error);
 
       // Set default values
       this.metrics.objects.three = 0;
@@ -433,7 +426,6 @@ export class PerformanceManager {
 
       document.body.appendChild(this.performanceDisplay);
     } catch (error) {
-      console.warn('Error creating performance display:', error);
       this.displayEnabled = false;
     }
   }
@@ -473,9 +465,8 @@ export class PerformanceManager {
       html += `<div>Objects: ${data.objects.three} (Three.js), ${data.objects.physics} (Physics)</div>`;
 
       this.performanceDisplay.innerHTML = html;
-    } catch (error) {
-      console.warn('Error updating performance display:', error);
-    }
+      // eslint-disable-next-line no-empty
+    } catch (error) {}
   }
 
   /**
@@ -504,9 +495,8 @@ export class PerformanceManager {
 
       // Clear data
       this.markers = {};
-    } catch (error) {
-      console.warn('Error during PerformanceManager cleanup:', error);
-    }
+      // eslint-disable-next-line no-empty
+    } catch (error) {}
 
     return this;
   }

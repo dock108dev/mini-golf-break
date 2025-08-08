@@ -3,7 +3,6 @@
  */
 
 import { NineHoleCourse } from '../objects/NineHoleCourse';
-import * as THREE from 'three';
 
 // Mock dependencies
 jest.mock('../managers/CoursesManager');

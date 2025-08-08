@@ -21,7 +21,7 @@ fi
 
 # Run unit tests
 echo "🧪 Running unit tests..."
-npm run test:precommit
+npm run test:unit
 
 echo "🔧 Running build to ensure no compilation errors..."
 npm run build
