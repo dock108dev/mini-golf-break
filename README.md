@@ -83,6 +83,7 @@ This web application can be run as a native iOS app using Capacitor.
 ## Development
 
 See the [DEVELOPMENT_GUIDE.md](docs/development-guide.md) for details on the project structure, key components, and how to extend the game.
+See [Production Readiness Deep-Dive](docs/production-readiness-deep-dive.md) for a prioritized hardening backlog.
 
 ## Contributing
 
