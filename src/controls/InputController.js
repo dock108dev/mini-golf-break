@@ -107,7 +107,7 @@ export class InputController {
   }
 
   handleBallStopped(_event) {
-    if (!this.game.stateManager.isHoleCompleted()) this.enableInput();
+    if (!this.game.stateManager.isHoleCompleted()) {this.enableInput();}
   }
 
   handleBallInHole(_event) {
@@ -126,10 +126,10 @@ export class InputController {
 
   onMouseDown(event) {
     const ball = this.game.ballManager?.ball;
-    if (!this.isInputEnabled || (ball && !ball.isStopped())) return;
-    if (event.button !== 0) return;
-    if (!this.isEventInsideCanvas(event)) return;
-    if (this.game.stateManager?.isBallInMotion()) return;
+    if (!this.isInputEnabled || (ball && !ball.isStopped())) {return;}
+    if (event.button !== 0) {return;}
+    if (!this.isEventInsideCanvas(event)) {return;}
+    if (this.game.stateManager?.isBallInMotion()) {return;}
 
     if (this.game.cameraController?.controls) {
       this.controlsWereEnabled = this.game.cameraController.controls.enabled;
@@ -176,7 +176,7 @@ export class InputController {
   }
 
   onMouseMove(event) {
-    if (!this.isInputEnabled || !this.isPointerDown) return;
+    if (!this.isInputEnabled || !this.isPointerDown) {return;}
     this.isDragging = true;
 
     this.pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -208,10 +208,10 @@ export class InputController {
     const screenX = (this.pointer.x + 1) / 2;
     const screenY = (this.pointer.y + 1) / 2;
 
-    if (screenX < edgeThreshold) panX = -panSpeed * (1 - screenX / edgeThreshold);
-    if (screenX > 1 - edgeThreshold) panX = panSpeed * (1 - (1 - screenX) / edgeThreshold);
-    if (screenY > 1 - edgeThreshold) panZ = -panSpeed * (1 - (1 - screenY) / edgeThreshold);
-    if (screenY < edgeThreshold) panZ = panSpeed * (1 - screenY / edgeThreshold);
+    if (screenX < edgeThreshold) {panX = -panSpeed * (1 - screenX / edgeThreshold);}
+    if (screenX > 1 - edgeThreshold) {panX = panSpeed * (1 - (1 - screenX) / edgeThreshold);}
+    if (screenY > 1 - edgeThreshold) {panZ = -panSpeed * (1 - (1 - screenY) / edgeThreshold);}
+    if (screenY < edgeThreshold) {panZ = panSpeed * (1 - screenY / edgeThreshold);}
 
     if ((panX !== 0 || panZ !== 0) && this.game.cameraController) {
       const panDirection = new THREE.Vector3(panX, 0, panZ).normalize();
@@ -220,7 +220,7 @@ export class InputController {
   }
 
   onMouseUp(event) {
-    if (event.button !== 0) return;
+    if (event.button !== 0) {return;}
     if (!this.isPointerDown) {
       if (this.game.cameraController?.controls && !this.controlsWereEnabled) {
         this.game.cameraController.controls.enabled = this.controlsWereEnabled;
@@ -232,7 +232,7 @@ export class InputController {
 
     if (this.isDragging && this.isInputEnabled && this.hitPower > 0.05) {
       this.removeDirectionLine();
-      if (this.powerIndicator) this.powerIndicator.style.display = 'none';
+      if (this.powerIndicator) {this.powerIndicator.style.display = 'none';}
       if (this.game.ballManager) {
         this.game.ballManager.hitBall(this.hitDirection.clone(), this.hitPower);
         this.disableInput();
@@ -253,7 +253,7 @@ export class InputController {
 
   onTouchStart(event) {
     const ball = this.game.ballManager?.ball;
-    if (!this.isInputEnabled || (ball && !ball.isStopped())) return;
+    if (!this.isInputEnabled || (ball && !ball.isStopped())) {return;}
 
     this.isMultiTouch = event.touches.length > 1;
     if (event.touches.length === 2) {
@@ -291,8 +291,8 @@ export class InputController {
 
   /** Remove and dispose the direction/aim line */
   removeDirectionLine() {
-    if (!this.directionLine) return;
-    if (this.game.scene) this.game.scene.remove(this.directionLine);
+    if (!this.directionLine) {return;}
+    if (this.game.scene) {this.game.scene.remove(this.directionLine);}
     this.directionLine.geometry?.dispose();
     this.directionLine.material?.dispose();
     this.directionLine = null;

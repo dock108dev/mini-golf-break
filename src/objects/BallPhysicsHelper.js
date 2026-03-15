@@ -4,12 +4,16 @@ import * as CANNON from 'cannon-es';
  * Safely resets a CANNON.Body's velocity and angular velocity to zero.
  */
 export function resetBodyVelocity(body) {
-  if (!body) return;
-  body.velocity.set(0, 0, 0);
-  body.angularVelocity.set(0, 0, 0);
-  body.force.set(0, 0, 0);
-  body.torque.set(0, 0, 0);
-  body.wakeUp();
+  if (!body) {return;}
+  const zero = (vec) => {
+    if (vec?.set) { vec.set(0, 0, 0); }
+    else if (vec) { vec.x = 0; vec.y = 0; vec.z = 0; }
+  };
+  zero(body.velocity);
+  zero(body.angularVelocity);
+  zero(body.force);
+  zero(body.torque);
+  if (body.wakeUp) {body.wakeUp();}
 }
 
 /**
@@ -18,7 +22,7 @@ export function resetBodyVelocity(body) {
  */
 export function checkBunkerOverlap(ballBody, bunkerTriggers, ballRadius) {
   for (const trigger of bunkerTriggers) {
-    if (!trigger?.shapes?.length) continue;
+    if (!trigger?.shapes?.length) {continue;}
     const shape = trigger.shapes[0];
     const triggerPos = trigger.position;
     const ballPos = ballBody.position;
@@ -51,7 +55,7 @@ export function checkWaterOverlap(ballBody, waterTriggers, ballRadius, overlapTh
   const ballPos = ballBody.position;
 
   for (const trigger of waterTriggers) {
-    if (!trigger.shapes.length) continue;
+    if (!trigger.shapes.length) {continue;}
     const shape = trigger.shapes[0];
     const triggerPos = trigger.position;
 
