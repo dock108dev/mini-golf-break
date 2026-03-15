@@ -1,86 +1,68 @@
-# Mini Golf Break - A 3D Mini Golf Game
+# Mini Golf Break
 
-**Mini Golf Break** is a simple yet engaging 3D mini-golf game built with Three.js for graphics and Cannon-es for physics simulation. Enjoy a relaxing break with intuitive controls and progressively challenging holes.
+A 3D mini-golf game built with [Three.js](https://threejs.org/) and [Cannon-es](https://pmndrs.github.io/cannon-es/). Click-and-drag to aim, release to shoot, get the ball in the hole.
 
-## Features
+## Quick Start
 
-*   **3D Graphics:** Clean and simple low-poly aesthetics using Three.js.
-*   **Realistic Physics:** Accurate ball rolling, bouncing, and interactions powered by Cannon-es.
-*   **Intuitive Controls:** Simple click-and-drag aiming and power control.
-*   **Multiple Holes:** Includes a basic 3-hole test course (`BasicCourse`) and scaffolding for a full 9-hole course (`NineHoleCourse`).
-*   **Configurable Hazards:** Easily define sand traps and water hazards with various shapes (circles, rectangles, compound shapes!) via configuration.
-*   **Hazard Penalties:** Water hazards apply a one-stroke penalty and reset the ball to the last hit position.
-*   **Improved Hole Physics:** Ball entry logic considers speed and overlap for more realistic interactions (including high-speed rejections).
-*   **Bunker Effects:** Ball experiences increased drag when rolling through sand traps.
-*   **Dynamic Camera:** Camera actively follows the ball with intelligent positioning based on ball movement direction and speed.
-*   **Custom Hole Layouts:** Supports standard rectangular holes and custom shapes (like L-shapes) using boundary wall definitions.
-*   **Scoring System:** Tracks strokes per hole and total score.
-*   **Basic UI:** Displays current hole, stroke count, and total score.
-*   **Debug Mode:** Includes physics debugging visuals (toggle with 'd').
+```bash
+npm install
+npm start
+```
 
-## Getting Started
-
-1.  **Clone the repository:**
-    ```bash
-    git clone <repository-url>
-    cd mini-golf-break
-    ```
-2.  **Install dependencies:**
-    ```bash
-    npm install
-    ```
-3.  **Run the development server:**
-    ```bash
-    npm start
-    ```
-4.  Open your browser to `http://localhost:8080` (or the specified port).
+Open `http://localhost:8080`.
 
 ## How to Play
 
-1.  **Aim:** Click and hold the left mouse button on the golf ball.
-2.  **Set Power:** Drag the mouse backward away from the direction you want to shoot. The further you drag, the more power you apply (indicated by the aiming line).
-3.  **Shoot:** Release the mouse button to hit the ball.
-4.  **Goal:** Get the ball into the hole in the fewest strokes possible.
-5.  Navigate through the different holes using the UI prompts after completing each hole.
+1. Click and hold on the golf ball
+2. Drag backward to set direction and power
+3. Release to shoot
+4. Get the ball in the hole in the fewest strokes
 
-## Running on iOS (via Capacitor)
+## Scripts
 
-This web application can be run as a native iOS app using Capacitor.
+| Command | Description |
+|---------|-------------|
+| `npm start` | Start dev server on port 8080 |
+| `npm test` | Run unit and integration tests |
+| `npm run build` | Production build to `dist/` |
+| `npm run lint` | Run ESLint |
 
-1.  **Prerequisites:**
-    *   Ensure you have Xcode installed.
-    *   Ensure you have CocoaPods installed (`sudo gem install cocoapods`).
-    *   An Apple Developer account added to Xcode (for running on a physical device).
+## Tech Stack
 
-2.  **Build the Web App:**
-    ```bash
-    npm run build
-    ```
+- **Rendering**: Three.js (3D graphics, camera, lighting)
+- **Physics**: Cannon-es (ball dynamics, collisions, surfaces)
+- **Build**: Webpack 5 with Babel
+- **Testing**: Jest + Playwright (UAT)
 
-3.  **Sync with Capacitor:**
-    ```bash
-    npx cap sync ios
-    ```
+## Project Structure
 
-4.  **Open in Xcode:**
-    ```bash
-    npx cap open ios
-    ```
+```
+src/
+  controls/       # InputController, CameraController
+  events/         # EventManager, EventTypes
+  game/           # ScoringSystem
+  managers/       # BallManager, UIManager, StateManager, etc.
+  objects/        # Ball, HoleEntity, courses, hazards
+  physics/        # PhysicsWorld, physics utilities
+  scenes/         # Game (main coordinator)
+  states/         # GameState enum
+  utils/          # Debug logging, styles
+public/           # Static assets (index.html, styles, textures)
+tests/uat/        # Playwright end-to-end tests
+```
 
-5.  **Run in Xcode:**
-    *   Inside Xcode, select the `App` target.
-    *   Go to the `Signing & Capabilities` tab and select your development team.
-    *   Choose your target device (physical iPhone or Simulator).
-    *   Click the Run button (or press Cmd+R).
+## Architecture
 
-## Development
+The game uses a component-based architecture coordinated by `Game.js`. Managers communicate via an `EventManager` pub/sub system. The `GameLoopManager` orchestrates the update cycle: physics → ball → camera → effects → render.
 
-See the [DEVELOPMENT_GUIDE.md](docs/development-guide.md) for details on the project structure, key components, and how to extend the game.
+## Deployment
 
-## Contributing
+```bash
+npm run build
+```
 
-Contributions are welcome! Please follow standard fork-and-pull-request workflows.
+The `dist/` folder contains the production build. Deploy to any static hosting (Vercel, Netlify, GitHub Pages). See `vercel.json` for Vercel configuration.
 
 ## License
 
-This project is open-source (specify license if applicable, e.g., MIT License).
+Open source.

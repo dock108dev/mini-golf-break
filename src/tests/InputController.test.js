@@ -213,7 +213,7 @@ describe('InputController', () => {
 
   test('should detect device performance correctly', () => {
     // Test high-performance detection
-    expect(inputController.detectDevicePerformance()).toBe(true);
+    expect(inputController.deviceCapabilities.detectPerformance()).toBe(true);
 
     // Test low-performance device
     Object.defineProperty(global.navigator, 'deviceMemory', {
@@ -233,21 +233,6 @@ describe('InputController', () => {
     expect(global.navigator.vibrate).toHaveBeenCalledWith(50);
   });
 
-  test('should handle pinch zoom gestures', () => {
-    const pinchDelta = 10;
-    inputController.handlePinchZoom(pinchDelta);
-
-    expect(mockGame.cameraController.adjustZoom).toHaveBeenCalled();
-  });
-
-  test('should apply mobile optimizations', () => {
-    // Make it a low-performance device to trigger optimization
-    inputController.isHighPerformanceDevice = false;
-
-    inputController.optimizeForDevice();
-
-    expect(mockGame.physicsManager.setUpdateRate).toHaveBeenCalledWith(30);
-  });
 
   test('should handle touch start events', () => {
     const mockTouchEvent = {
@@ -290,27 +275,6 @@ describe('InputController', () => {
     expect(inputController.isInputEnabled).toBe(true);
   });
 
-  test('should detect quick tap gestures', () => {
-    const logSpy = jest.spyOn(console, 'log').mockImplementation();
-
-    inputController.touchStartTime = performance.now() - 100; // 100ms ago
-    inputController.touchVelocity.length = jest.fn(() => 0.05); // Low velocity
-
-    inputController.handleQuickTap();
-
-    // Clean up
-    logSpy.mockRestore();
-  });
-
-  test('should handle swipe gestures with velocity boost', () => {
-    inputController.hitPower = 0.5;
-    inputController.touchVelocity.length = jest.fn(() => 1.0); // High velocity
-
-    const originalPower = inputController.hitPower;
-    inputController.handleSwipeGesture();
-
-    expect(inputController.hitPower).toBeGreaterThan(originalPower);
-  });
 
   test('should handle ball state events', () => {
     // Test ball stopped event

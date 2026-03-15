@@ -1,6 +1,0 @@
-{
-  "appId": "com.minigolfbreak.app",
-  "appName": "MiniGolfBreak",
-  "webDir": "dist",
-  "bundledWebRuntime": false
-}

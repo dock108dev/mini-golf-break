@@ -59,7 +59,7 @@ body {
 }
 
 /* Menu buttons styles */
-#start-practice, #play-course {
+#play-course {
     background: #ffcc00;
     color: #000;
     border: none;
@@ -76,7 +76,7 @@ body {
     margin-right: auto;
 }
 
-#start-practice:hover, #play-course:hover {
+#play-course:hover {
     background: #ffd700;
     transform: scale(1.05);
 }
@@ -89,29 +89,6 @@ body {
 
 #play-course:hover {
     background: #45a049;
-    transform: scale(1.05);
-}
-
-/* Feedback button styling */
-#feedback-button {
-    background: #3498db; /* Blue color for feedback */
-    color: white;
-    border: none;
-    padding: 10px 25px;
-    font-size: 1em;
-    border-radius: 5px;
-    cursor: pointer;
-    margin-top: 15px;
-    transition: background 0.3s, transform 0.2s;
-    display: block;
-    width: 80%;
-    max-width: 250px;
-    margin-left: auto;
-    margin-right: auto;
-}
-
-#feedback-button:hover {
-    background: #2980b9;
     transform: scale(1.05);
 }
 
