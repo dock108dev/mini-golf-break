@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Ball } from '../objects/Ball';
 import { EventTypes } from '../events/EventTypes';
+import { debug } from '../utils/debug';
 
 /**
  * BallManager - Handles ball creation, physics, and movement
@@ -27,7 +28,7 @@ export class BallManager {
    * @returns {BallManager} this instance for chaining
    */
   init() {
-    console.log('[BallManager.init] Starting...');
+    debug.log('[BallManager.init] Starting...');
     try {
       if (this.isInitialized) {
         console.warn('[BallManager.init] Already initialized, skipping.');
@@ -38,12 +39,12 @@ export class BallManager {
       this.physicsManager = this.game.physicsManager;
 
       // Don't create ball here - it will be created by Game.createCourse()
-      console.log('[BallManager.init] Setting up event listeners...');
+      debug.log('[BallManager.init] Setting up event listeners...');
       this.setupEventListeners();
-      console.log('[BallManager.init] Event listeners setup finished.');
+      debug.log('[BallManager.init] Event listeners setup finished.');
 
       this.isInitialized = true;
-      console.log('[BallManager.init] Finished.');
+      debug.log('[BallManager.init] Finished.');
     } catch (error) {
       console.error('[BallManager.init] Failed:', error);
     }
@@ -55,7 +56,7 @@ export class BallManager {
    * Set up event subscriptions
    */
   setupEventListeners() {
-    console.log('[BallManager.setupEventListeners] Starting...');
+    debug.log('[BallManager.setupEventListeners] Starting...');
     if (!this.game.eventManager) {
       console.warn('[BallManager.setupEventListeners] EventManager not available, skipping.');
       return;
@@ -64,7 +65,7 @@ export class BallManager {
     try {
       this.eventSubscriptions = []; // Initialize as empty array
 
-      console.log('[BallManager.setupEventListeners] Subscribing to HAZARD_DETECTED...');
+      debug.log('[BallManager.setupEventListeners] Subscribing to HAZARD_DETECTED...');
       this.eventSubscriptions.push(
         this.game.eventManager.subscribe(
           EventTypes.HAZARD_DETECTED,
@@ -73,12 +74,12 @@ export class BallManager {
         )
       );
 
-      console.log('[BallManager.setupEventListeners] Subscribing to HOLE_STARTED...');
+      debug.log('[BallManager.setupEventListeners] Subscribing to HOLE_STARTED...');
       this.eventSubscriptions.push(
         this.game.eventManager.subscribe(EventTypes.HOLE_STARTED, this.handleHoleStarted, this)
       );
 
-      console.log('[BallManager.setupEventListeners] Finished.');
+      debug.log('[BallManager.setupEventListeners] Finished.');
     } catch (error) {
       console.error('[BallManager.setupEventListeners] Failed:', error);
     }
@@ -89,14 +90,14 @@ export class BallManager {
    * @param {GameEvent} event - The hole started event
    */
   handleHoleStarted(_event) {
-    console.log(
+    debug.log(
       `[BallManager.handleHoleStarted] Event received. isInitialized: ${this.isInitialized}, game initialized?: ${this.game.isInitialized}`
     );
     try {
       // Get the WORLD start position for the new hole
       const worldStartPosition = this.game.course.getHoleStartPosition(); // Now returns WORLD coords
       if (this.ball && worldStartPosition) {
-        console.log('[BallManager.handleHoleStarted] Resetting existing ball position.');
+        debug.log('[BallManager.handleHoleStarted] Resetting existing ball position.');
         this.ball.setPosition(
           worldStartPosition.x,
           worldStartPosition.y + Ball.START_HEIGHT,
@@ -114,7 +115,7 @@ export class BallManager {
           this.game.eventManager.publish(EventTypes.BALL_RESET, { position: resetPosition }, this);
         }
       } else {
-        console.log('[BallManager.handleHoleStarted] No ball exists yet or startPosition invalid.');
+        debug.log('[BallManager.handleHoleStarted] No ball exists yet or startPosition invalid.');
       }
     } catch (error) {
       console.error('[BallManager.handleHoleStarted] Failed:', error);
@@ -134,7 +135,7 @@ export class BallManager {
     }
     // --- END GUARD CLAUSE ---
 
-    console.log('[BallManager] Creating new ball (Course seems ready)');
+    debug.log('[BallManager] Creating new ball (Course seems ready)');
 
     // Validate start position (passed argument - should be world coords)
     if (!worldStartPosition || !(worldStartPosition instanceof THREE.Vector3)) {
@@ -172,7 +173,7 @@ export class BallManager {
 
     if (worldHolePosition) {
       this.ball.currentHolePosition = worldHolePosition.clone(); // Store WORLD position
-      console.log('[BallManager] Assigned WORLD holePosition to Ball:', worldHolePosition);
+      debug.log('[BallManager] Assigned WORLD holePosition to Ball:', worldHolePosition);
     } else {
       console.error('[BallManager] Failed to get world hole position to assign to ball!');
       this.ball.currentHolePosition = null;
@@ -187,7 +188,7 @@ export class BallManager {
     );
     this.ball.setPosition(finalPosition.x, finalPosition.y, finalPosition.z);
 
-    console.log('[BallManager] Ball positioned at world:', this.ball.mesh.position);
+    debug.log('[BallManager] Ball positioned at world:', this.ball.mesh.position);
 
     // Log distance (now using world coordinates)
     if (worldHolePosition) {
@@ -195,13 +196,13 @@ export class BallManager {
       if (this.ball.mesh.position.distanceTo) {
         distance = this.ball.mesh.position.distanceTo(worldHolePosition);
       }
-      console.log(`[BallManager] Ball created at distance ${distance.toFixed(2)} from hole`);
+      debug.log(`[BallManager] Ball created at distance ${distance.toFixed(2)} from hole`);
     }
 
     // Wake up the ball's physics body
     if (this.ball.body) {
       this.ball.body.wakeUp();
-      console.log('[BallManager] Ball body woken up with world position:', this.ball.body.position);
+      debug.log('[BallManager] Ball body woken up with world position:', this.ball.body.position);
     } else {
       console.error('[BallManager] Ball body not created or available after instantiation.');
       this.removeBall(); // Clean up partial creation
@@ -216,10 +217,10 @@ export class BallManager {
       const positionClone = this.ball.mesh.position.clone
         ? this.ball.mesh.position.clone()
         : {
-            x: this.ball.mesh.position.x,
-            y: this.ball.mesh.position.y,
-            z: this.ball.mesh.position.z
-          };
+          x: this.ball.mesh.position.x,
+          y: this.ball.mesh.position.y,
+          z: this.ball.mesh.position.z
+        };
       this.game.eventManager.publish(
         EventTypes.BALL_CREATED,
         { ball: this.ball, position: positionClone },
@@ -296,7 +297,7 @@ export class BallManager {
     // Check if ball has fallen below the course
     const outOfBoundYThreshold = -5; // Consider anything below -5 as out of bounds
     if (this.ball.mesh.position.y < outOfBoundYThreshold) {
-      console.log(
+      debug.log(
         `[BallManager] Ball out of bounds at y=${this.ball.mesh.position.y.toFixed(2)}, resetting to start position`
       );
 
@@ -363,7 +364,7 @@ export class BallManager {
     this.lastBallPosition.copy(this.ball.mesh.position);
 
     // Hit the ball
-    console.log(
+    debug.log(
       `[BallManager.hitBall] Ball position before impulse: (${this.ball.body.position.x.toFixed(2)}, ${this.ball.body.position.y.toFixed(2)}, ${this.ball.body.position.z.toFixed(2)})`
     ); // Log position
     this.ball.applyImpulse(direction, power);
@@ -432,7 +433,7 @@ export class BallManager {
     }
 
     // Log the reset
-    console.log('[BallManager] Ball reset to position:', resetPosition);
+    debug.log('[BallManager] Ball reset to position:', resetPosition);
   }
 
   /**
@@ -544,15 +545,15 @@ export class BallManager {
       if (this.ball.ballLight) {
         this.game.scene.remove(this.ball.ballLight);
         // No need to dispose PointLight geometry/material usually
-        console.log('[BallManager] Removed ballLight from scene');
+        debug.log('[BallManager] Removed ballLight from scene');
       }
       // --- END REMOVE BALL LIGHT ---
 
       // Clear the reference
       this.ball = null;
-      console.log('[BallManager] Ball removed and cleaned up'); // Add log
+      debug.log('[BallManager] Ball removed and cleaned up'); // Add log
     } else {
-      console.log('[BallManager] No ball to remove.'); // Add log
+      debug.log('[BallManager] No ball to remove.'); // Add log
     }
   }
 }

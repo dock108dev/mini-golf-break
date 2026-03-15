@@ -1,3 +1,4 @@
+import { debug } from '../../utils/debug';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { CSG } from 'three-csg-ts';
@@ -12,7 +13,7 @@ import { CSG } from 'three-csg-ts';
  * @returns {{meshes: THREE.Mesh[], bodies: CANNON.Body[]}} Created meshes and bodies
  */
 export function createHazard(world, group, hazardConfig, visualGreenY, courseBounds) {
-  console.log(`[HazardFactory] Creating hazard:`, hazardConfig);
+  debug.log('[HazardFactory] Creating hazard:', hazardConfig);
   switch (hazardConfig.type) {
     case 'sand':
       return createSandHazard(world, group, hazardConfig, visualGreenY, courseBounds);
@@ -46,7 +47,7 @@ function createSandHazard(world, group, config, visualGreenY, courseBounds) {
   const useCourseBounds = courseBounds && courseBounds.width > 0 && courseBounds.length > 0;
 
   if (useCourseBounds) {
-    console.log(
+    debug.log(
       `[HazardFactory] Will constrain hazards to course boundaries: ${courseBounds.width}x${courseBounds.length}`
     );
   }
@@ -141,7 +142,7 @@ function createSandHazardPart(config, world, group, material, visualY, triggerY,
         circleGeom.dispose();
         boundaryGeom.dispose();
 
-        console.log(
+        debug.log(
           `[HazardFactory] Created sand hazard with CSG intersection at ${localPos.x.toFixed(2)},${localPos.z.toFixed(2)}`
         );
       } else {
@@ -181,7 +182,7 @@ function createSandHazardPart(config, world, group, material, visualY, triggerY,
         rectGeom.dispose();
         boundaryGeom.dispose();
 
-        console.log(
+        debug.log(
           `[HazardFactory] Created rectangle sand hazard with CSG intersection at ${localPos.x.toFixed(2)},${localPos.z.toFixed(2)}`
         );
       } else {
@@ -351,7 +352,7 @@ function createSingleWaterHazardPart(
         circleGeom.dispose();
         boundaryGeom.dispose();
 
-        console.log(
+        debug.log(
           `[HazardFactory] Created water hazard with CSG intersection at ${localPos.x.toFixed(2)},${localPos.z.toFixed(2)}`
         );
       } else {
@@ -391,7 +392,7 @@ function createSingleWaterHazardPart(
         rectGeom.dispose();
         boundaryGeom.dispose();
 
-        console.log(
+        debug.log(
           `[HazardFactory] Created rectangle water hazard with CSG intersection at ${localPos.x.toFixed(2)},${localPos.z.toFixed(2)}`
         );
       } else {

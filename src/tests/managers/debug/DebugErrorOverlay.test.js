@@ -170,7 +170,7 @@ describe('DebugErrorOverlay', () => {
       expect(mockElement.appendChild).toHaveBeenCalledWith(mockButton);
       expect(mockParentContainer.appendChild).toHaveBeenCalledWith(mockElement);
       expect(console.log).toHaveBeenCalledWith(
-        '[DebugErrorOverlay] Creating error overlay element...'
+        '[DEBUG]', '[DebugErrorOverlay] Creating error overlay element...'
       );
     });
 
@@ -184,7 +184,7 @@ describe('DebugErrorOverlay', () => {
       debugErrorOverlay.init();
 
       expect(debugErrorOverlay.errorOverlay).toBe(existingElement);
-      expect(console.log).toHaveBeenCalledWith('[DebugErrorOverlay] Found existing error overlay.');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[DebugErrorOverlay] Found existing error overlay.');
       expect(document.createElement).not.toHaveBeenCalled();
     });
 
@@ -267,7 +267,7 @@ describe('DebugErrorOverlay', () => {
       expect(document.createElement).toHaveBeenCalledWith('div');
       expect(mockErrorElement.textContent).toBe(message);
       expect(showSpy).toHaveBeenCalled();
-      expect(console.log).toHaveBeenCalledWith(`[DebugErrorOverlay] Displaying error: ${message}`);
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', `[DebugErrorOverlay] Displaying error: ${message}`);
     });
 
     test('should insert error element after close button when children exist', () => {
@@ -342,7 +342,7 @@ describe('DebugErrorOverlay', () => {
       expect(mockErrorElement.remove).toHaveBeenCalled();
       expect(hideIfEmptySpy).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('[DebugErrorOverlay] Auto-removed error message:')
+        '[DEBUG]', expect.stringContaining('[DebugErrorOverlay] Auto-removed error message:')
       );
     });
 
@@ -391,7 +391,7 @@ describe('DebugErrorOverlay', () => {
       debugErrorOverlay.hide();
 
       expect(debugErrorOverlay.errorOverlay.style.display).toBeDefined();
-      expect(console.log).toHaveBeenCalledWith('[DebugErrorOverlay] Overlay hidden by user.');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[DebugErrorOverlay] Overlay hidden by user.');
     });
 
     test('should handle null overlay gracefully', () => {
@@ -416,7 +416,7 @@ describe('DebugErrorOverlay', () => {
 
       expect(hideSpy).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith(
-        '[DebugErrorOverlay] Overlay hidden automatically as it is empty.'
+        '[DEBUG]', '[DebugErrorOverlay] Overlay hidden automatically as it is empty.'
       );
     });
 
@@ -469,7 +469,7 @@ describe('DebugErrorOverlay', () => {
 
       expect(mockRemove).toHaveBeenCalled();
       expect(debugErrorOverlay.errorOverlay).toBeNull();
-      expect(console.log).toHaveBeenCalledWith('[DebugErrorOverlay] Cleaned up.');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[DebugErrorOverlay] Cleaned up.');
     });
 
     test('should handle null overlay gracefully', () => {
@@ -479,7 +479,7 @@ describe('DebugErrorOverlay', () => {
         debugErrorOverlay.cleanup();
       }).not.toThrow();
 
-      expect(console.log).toHaveBeenCalledWith('[DebugErrorOverlay] Cleaned up.');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[DebugErrorOverlay] Cleaned up.');
     });
   });
 
@@ -510,7 +510,7 @@ describe('DebugErrorOverlay', () => {
 
       // Hide manually
       debugErrorOverlay.hide();
-      expect(console.log).toHaveBeenCalledWith('[DebugErrorOverlay] Overlay hidden by user.');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[DebugErrorOverlay] Overlay hidden by user.');
 
       // Cleanup
       debugErrorOverlay.cleanup();

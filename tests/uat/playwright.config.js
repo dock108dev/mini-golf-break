@@ -39,7 +39,7 @@ module.exports = {
           args: [
             '--enable-webgl',
             '--enable-gpu',
-            '--use-gl=angle',
+            '--use-gl=swiftshader',
             '--enable-features=VaapiVideoDecoder',
             '--disable-background-timer-throttling',
             '--disable-backgrounding-occluded-windows',
@@ -74,7 +74,7 @@ module.exports = {
           args: [
             '--enable-webgl',
             '--enable-gpu',
-            '--use-gl=angle',
+            '--use-gl=swiftshader',
             '--disable-background-timer-throttling',
             '--no-sandbox'
           ]

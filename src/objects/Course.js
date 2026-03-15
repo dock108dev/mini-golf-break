@@ -1,3 +1,4 @@
+import { debug } from '../utils/debug';
 import * as THREE from 'three';
 import { CourseElementRegistry } from './CourseElementRegistry';
 
@@ -29,7 +30,7 @@ export class Course {
     this.totalHoles = 0;
     this.holes = [];
 
-    console.log(`[Course] Created new course: ${this.options.name}`);
+    debug.log(`[Course] Created new course: ${this.options.name}`);
   }
 
   /**
@@ -38,7 +39,7 @@ export class Course {
    * @returns {Promise<boolean>} Success status
    */
   async initialize(courseData) {
-    console.log(`[Course] Initializing course: ${courseData.name || this.options.name}`);
+    debug.log(`[Course] Initializing course: ${courseData.name || this.options.name}`);
 
     try {
       // Update course metadata
@@ -69,7 +70,7 @@ export class Course {
 
         this.totalHoles = this.holes.length;
 
-        console.log(
+        debug.log(
           `[Course] Initialized course with ${this.elements.length} elements (${this.totalHoles} holes)`
         );
         return true;
@@ -88,7 +89,7 @@ export class Course {
    * @returns {Promise<void>}
    */
   async clear() {
-    console.log(`[Course] Clearing course elements (${this.elements.length})`);
+    debug.log(`[Course] Clearing course elements (${this.elements.length})`);
 
     // Destroy each element
     this.elements.forEach(element => {
@@ -104,7 +105,7 @@ export class Course {
     // Allow time for physics world to settle
     await new Promise(resolve => setTimeout(resolve, 100));
 
-    console.log('[Course] Course cleared');
+    debug.log('[Course] Course cleared');
   }
 
   /**
@@ -159,7 +160,7 @@ export class Course {
       this.totalHoles = this.holes.length;
     }
 
-    console.log(`[Course] Added element: ${element.name} (${element.id})`);
+    debug.log(`[Course] Added element: ${element.name} (${element.id})`);
     return element;
   }
 
@@ -200,7 +201,7 @@ export class Course {
     }
     delete this.elementById[elementId];
 
-    console.log(`[Course] Removed element: ${element.name} (${element.id})`);
+    debug.log(`[Course] Removed element: ${element.name} (${element.id})`);
     return true;
   }
 

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { EventTypes } from '../events/EventTypes';
-import { GameState } from '../states/GameState';
+import { debug } from '../utils/debug';
 
 /**
  * InputController - Handles all user input for the game
@@ -12,7 +12,6 @@ export class InputController {
     this.camera = game.camera;
     this.renderer = game.renderer;
     this.stateManager = game.stateManager;
-    // Remove adShipManager reference (ads removed)
 
     // Track input state
     this.isInputEnabled = true;
@@ -110,8 +109,6 @@ export class InputController {
       this.onTouchStart = this.onTouchStart.bind(this);
       this.onTouchMove = this.onTouchMove.bind(this);
       this.onTouchEnd = this.onTouchEnd.bind(this);
-      this.onKeyDown = this.onKeyDown.bind(this); // Bind keydown handler
-
       // Add event listeners
       domElement.addEventListener('mousedown', this.onMouseDown);
       window.addEventListener('mousemove', this.onMouseMove);
@@ -121,9 +118,6 @@ export class InputController {
       domElement.addEventListener('touchstart', this.onTouchStart);
       window.addEventListener('touchmove', this.onTouchMove);
       window.addEventListener('touchend', this.onTouchEnd);
-
-      // Add keydown listener
-      window.addEventListener('keydown', this.onKeyDown);
 
       if (this.game.debugManager) {
         this.game.debugManager.log('InputController DOM event listeners initialized');
@@ -229,7 +223,7 @@ export class InputController {
     // Check if input is allowed and if the ball is stopped
     const ball = this.game.ballManager?.ball;
     if (!this.isInputEnabled || (ball && !ball.isStopped())) {
-      console.log(
+      debug.log(
         `[InputController.onMouseDown] Input ignored: InputEnabled=${this.isInputEnabled}, Ball Stopped=${ball ? ball.isStopped() : 'N/A'}`
       );
       return; // Ignore click if input disabled or ball is moving
@@ -247,7 +241,7 @@ export class InputController {
 
     // First, check if the ball is in motion - if so, we shouldn't allow new shots
     if (this.game.stateManager && this.game.stateManager.isBallInMotion()) {
-      console.log('Ball is in motion, ignoring input');
+      debug.log('Ball is in motion, ignoring input');
       return;
     }
 
@@ -300,7 +294,7 @@ export class InputController {
           this.hitPower = 0;
 
           // Log start of input
-          console.log(
+          debug.log(
             `[InputController] Drag started on ball. Initial point: (${this.intersectionPoint.x.toFixed(2)}, ${this.intersectionPoint.z.toFixed(2)})`
           );
 
@@ -310,7 +304,7 @@ export class InputController {
             this.updatePowerIndicator(0);
           }
 
-          console.log(
+          debug.log(
             `Clicked at distance ${distanceToBall.toFixed(2)} from ball, clickedOnBall: ${clickedOnBall}`
           );
         }
@@ -418,7 +412,7 @@ export class InputController {
 
   onMouseUp(event) {
     const currentState = this.stateManager ? this.stateManager.getGameState() : 'UNKNOWN';
-    console.log(
+    debug.log(
       `[InputController.onMouseUp] State: ${currentState}, PointerDown: ${this.isPointerDown}, Dragging: ${this.isDragging}`
     );
 
@@ -427,60 +421,7 @@ export class InputController {
       return;
     }
 
-    let adClicked = false;
-    // --- Ad Click Check (Only perform if NOT dragging for a shot) ---
-    if (!this.isDragging && this.isEventInsideCanvas(event)) {
-      // Perform raycast for ad banners
-      this.pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-      this.pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
-      this.raycaster.setFromCamera(this.pointer, this.camera);
-
-      const adBannerMeshes = [] // this.adShipManager?.ships removed
-        ?.map(ship => ship.bannerMesh)
-        ?.filter(mesh => mesh);
-
-      if (adBannerMeshes && adBannerMeshes.length > 0) {
-        const intersects = this.raycaster.intersectObjects(adBannerMeshes, false);
-        if (intersects.length > 0) {
-          const hitObject = intersects[0].object;
-          if (hitObject.userData?.adData?.url) {
-            const adData = hitObject.userData.adData;
-            console.log(
-              `[InputController] Clicked on Ad: "${adData.title}". Opening URL: ${adData.url}`
-            );
-            try {
-              // Find the ship that owns this banner mesh
-              const adShip = null; // this.adShipManager?.ships?.find(ship => ship.bannerMesh === hitObject);
-              if (adShip) {
-                // Use the ship's handleAdClick method which handles special URLs like #feedback-form
-                adShip.handleAdClick(event);
-              } else {
-                // Fallback to direct URL opening if ship not found
-                window.open(adData.url, '_blank');
-              }
-              adClicked = true; // Flag that an ad was successfully clicked
-            } catch (e) {
-              console.error('[InputController] Error opening ad URL:', e);
-            }
-          }
-        }
-      }
-    }
-    // --- End Ad Click Check ---
-
-    // If an ad was clicked (meaning !isDragging was true), reset states and return
-    if (adClicked) {
-      this.isPointerDown = false;
-      this.isDragging = false;
-      this.removeAimLine();
-      if (this.game.cameraController?.controls) {
-        this.game.cameraController.controls.enabled = this.controlsWereEnabled;
-      }
-      event.preventDefault();
-      return;
-    }
-
-    // --- Aiming/Shooting Logic (Proceed if pointer was down and no ad was clicked) ---
+    // --- Aiming/Shooting Logic ---
     if (!this.isPointerDown) {
       // Restore controls if pointer wasn't down but they were disabled (e.g., clicked outside canvas)
       if (this.game.cameraController?.controls && !this.controlsWereEnabled) {
@@ -505,7 +446,7 @@ export class InputController {
       // Hit ball using BallManager
       if (this.game.ballManager) {
         const direction = this.hitDirection.clone();
-        console.log(
+        debug.log(
           `[InputController] Applying stroke: Power=${this.hitPower.toFixed(2)}, Direction=(${direction.x.toFixed(2)}, ${direction.y.toFixed(2)}, ${direction.z.toFixed(2)})`
         );
         this.game.ballManager.hitBall(direction, this.hitPower);
@@ -537,7 +478,7 @@ export class InputController {
     // Check if input is allowed and if the ball is stopped
     const ball = this.game.ballManager?.ball;
     if (!this.isInputEnabled || (ball && !ball.isStopped())) {
-      console.log(
+      debug.log(
         `[InputController.onTouchStart] Input ignored: InputEnabled=${this.isInputEnabled}, Ball Stopped=${ball ? ball.isStopped() : 'N/A'}`
       );
       return; // Ignore touch if input disabled or ball is moving
@@ -939,7 +880,7 @@ export class InputController {
    * Handle quick tap gestures
    */
   handleQuickTap() {
-    console.log('[InputController] Quick tap detected');
+    debug.log('[InputController] Quick tap detected');
     // Quick tap implementation - could trigger a gentle hit or UI action
   }
 
@@ -970,7 +911,6 @@ export class InputController {
         domElement.removeEventListener('touchstart', this.onTouchStart);
         window.removeEventListener('touchmove', this.onTouchMove);
         window.removeEventListener('touchend', this.onTouchEnd);
-        window.removeEventListener('keydown', this.onKeyDown); // Remove keydown listener
       } catch (error) {
         if (this.game.debugManager) {
           this.game.debugManager.warn(
@@ -1019,41 +959,4 @@ export class InputController {
     }
   }
 
-  /**
-   * Handles keydown events, primarily for toggling Ad Inspect mode.
-   * @param {KeyboardEvent} event
-   */
-  onKeyDown(event) {
-    if (event.key.toLowerCase() === 'i') {
-      if (!this.stateManager || !this.game.cameraController?.controls) {
-        return;
-      }
-
-      const currentState = this.stateManager.getGameState();
-
-      if (currentState === GameState.AD_INSPECTING) {
-        console.log('[InputController] Exiting AD_INSPECTING state.');
-        // Restore controls setting from before aiming started (usually false)
-        // Or simply set to false if aiming should always disable controls.
-        this.game.cameraController.controls.enabled = false;
-        // Determine appropriate state to return to (AIMING if ball stopped, otherwise maybe let it be)
-        // For now, assume we can always go back to AIMING when toggling off.
-        this.stateManager.setGameState(GameState.AIMING);
-        this.enableInput(); // Re-enable aiming input
-      } else {
-        // Enter AD_INSPECTING only if input is currently enabled (ball stopped)
-        if (this.isInputEnabled) {
-          console.log('[InputController] Entering AD_INSPECTING state.');
-          this.disableInput(); // Disable aiming input
-          this.game.cameraController.controls.enabled = true; // Enable orbit controls
-          this.stateManager.setGameState(GameState.AD_INSPECTING);
-        } else {
-          console.log(
-            '[InputController] Cannot enter AD_INSPECTING state while input is disabled (ball might be moving).'
-          );
-        }
-      }
-    }
-    // Add other key handlers here if needed (e.g., pause)
-  }
 }

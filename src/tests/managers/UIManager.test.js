@@ -14,7 +14,6 @@ jest.mock('../../events/EventTypes', () => ({
     BALL_HIT: 'BALL_HIT',
     BALL_IN_HOLE: 'BALL_IN_HOLE',
     HAZARD_DETECTED: 'HAZARD_DETECTED',
-    UI_REQUEST_MAIN_MENU: 'UI_REQUEST_MAIN_MENU',
     UI_REQUEST_RESTART_GAME: 'UI_REQUEST_RESTART_GAME'
   }
 }));
@@ -241,8 +240,8 @@ describe('UIManager', () => {
     test('should setup event listeners successfully', () => {
       uiManager.setupEventListeners();
 
-      expect(mockGame.eventManager.subscribe).toHaveBeenCalledTimes(8); // All event types
-      expect(uiManager.eventSubscriptions.length).toBe(8);
+      expect(mockGame.eventManager.subscribe).toHaveBeenCalledTimes(7); // All event types
+      expect(uiManager.eventSubscriptions.length).toBe(7);
     });
 
     test('should handle missing event manager gracefully', () => {

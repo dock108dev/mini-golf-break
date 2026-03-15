@@ -142,7 +142,7 @@ describe('DebugCourseUI', () => {
       expect(mockElement.appendChild).toHaveBeenCalledTimes(4); // header, type, hole, keyInfo
       expect(document.body.appendChild).toHaveBeenCalledWith(mockElement);
       expect(console.log).toHaveBeenCalledWith(
-        '[DebugCourseUI] Creating course debug overlay element...'
+        '[DEBUG]', '[DebugCourseUI] Creating course debug overlay element...'
       );
     });
 
@@ -165,7 +165,7 @@ describe('DebugCourseUI', () => {
       expect(addListenerSpy).toHaveBeenCalled();
       expect(updateDisplaySpy).toHaveBeenCalled();
       expect(console.log).toHaveBeenCalledWith(
-        '[DebugCourseUI] Found existing course debug overlay.'
+        '[DEBUG]', '[DebugCourseUI] Found existing course debug overlay.'
       );
     });
 
@@ -212,7 +212,7 @@ describe('DebugCourseUI', () => {
         'keydown',
         debugCourseUI.boundHandleKeyPress
       );
-      expect(console.log).toHaveBeenCalledWith('[DebugCourseUI] Added keydown listener.');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[DebugCourseUI] Added keydown listener.');
     });
 
     test('should not add listener when course debug disabled', () => {
@@ -221,7 +221,7 @@ describe('DebugCourseUI', () => {
       debugCourseUI.addInputListener();
 
       expect(window.addEventListener).not.toHaveBeenCalled();
-      expect(console.log).not.toHaveBeenCalledWith('[DebugCourseUI] Added keydown listener.');
+      expect(console.log).not.toHaveBeenCalledWith('[DEBUG]', '[DebugCourseUI] Added keydown listener.');
     });
   });
 
@@ -233,7 +233,7 @@ describe('DebugCourseUI', () => {
         'keydown',
         debugCourseUI.boundHandleKeyPress
       );
-      expect(console.log).toHaveBeenCalledWith('[DebugCourseUI] Removed keydown listener.');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[DebugCourseUI] Removed keydown listener.');
     });
   });
 
@@ -257,7 +257,7 @@ describe('DebugCourseUI', () => {
 
       debugCourseUI.handleKeyPress(event);
 
-      expect(console.log).toHaveBeenCalledWith('[DebugCourseUI] Toggle Course Type key pressed.');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[DebugCourseUI] Toggle Course Type key pressed.');
       expect(mockDebugManager.toggleCourseType).toHaveBeenCalled();
       expect(event.preventDefault).toHaveBeenCalled();
     });
@@ -267,7 +267,7 @@ describe('DebugCourseUI', () => {
 
       debugCourseUI.handleKeyPress(event);
 
-      expect(console.log).toHaveBeenCalledWith('[DebugCourseUI] Load Specific Hole key pressed.');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[DebugCourseUI] Load Specific Hole key pressed.');
       expect(mockDebugManager.promptForHoleNumber).toHaveBeenCalled();
       expect(event.preventDefault).toHaveBeenCalled();
     });
@@ -277,7 +277,7 @@ describe('DebugCourseUI', () => {
 
       debugCourseUI.handleKeyPress(event);
 
-      expect(console.log).toHaveBeenCalledWith('[DebugCourseUI] Quick Load key pressed: 3');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[DebugCourseUI] Quick Load key pressed: 3');
       expect(mockDebugManager.loadSpecificHole).toHaveBeenCalledWith(3);
       expect(event.preventDefault).toHaveBeenCalled();
     });
@@ -390,7 +390,7 @@ describe('DebugCourseUI', () => {
       expect(removeListenerSpy).toHaveBeenCalled();
       expect(mockElement.remove).toHaveBeenCalled();
       expect(debugCourseUI.courseDebugUI).toBeNull();
-      expect(console.log).toHaveBeenCalledWith('[DebugCourseUI] Cleaned up.');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[DebugCourseUI] Cleaned up.');
     });
 
     test('should handle null courseDebugUI gracefully', () => {
@@ -402,7 +402,7 @@ describe('DebugCourseUI', () => {
       }).not.toThrow();
 
       expect(removeListenerSpy).toHaveBeenCalled();
-      expect(console.log).toHaveBeenCalledWith('[DebugCourseUI] Cleaned up.');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[DebugCourseUI] Cleaned up.');
     });
   });
 

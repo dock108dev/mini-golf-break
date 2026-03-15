@@ -45,6 +45,7 @@ describe('StateManager', () => {
         getTotalHoles: jest.fn(() => 9)
       },
       scoringSystem: {
+        completeHole: jest.fn(),
         resetCurrentStrokes: jest.fn()
       }
     };

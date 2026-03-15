@@ -15,11 +15,5 @@ export const GameState = {
   HOLE_COMPLETED: 'hole_completed',
 
   /** Game is completed */
-  GAME_COMPLETED: 'game_completed',
-
-  /** Player is paused */
-  PAUSED: 'paused',
-
-  /** Player is inspecting an ad */
-  AD_INSPECTING: 'ad_inspecting'
+  GAME_COMPLETED: 'game_completed'
 };

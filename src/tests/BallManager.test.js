@@ -216,7 +216,7 @@ describe('BallManager Branch Coverage Tests', () => {
       ballManager.handleHoleStarted({ type: 'HOLE_STARTED' });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        '[BallManager.handleHoleStarted] No ball exists yet or startPosition invalid.'
+        '[DEBUG]', '[BallManager.handleHoleStarted] No ball exists yet or startPosition invalid.'
       );
       consoleSpy.mockRestore();
     });
@@ -231,7 +231,7 @@ describe('BallManager Branch Coverage Tests', () => {
       ballManager.handleHoleStarted({ type: 'HOLE_STARTED' });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        '[BallManager.handleHoleStarted] No ball exists yet or startPosition invalid.'
+        '[DEBUG]', '[BallManager.handleHoleStarted] No ball exists yet or startPosition invalid.'
       );
       consoleSpy.mockRestore();
     });
@@ -688,7 +688,7 @@ describe('BallManager Branch Coverage Tests', () => {
         ballManager.removeBall();
 
         expect(mockGame.scene.remove).toHaveBeenCalledWith(ball.ballLight);
-        expect(consoleSpy).toHaveBeenCalledWith('[BallManager] Removed ballLight from scene');
+        expect(consoleSpy).toHaveBeenCalledWith('[DEBUG]', '[BallManager] Removed ballLight from scene');
 
         consoleSpy.mockRestore();
       } else {
@@ -705,7 +705,7 @@ describe('BallManager Branch Coverage Tests', () => {
 
       ballManager.removeBall();
 
-      expect(consoleSpy).toHaveBeenCalledWith('[BallManager] No ball to remove.');
+      expect(consoleSpy).toHaveBeenCalledWith('[DEBUG]', '[BallManager] No ball to remove.');
 
       consoleSpy.mockRestore();
     });

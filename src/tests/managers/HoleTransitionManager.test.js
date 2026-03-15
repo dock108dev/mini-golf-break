@@ -449,7 +449,6 @@ describe('HoleTransitionManager', () => {
       const cameraObject = { isCamera: true, type: 'PerspectiveCamera' };
       const permanentObject = { userData: { permanent: true }, type: 'Group' };
       const starfieldObject = { type: 'Points', userData: { type: 'starfield' } };
-      const adShipObject = { type: 'Group', userData: { type: 'AdShipContainer' } };
       const regularObject = { type: 'Mesh', userData: {} };
 
       const mockObjects = [
@@ -457,7 +456,6 @@ describe('HoleTransitionManager', () => {
         cameraObject,
         permanentObject,
         starfieldObject,
-        adShipObject,
         regularObject
       ];
 
@@ -472,9 +470,9 @@ describe('HoleTransitionManager', () => {
       holeTransitionManager.cleanScene();
 
       expect(mockGame.scene.clear).toHaveBeenCalled();
-      expect(mockGame.scene.add).toHaveBeenCalledTimes(5); // All essential objects
+      expect(mockGame.scene.add).toHaveBeenCalledTimes(4); // All essential objects
       expect(console.log).toHaveBeenCalledWith(
-        '[HoleTransitionManager] Keeping object:',
+        '[DEBUG]', '[HoleTransitionManager] Keeping object:',
         expect.any(String),
         expect.any(Object)
       );
@@ -486,7 +484,7 @@ describe('HoleTransitionManager', () => {
 
       holeTransitionManager.cleanScene();
 
-      expect(console.log).toHaveBeenCalledWith('[HoleTransitionManager] Recreating starfield');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[HoleTransitionManager] Recreating starfield');
       expect(mockGame.createStarfield).toHaveBeenCalled();
     });
 
@@ -506,7 +504,7 @@ describe('HoleTransitionManager', () => {
 
       expect(result).toBe(true);
       expect(console.log).toHaveBeenCalledWith(
-        '[HoleTransitionManager] Physics world state:',
+        '[DEBUG]', '[HoleTransitionManager] Physics world state:',
         expect.objectContaining({
           bodies: 0,
           gravity: '(0, -9.82, 0)',
@@ -595,7 +593,7 @@ describe('HoleTransitionManager', () => {
       holeTransitionManager.verifyPhysicsWorld();
 
       expect(console.log).toHaveBeenCalledWith(
-        '[HoleTransitionManager] Physics bodies:',
+        '[DEBUG]', '[HoleTransitionManager] Physics bodies:',
         expect.arrayContaining([
           expect.objectContaining({
             type: 'ball',
@@ -712,7 +710,7 @@ describe('HoleTransitionManager', () => {
         expect(mockMaterial.transparent).toBe(false);
         expect(mockMaterial.opacity).toBe(1.0);
         expect(console.log).toHaveBeenCalledWith(
-          '[HoleTransitionManager] Transition to hole 2 complete'
+          '[DEBUG]', '[HoleTransitionManager] Transition to hole 2 complete'
         );
       });
 

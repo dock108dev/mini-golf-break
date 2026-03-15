@@ -234,7 +234,7 @@ describe('WallElement', () => {
     test('should log creation message', () => {
       wallElement.create();
 
-      expect(console.log).toHaveBeenCalledWith('[WallElement] Creating wall Test Wall');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[WallElement] Creating wall Test Wall');
     });
 
     test('should call createVisuals', () => {
@@ -387,7 +387,7 @@ describe('WallElement', () => {
       expect(BaseElement.prototype.create).toHaveBeenCalled();
       expect(wallElement.createVisuals).toHaveBeenCalled();
       expect(wallElement.createPhysics).toHaveBeenCalled();
-      expect(console.log).toHaveBeenCalledWith('[WallElement] Creating wall Test Wall');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[WallElement] Creating wall Test Wall');
     });
 
     test('should handle minimal configuration', () => {

@@ -392,7 +392,7 @@ describe('DebugManager', () => {
 
       expect(mockVelocity.length).toHaveBeenCalled();
       expect(debugManager.velocityHistory).toContain(7.5);
-      expect(console.log).toHaveBeenCalledWith('Ball speed: 7.50 m/s');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', 'Ball speed: 7.50 m/s');
     });
 
     test('should not log velocity when disabled', () => {

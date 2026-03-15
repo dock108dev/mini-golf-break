@@ -25,6 +25,7 @@ export const EventTypes = {
 
   // UI events
   UI_BUTTON_CLICKED: 'ui:button_clicked',
+  UI_REQUEST_RESTART_GAME: 'ui:request_restart_game',
 
   // Input events
   INPUT_ENABLED: 'input:enabled',
