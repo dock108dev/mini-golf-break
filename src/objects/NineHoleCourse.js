@@ -452,9 +452,10 @@ export class NineHoleCourse extends CoursesManager {
       });
     }
 
-    // Update the current HoleEntity if it exists and has an update method
+    // Update the current HoleEntity with ball reference for mechanics
     if (this.currentHoleEntity && typeof this.currentHoleEntity.update === 'function') {
-      this.currentHoleEntity.update(dt);
+      const ballBody = this.game.ballManager?.ball?.body || null;
+      this.currentHoleEntity.update(dt, ballBody);
     }
   }
 

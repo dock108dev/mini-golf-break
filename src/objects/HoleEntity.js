@@ -4,6 +4,9 @@ import * as CANNON from 'cannon-es';
 import { BaseElement } from './BaseElement';
 import { buildGreenSurface } from './GreenSurfaceBuilder';
 import { createHazard } from './hazards/HazardFactory';
+import { createMechanic } from '../mechanics/MechanicRegistry';
+// Trigger mechanic self-registration
+import '../mechanics/index';
 
 /**
  * HoleEntity - Encapsulates all resources and physics for a single hole
@@ -104,6 +107,7 @@ export class HoleEntity extends BaseElement {
       this.createStartPosition();
       this.createHazards();
       this.createBumpers();
+      this.createMechanics();
       debug.log(`[HoleEntity] Initialization complete for hole index ${this.config.index}.`);
       return Promise.resolve();
     } catch (error) {
@@ -412,10 +416,65 @@ export class HoleEntity extends BaseElement {
   }
 
   /**
+   * Create mechanics from config.mechanics[] array.
+   * Each mechanic is instantiated via the MechanicRegistry and tracked for update/destroy.
+   */
+  createMechanics() {
+    this.mechanics = [];
+    const mechanicConfigs = this.config.mechanics || [];
+    if (mechanicConfigs.length === 0) {
+      return;
+    }
+
+    for (const mechConfig of mechanicConfigs) {
+      try {
+        const mechanic = createMechanic(
+          mechConfig.type,
+          this.world,
+          this.group,
+          mechConfig,
+          this.surfaceHeight
+        );
+        if (mechanic) {
+          this.mechanics.push(mechanic);
+          // Track mechanic's resources for cleanup
+          this.meshes.push(...mechanic.getMeshes?.() || mechanic.meshes || []);
+          this.bodies.push(...mechanic.getBodies?.() || mechanic.bodies || []);
+          debug.log(`[HoleEntity] Created mechanic: ${mechConfig.type}`);
+        }
+      } catch (error) {
+        console.error(`[HoleEntity] Failed to create mechanic "${mechConfig.type}":`, error);
+      }
+    }
+  }
+
+  /**
+   * Update all mechanics each frame.
+   * @param {number} dt - Delta time in seconds
+   * @param {CANNON.Body|null} ballBody - The ball's physics body
+   */
+  update(dt, ballBody) {
+    if (!this.mechanics) {
+      return;
+    }
+    for (const mechanic of this.mechanics) {
+      mechanic.update(dt, ballBody);
+    }
+  }
+
+  /**
    * Destroy the HoleEntity's internal components (meshes, bodies)
    * but leaves the main container group (this.group or this.parentGroup) intact.
    */
   destroy() {
+    // Destroy mechanics first (they manage their own mesh/body cleanup)
+    if (this.mechanics) {
+      for (const mechanic of this.mechanics) {
+        mechanic.destroy();
+      }
+      this.mechanics = [];
+    }
+
     debug.log(`[HoleEntity] Destroying components for Hole ${this.config.index + 1}`);
 
     // Remove physics bodies
