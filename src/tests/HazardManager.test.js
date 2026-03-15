@@ -261,8 +261,8 @@ describe('HazardManager', () => {
       hazardManager.publishOutOfBounds(position);
 
       expect(mockEventManager.publish).toHaveBeenCalledWith(
-        EventTypes.HAZARD_OUT_OF_BOUNDS,
-        { position },
+        EventTypes.HAZARD_DETECTED,
+        { hazardType: 'outOfBounds', position },
         hazardManager
       );
     });

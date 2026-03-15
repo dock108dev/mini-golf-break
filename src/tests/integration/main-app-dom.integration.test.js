@@ -37,17 +37,6 @@ class App {
     }
   }
 
-  openFeedbackForm() {
-    console.log('[App] Opening feedback form...');
-    // Open feedback form in new tab
-    const feedbackWindow = window.open('/feedback.html', '_blank');
-
-    // Fallback if browser blocks popups
-    if (!feedbackWindow) {
-      window.location.href = '/feedback.html';
-    }
-  }
-
   async startCourse() {
     console.log('[App] startCourse called.');
     // Hide the menu screen
@@ -277,28 +266,6 @@ describe('App DOM Integration Tests', () => {
 
       // Should not crash even without menu screen
       await expect(app.init()).rejects.toThrow('Game initialization failed');
-    });
-  });
-
-  describe('DOM Window/Navigation Integration', () => {
-    test('should open feedback form in new window', () => {
-      const app = new App();
-      window.open.mockReturnValue({}); // Simulate successful popup
-
-      app.openFeedbackForm();
-
-      expect(window.open).toHaveBeenCalledWith('/feedback.html', '_blank');
-      expect(window.location.href).toBe(''); // Should not fallback
-    });
-
-    test('should fallback to location.href if popup is blocked', () => {
-      const app = new App();
-      window.open.mockReturnValue(null); // Simulate blocked popup
-
-      app.openFeedbackForm();
-
-      expect(window.open).toHaveBeenCalledWith('/feedback.html', '_blank');
-      expect(window.location.href).toBe('/feedback.html'); // Should fallback
     });
   });
 

@@ -22,20 +22,6 @@ class App {
     }
   }
 
-  /**
-   * Opens the feedback form in a new tab
-   */
-  openFeedbackForm() {
-    debug.log('[App] Opening feedback form...');
-    // Open feedback form in new tab
-    const feedbackWindow = window.open('/feedback.html', '_blank');
-
-    // Fallback if browser blocks popups
-    if (!feedbackWindow) {
-      window.location.href = '/feedback.html';
-    }
-  }
-
   async startCourse() {
     debug.log('[App] startCourse called.');
     // Hide the menu screen

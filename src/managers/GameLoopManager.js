@@ -112,16 +112,6 @@ export class GameLoopManager {
       return;
     }
 
-    // Check if game is paused
-    if (this.game.stateManager && typeof this.game.stateManager.getGameState === 'function') {
-      const gameState = this.game.stateManager.getGameState();
-      if (gameState === 'paused') {
-        // Still render when paused but skip most updates
-        this.game.renderer.render(this.game.scene, this.game.camera);
-        return;
-      }
-    }
-
     // 1. Update managers in sequence
 
     // 1.1 Update physics - must come first to update physical world

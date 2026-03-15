@@ -230,10 +230,4 @@ export class HoleCompletionManager {
     // REMOVE commented-out, redundant ball-in-hole check
   }
 
-  /**
-   * @deprecated Logic moved to Ball.js
-   */
-  completeHole() {
-    console.warn('[HoleCompletionManager.completeHole] is deprecated. Logic moved to Ball.js');
-  }
 }

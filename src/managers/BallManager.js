@@ -440,7 +440,6 @@ export class BallManager {
    * Handle hazard detection
    */
   handleHazardDetected(event) {
-    // const _hazardType = event.get('hazardType'); // Used for debugging
     const penalty = event.get('penalty', 1);
 
     // Add penalty strokes

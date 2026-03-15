@@ -231,35 +231,7 @@ export class PhysicsWorld {
         return;
       }
 
-      // Get the bodies involved in the collision
-      // const _bodyA = event.bodyA;
-      // const _bodyB = event.bodyB;
-
-      // REMOVED specific ball/hole check here - handled in Ball.js now
-      // let ball = null;
-      // let hole = null;
-      //
-      // if (bodyA.userData && bodyA.userData.type === 'ball') {
-      //     ball = bodyA;
-      //     if (bodyB.userData && bodyB.userData.type === 'hole') {
-      //         hole = bodyB;
-      //     }
-      // } else if (bodyB.userData && bodyB.userData.type === 'ball') {
-      //     ball = bodyB;
-      //     if (bodyA.userData && bodyA.userData.type === 'hole') {
-      //         hole = bodyA;
-      //     }
-      // }
-      //
-      // // If we found a ball and hole collision
-      // if (ball && hole) {
-      //     debug.log(`[PhysicsWorld] Ball entered hole ${hole.userData.holeIndex + 1}`);
-      //
-      //     // Check if we have a game object with onBallInHole method
-      //     if (this.game && typeof this.game.onBallInHole === 'function') {
-      //         this.game.onBallInHole(hole.userData.holeIndex);
-      //     }
-      // }
+      // Collision handling is done in Ball.js
     };
 
     // Add the callback to the world

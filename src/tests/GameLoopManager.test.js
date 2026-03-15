@@ -230,24 +230,6 @@ describe('GameLoopManager', () => {
     });
   });
 
-  describe('pause handling', () => {
-    beforeEach(() => {
-      gameLoopManager = new GameLoopManager(mockGame);
-      gameLoopManager.init();
-    });
-
-    test('should handle paused game state', () => {
-      mockGame.stateManager.getGameState.mockReturnValue('paused');
-      gameLoopManager.startLoop();
-
-      animationFrameCallback();
-
-      // Should still render but not update physics
-      expect(mockRenderer.render).toHaveBeenCalled();
-      // Updates should be minimal in paused state
-    });
-  });
-
   describe('cleanup', () => {
     beforeEach(() => {
       gameLoopManager = new GameLoopManager(mockGame);

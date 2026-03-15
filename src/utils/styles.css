@@ -1,24 +1,4 @@
 /* Additional styles for the game */
-/* .power-indicator-active { /* REMOVED (unused?) */
-/*     display: block !important; */
-/*     background: green; */
-/*     width: 0; */
-/* } */
-
-/* Debug styles */
-/* .debug-info { /* REMOVED (unused?) */
-/*     position: absolute; */
-/*     top: 60px; */
-/*     left: 20px; */
-/*     background: rgba(0, 0, 0, 0.5); */
-/*     color: white; */
-/*     padding: 10px; */
-/*     border-radius: 4px; */
-/*     font-family: monospace; */
-/*     font-size: 12px; */
-/* } */
-
-/* Add any additional styles here */
 
 /* --- UIManager Styles --- */
 .ui-container {

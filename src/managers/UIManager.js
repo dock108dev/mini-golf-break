@@ -183,7 +183,6 @@ export class UIManager {
 
     // Delegate updates to score overlay
     this.scoreOverlay?.updateHoleInfo();
-    this.scoreOverlay?.updateScorecard(); // Maybe update final score preview?
     this.scoreOverlay?.updateScore();
   }
 
@@ -200,7 +199,6 @@ export class UIManager {
     // Delegate updates to score overlay
     debug.log('[UIManager.handleHoleStarted] Updating score overlay elements...');
     this.scoreOverlay?.updateHoleInfo();
-    this.scoreOverlay?.updateScorecard(); // Placeholder call
     this.scoreOverlay?.updateScore();
     this.scoreOverlay?.updateStrokes(); // Reset strokes for new hole
     debug.log('[UIManager.handleHoleStarted] Finished updating score overlay.');
@@ -264,9 +262,6 @@ export class UIManager {
     // Determine message based on hazard type
     if (hazardType === 'water') {
       message = 'Water hazard! +1 stroke penalty.';
-    } else if (hazardType === 'sand') {
-      // Optional: Show a message for sand, or just let the physics handle it
-      // message = "In the bunker!";
     } else if (hazardType === 'outOfBounds') {
       message = 'Out of bounds! +1 stroke penalty.';
     }

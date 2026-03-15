@@ -51,14 +51,6 @@ mockApp.prototype.setupEventListeners = function () {
   }
 };
 
-mockApp.prototype.openFeedbackForm = function () {
-  console.log('[App] Opening feedback form...');
-  const feedbackWindow = window.open('/feedback.html', '_blank');
-  if (!feedbackWindow) {
-    window.location.href = '/feedback.html';
-  }
-};
-
 mockApp.prototype.startCourse = async function () {
   console.log('[App] startCourse called.');
   if (this.menuScreen) {
@@ -194,28 +186,6 @@ describe('App Class (main.js)', () => {
       expect(() => {
         new App();
       }).not.toThrow();
-    });
-  });
-
-  describe('openFeedbackForm', () => {
-    test('should open feedback form in new tab', () => {
-      const app = new App();
-      window.open.mockReturnValue({}); // Simulate successful popup
-
-      app.openFeedbackForm();
-
-      expect(console.log).toHaveBeenCalledWith('[App] Opening feedback form...');
-      expect(window.open).toHaveBeenCalledWith('/feedback.html', '_blank');
-    });
-
-    test('should fallback to location.href if popup is blocked', () => {
-      const app = new App();
-      window.open.mockReturnValue(null); // Simulate blocked popup
-
-      app.openFeedbackForm();
-
-      expect(window.open).toHaveBeenCalledWith('/feedback.html', '_blank');
-      expect(window.location.href).toBe('/feedback.html');
     });
   });
 

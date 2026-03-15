@@ -129,13 +129,6 @@ export class UIScoreOverlay {
     debug.log(`[UIScoreOverlay.updateHoleInfo] Updated to: Hole ${holeNumber}: ${description}`);
   }
 
-  // Placeholder - UIManager will call this
-  updateScorecard() {
-    // This was originally part of UIManager, intended for maybe a dynamic scorecard
-    // Keep as placeholder or integrate into showFinalScorecard if needed.
-    debug.log('[UIScoreOverlay.updateScorecard] Placeholder called.');
-  }
-
   /**
    * Show the final scorecard overlay.
    */

@@ -285,19 +285,9 @@ describe('InputController', () => {
   test('should enable and disable input correctly', () => {
     inputController.disableInput();
     expect(inputController.isInputEnabled).toBe(false);
-    expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
-      EventTypes.INPUT_DISABLED,
-      expect.any(Object),
-      inputController
-    );
 
     inputController.enableInput();
     expect(inputController.isInputEnabled).toBe(true);
-    expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
-      EventTypes.INPUT_ENABLED,
-      expect.any(Object),
-      inputController
-    );
   });
 
   test('should detect quick tap gestures', () => {

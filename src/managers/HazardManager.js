@@ -183,7 +183,7 @@ export class HazardManager {
     this.game.eventManager.publish(
       EventTypes.HAZARD_DETECTED,
       {
-        hazardType: EventTypes.HAZARD_OUT_OF_BOUNDS,
+        hazardType: 'outOfBounds',
         penalty: 1,
         lastSafePosition: this.lastSafePosition.clone()
       },
@@ -230,7 +230,7 @@ export class HazardManager {
    * @param {Object} position - Position where ball went out of bounds
    */
   publishOutOfBounds(position) {
-    this.game.eventManager.publish(EventTypes.HAZARD_OUT_OF_BOUNDS, { position }, this);
+    this.game.eventManager.publish(EventTypes.HAZARD_DETECTED, { hazardType: 'outOfBounds', position }, this);
   }
 
   /**

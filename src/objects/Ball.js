@@ -79,9 +79,6 @@ export class Ball {
     // Create golf ball with dimples
     this.createGolfBallWithDimples();
 
-    // Set initial position - REMOVED - Position is set by BallManager after creation
-    // this.mesh.position.copy(this.position);
-
     // Enable shadows
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = true;
@@ -93,8 +90,6 @@ export class Ball {
 
     // Add a small light to the ball to make it stand out
     this.ballLight = new THREE.PointLight(0xffffff, 0.4, 3);
-    // Set initial position - REMOVED - Position is set by BallManager after creation
-    // this.ballLight.position.copy(this.position);
     if (this.scene) {
       this.scene.add(this.ballLight);
     }
@@ -215,13 +210,7 @@ export class Ball {
 
     const otherBody = event.body;
     const otherUserData = otherBody.userData;
-    // let justEnteredBunker = false; // Flag for this event cycle - REMOVED
-
-    // --- Bunker Enter/Exit Check --- REMOVED
-    // Logic moved to update() for continuous state checking
-    // --- End Bunker Check ---
-
-    // --- Existing Other Collision Logic (Walls, Bumpers) ---
+    // --- Collision Logic (Walls, Bumpers) ---
     // This part requires contact information for sounds etc.
     if (!event.contact) {
       return; // Only process physical collisions with contact info below
@@ -656,12 +645,10 @@ export class Ball {
       const startPos = this.game.course.startPosition;
       const resetY = Math.max(startPos.y, this.radius + Ball.START_HEIGHT);
       this.setPosition(startPos.x, resetY, startPos.z);
-      // this.lastHitPosition.copy(startPos); // REMOVED - Don't overwrite last hit pos on general reset
       debug.log('[Ball] Reset position to hole start.');
     } else {
       console.warn('[Ball] Cannot reset position - hole start position unknown.');
       this.setPosition(0, this.radius + Ball.START_HEIGHT, 0); // Fallback reset
-      // this.lastHitPosition.set(0, this.radius + Ball.START_HEIGHT, 0); // REMOVED - Fallback reset should NOT affect last hit position
     }
     this.isHoleCompleted = false; // Ensure hole completion flag is reset
     this.isInBunker = false; // Ensure bunker flag is reset

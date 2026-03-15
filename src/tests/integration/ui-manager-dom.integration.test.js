@@ -23,7 +23,7 @@ jest.mock('../../managers/ui/UIScoreOverlay', () => ({
   UIScoreOverlay: jest.fn(() => ({
     init: jest.fn(),
     updateHoleInfo: jest.fn(),
-    updateScorecard: jest.fn(),
+
     updateScore: jest.fn(),
     updateStrokes: jest.fn(),
     showFinalScorecard: jest.fn(),

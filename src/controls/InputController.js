@@ -262,9 +262,6 @@ export class InputController {
     // Cast ray into the scene
     this.raycaster.setFromCamera(this.pointer, this.camera);
 
-    // Get ball reference from ball manager (already declared at start of function)
-    // const ball = this.game.ballManager ? this.game.ballManager.ball : null;
-
     // Check if we clicked directly on the ball first
     let clickedOnBall = false;
     if (ball && ball.mesh) {
@@ -713,9 +710,6 @@ export class InputController {
     if (!this.isInputEnabled) {
       this.isInputEnabled = true;
 
-      // Publish input enabled event
-      this.game.eventManager.publish(EventTypes.INPUT_ENABLED, {}, this);
-
       this.game.debugManager.log('Input enabled');
     }
   }
@@ -732,15 +726,6 @@ export class InputController {
       // Clean up any visual elements
       this.removeDirectionLine();
       this.resetPowerIndicator();
-
-      // Publish input disabled event
-      this.game.eventManager.publish(
-        EventTypes.INPUT_DISABLED,
-        {
-          reason: 'programmatic'
-        },
-        this
-      );
 
       this.game.debugManager.log('Input disabled');
     }

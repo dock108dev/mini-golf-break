@@ -121,9 +121,6 @@ export class Game {
       this.physicsManager.init();
       this.audioManager.init();
 
-      // Publish physics initialized event
-      this.eventManager.publish(EventTypes.PHYSICS_INITIALIZED, { timestamp: Date.now() }, this);
-
       // Initialize the CannonDebugRenderer after physics manager
       this.cannonDebugRenderer = new CannonDebugRenderer(
         this.scene,
@@ -415,13 +412,6 @@ export class Game {
    * Set up event listeners
    */
   setupEventListeners() {
-    // Subscribe to ball in hole events - REMOVED
-    // this.eventManager.subscribe(
-    //     EventTypes.BALL_IN_HOLE,
-    //     this.handleBallInHole,
-    //     this
-    // );
-
     // Add other event subscriptions as needed
     window.addEventListener('resize', this.handleResize.bind(this));
   }

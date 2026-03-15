@@ -30,9 +30,6 @@ export class CourseElementFactory {
     // Create a visible rim around the hole
     elements.rim = this.createHoleRim(scene, position, holeRadius);
 
-    // Create the hole (inner circle) - REMOVED as likely redundant/causing issues
-    // elements.hole = this.createHoleInnerCircle(scene, position, holeRadius);
-
     // Create physics bodies if physics world exists
     if (physicsWorld) {
       elements.bodies = this.createHolePhysics(physicsWorld, position, holeRadius, holeDepth);
@@ -98,24 +95,6 @@ export class CourseElementFactory {
 
     scene.add(rim);
     return rim;
-  }
-
-  /**
-   * Create the inner circle of the hole
-   */
-  static createHoleInnerCircle(scene, position, radius) {
-    const holeGeometry = new THREE.CircleGeometry(radius, 32);
-    const holeMaterial = new THREE.MeshBasicMaterial({
-      color: 0x000000, // Pure black for the hole
-      side: THREE.DoubleSide
-    });
-
-    const hole = new THREE.Mesh(holeGeometry, holeMaterial);
-    hole.rotation.x = -Math.PI / 2;
-    hole.position.set(position.x, position.y + 0.008, position.z);
-
-    scene.add(hole);
-    return hole;
   }
 
   /**

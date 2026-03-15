@@ -120,25 +120,6 @@ describe('State Management Integration', () => {
     });
   });
 
-  test('should disable input during certain states', () => {
-    // Initialize input controller
-    inputController.init();
-
-    // Set state to paused (input should be disabled)
-    stateManager.setGameState(GameState.PAUSED);
-
-    // Simulate mouse input
-    const mouseEvent = new MouseEvent('mousedown', {
-      clientX: 100,
-      clientY: 100
-    });
-    game.renderer.domElement.dispatchEvent(mouseEvent);
-
-    // Input should be ignored during pause
-    expect(inputController.isInputEnabled).toBe(true); // Controller is enabled but state prevents input
-    expect(stateManager.getGameState()).toBe(GameState.PAUSED);
-  });
-
   test('should update UI based on state changes', () => {
     // Verify UIManager has subscribed to state changes during init
     expect(uiManager.init).toHaveBeenCalled();
@@ -303,42 +284,4 @@ describe('State Management Integration', () => {
     expect(stateManager.isHoleCompleted()).toBe(false);
   });
 
-  test('should handle paused state gracefully', () => {
-    // Set paused state
-    stateManager.setGameState(GameState.PAUSED);
-
-    // Verify paused state
-    expect(stateManager.getGameState()).toBe(GameState.PAUSED);
-
-    // Should allow resuming
-    stateManager.setGameState(GameState.PLAYING);
-    expect(stateManager.getGameState()).toBe(GameState.PLAYING);
-  });
-
-  test('should synchronize game loop with state', () => {
-    // Mock game loop
-    const gameLoop = {
-      isPaused: false,
-      pause: jest.fn(() => {
-        gameLoop.isPaused = true;
-      }),
-      resume: jest.fn(() => {
-        gameLoop.isPaused = false;
-      })
-    };
-
-    // Pause state should pause game loop
-    stateManager.setGameState(GameState.PAUSED);
-    if (stateManager.getGameState() === GameState.PAUSED) {
-      gameLoop.pause();
-    }
-    expect(gameLoop.isPaused).toBe(true);
-
-    // Resume state should resume game loop
-    stateManager.setGameState(GameState.PLAYING);
-    if (stateManager.getGameState() === GameState.PLAYING) {
-      gameLoop.resume();
-    }
-    expect(gameLoop.isPaused).toBe(false);
-  });
 });

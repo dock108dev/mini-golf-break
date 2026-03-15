@@ -1,7 +1,6 @@
 import { debug } from '../utils/debug';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import { CSG } from 'three-csg-ts';
 
 /**
  * CoursesManager - Base class for managing multiple holes in a mini golf course

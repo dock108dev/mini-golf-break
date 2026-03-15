@@ -473,20 +473,6 @@ describe('HoleCompletionManager', () => {
     });
   });
 
-  describe('completeHole', () => {
-    beforeEach(() => {
-      holeCompletionManager = new HoleCompletionManager(mockGame);
-    });
-
-    test('should log deprecation warning', () => {
-      holeCompletionManager.completeHole();
-
-      expect(console.warn).toHaveBeenCalledWith(
-        '[HoleCompletionManager.completeHole] is deprecated. Logic moved to Ball.js'
-      );
-    });
-  });
-
   describe('integration scenarios', () => {
     beforeEach(() => {
       holeCompletionManager = new HoleCompletionManager(mockGame);

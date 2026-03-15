@@ -22,7 +22,7 @@ jest.mock('../../managers/ui/UIScoreOverlay', () => ({
   UIScoreOverlay: jest.fn(() => ({
     init: jest.fn(),
     updateHoleInfo: jest.fn(),
-    updateScorecard: jest.fn(),
+
     updateScore: jest.fn(),
     updateStrokes: jest.fn(),
     showFinalScorecard: jest.fn(),
@@ -299,7 +299,7 @@ describe('UIManager', () => {
           3000
         );
         expect(uiManager.scoreOverlay.updateHoleInfo).toHaveBeenCalled();
-        expect(uiManager.scoreOverlay.updateScorecard).toHaveBeenCalled();
+
         expect(uiManager.scoreOverlay.updateScore).toHaveBeenCalled();
 
         showMessageSpy.mockRestore();
@@ -317,7 +317,7 @@ describe('UIManager', () => {
 
         expect(showMessageSpy).toHaveBeenCalledWith('Hole 5', 2000);
         expect(uiManager.scoreOverlay.updateHoleInfo).toHaveBeenCalled();
-        expect(uiManager.scoreOverlay.updateScorecard).toHaveBeenCalled();
+
         expect(uiManager.scoreOverlay.updateScore).toHaveBeenCalled();
         expect(uiManager.scoreOverlay.updateStrokes).toHaveBeenCalled();
 
