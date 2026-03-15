@@ -18,6 +18,7 @@ import './TimedGate';
 import './BankWall';
 import './SplitRoute';
 import './RicochetBumpers';
+import './ElevatedGreen';
 
 // Teleportation
 import './PortalGate';

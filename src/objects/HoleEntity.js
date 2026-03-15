@@ -5,6 +5,7 @@ import { BaseElement } from './BaseElement';
 import { buildGreenSurface } from './GreenSurfaceBuilder';
 import { createHazard } from './hazards/HazardFactory';
 import { createMechanic } from '../mechanics/MechanicRegistry';
+import { createHeroProp } from './HeroPropFactory';
 // Trigger mechanic self-registration
 import '../mechanics/index';
 
@@ -108,6 +109,7 @@ export class HoleEntity extends BaseElement {
       this.createHazards();
       this.createBumpers();
       this.createMechanics();
+      this.createHeroProps();
       debug.log(`[HoleEntity] Initialization complete for hole index ${this.config.index}.`);
       return Promise.resolve();
     } catch (error) {
@@ -137,10 +139,13 @@ export class HoleEntity extends BaseElement {
     // Use WORLD hole position
     const visualHoleRadius = 0.4;
     const rimGeometry = new THREE.RingGeometry(visualHoleRadius, visualHoleRadius + 0.04, 32);
+    const rimTheme = this.config.theme?.rim || {};
     const rimMaterial = new THREE.MeshStandardMaterial({
-      color: 0xcccccc,
-      roughness: 0.3,
-      metalness: 0.9
+      color: rimTheme.color || 0xcccccc,
+      roughness: rimTheme.roughness ?? 0.3,
+      metalness: rimTheme.metalness ?? 0.9,
+      ...(rimTheme.emissive && { emissive: rimTheme.emissive }),
+      ...(rimTheme.emissiveIntensity && { emissiveIntensity: rimTheme.emissiveIntensity })
     });
     const rim = new THREE.Mesh(rimGeometry, rimMaterial);
     rim.rotation.x = -Math.PI / 2;
@@ -164,11 +169,14 @@ export class HoleEntity extends BaseElement {
       1,
       true
     );
+    const holeInteriorTheme = this.config.theme?.holeInterior || {};
     const interiorMaterial = new THREE.MeshStandardMaterial({
-      color: 0x1a1a1a,
-      roughness: 0.9,
-      metalness: 0.1,
-      side: THREE.DoubleSide
+      color: holeInteriorTheme.color || 0x1a1a1a,
+      roughness: holeInteriorTheme.roughness ?? 0.9,
+      metalness: holeInteriorTheme.metalness ?? 0.1,
+      side: THREE.DoubleSide,
+      ...(holeInteriorTheme.emissive && { emissive: holeInteriorTheme.emissive }),
+      ...(holeInteriorTheme.emissiveIntensity && { emissiveIntensity: holeInteriorTheme.emissiveIntensity })
     });
     const holeInteriorMesh = new THREE.Mesh(interiorGeometry, interiorMaterial);
     const topEdgeY = this.visualGreenY + 0.01; // Local Y target for top edge
@@ -187,10 +195,14 @@ export class HoleEntity extends BaseElement {
 
   createWalls() {
     // Wall definitions use LOCAL offsets from the edges (relative to 0,0,0 group center)
+    const theme = this.config.theme || {};
+    const wallTheme = theme.wall || {};
     const wallMaterial = new THREE.MeshStandardMaterial({
-      color: 0xa0522d,
-      roughness: 0.7,
-      metalness: 0.3
+      color: wallTheme.color || 0xa0522d,
+      roughness: wallTheme.roughness ?? 0.7,
+      metalness: wallTheme.metalness ?? 0.3,
+      ...(wallTheme.emissive && { emissive: wallTheme.emissive }),
+      ...(wallTheme.emissiveIntensity && { emissiveIntensity: wallTheme.emissiveIntensity })
     });
 
     // Iterate through the boundary shape segments
@@ -275,10 +287,13 @@ export class HoleEntity extends BaseElement {
   createStartPosition() {
     // Use WORLD start position for the visual mesh
     const teeGeometry = new THREE.CylinderGeometry(0.6, 0.6, 0.05, 24);
+    const teeTheme = this.config.theme?.tee || {};
     const teeMaterial = new THREE.MeshStandardMaterial({
-      color: 0x0077cc,
-      roughness: 0.5,
-      metalness: 0.2
+      color: teeTheme.color || 0x0077cc,
+      roughness: teeTheme.roughness ?? 0.5,
+      metalness: teeTheme.metalness ?? 0.2,
+      ...(teeTheme.emissive && { emissive: teeTheme.emissive }),
+      ...(teeTheme.emissiveIntensity && { emissiveIntensity: teeTheme.emissiveIntensity })
     });
     const teeMesh = new THREE.Mesh(teeGeometry, teeMaterial);
     // Position mesh at WORLD start position, adjusted for local Y offset
@@ -362,7 +377,7 @@ export class HoleEntity extends BaseElement {
 
         // Create visual mesh
         const bumperMaterial = new THREE.MeshStandardMaterial({
-          color: bumperConfig.color || 0xff8c00,
+          color: bumperConfig.color || this.config.theme?.bumper?.color || 0xff8c00,
           roughness: 0.7,
           metalness: 0.3
         });
@@ -444,6 +459,22 @@ export class HoleEntity extends BaseElement {
         }
       } catch (error) {
         console.error(`[HoleEntity] Failed to create mechanic "${mechConfig.type}":`, error);
+      }
+    }
+  }
+
+  createHeroProps() {
+    const heroProps = this.config.heroProps || [];
+    if (heroProps.length === 0) {
+      return;
+    }
+    for (const propConfig of heroProps) {
+      try {
+        const propMeshes = createHeroProp(this.group, propConfig);
+        this.meshes.push(...propMeshes);
+        debug.log(`[HoleEntity] Created hero prop: ${propConfig.type}`);
+      } catch (error) {
+        console.error(`[HoleEntity] Failed to create hero prop "${propConfig.type}":`, error);
       }
     }
   }

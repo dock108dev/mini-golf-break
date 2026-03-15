@@ -36,10 +36,14 @@ export function buildGreenSurface({ config, world, group, worldHolePosition, sur
   const meshes = [];
   const bodies = [];
 
+  const theme = config.theme || {};
+  const greenTheme = theme.green || {};
   const greenMaterial = new THREE.MeshStandardMaterial({
-    color: 0x2ecc71,
-    roughness: 0.8,
-    metalness: 0.1
+    color: greenTheme.color || 0x2ecc71,
+    roughness: greenTheme.roughness ?? 0.8,
+    metalness: greenTheme.metalness ?? 0.1,
+    ...(greenTheme.emissive && { emissive: greenTheme.emissive }),
+    ...(greenTheme.emissiveIntensity && { emissiveIntensity: greenTheme.emissiveIntensity })
   });
   const greenDepth = 0.01; // Thickness for extrusion
 
