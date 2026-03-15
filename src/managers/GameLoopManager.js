@@ -180,15 +180,7 @@ export class GameLoopManager {
       }
     }
 
-    // 1.6 Update Ad Ships
-    if (this.game.adShipManager) {
-      // Get ball position (if available)
-      const ballPosition = this.game.ballManager?.ball?.mesh?.position;
-
-      this.game.adShipManager.update(this.deltaTime, ballPosition);
-    }
-
-    // 1.7 Update CannonDebugRenderer - must be after physics update
+    // 1.6 Update CannonDebugRenderer - must be after physics update
     // Only update if the main debug mode AND the cannon renderer exist
     if (this.game.debugManager?.enabled && this.game.cannonDebugRenderer) {
       // Optional: Add performance tracking if needed

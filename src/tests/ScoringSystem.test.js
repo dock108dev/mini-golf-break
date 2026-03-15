@@ -59,7 +59,7 @@ describe('ScoringSystem', () => {
       scoringSystem.addStroke();
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        '[ScoringSystem] Stroke Added. Current Hole: 1, Total: 1'
+        '[DEBUG]', '[ScoringSystem] Stroke Added. Current Hole: 1, Total: 1'
       );
 
       consoleSpy.mockRestore();
@@ -144,7 +144,7 @@ describe('ScoringSystem', () => {
       scoringSystem.resetCurrentStrokes();
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        '[ScoringSystem] Resetting current hole strokes from 2 to 0.'
+        '[DEBUG]', '[ScoringSystem] Resetting current hole strokes from 2 to 0.'
       );
 
       consoleSpy.mockRestore();
@@ -157,7 +157,7 @@ describe('ScoringSystem', () => {
 
       expect(scoringSystem.currentHoleStrokes).toBe(0);
       expect(consoleSpy).toHaveBeenCalledWith(
-        '[ScoringSystem] Resetting current hole strokes from 0 to 0.'
+        '[DEBUG]', '[ScoringSystem] Resetting current hole strokes from 0 to 0.'
       );
 
       consoleSpy.mockRestore();
@@ -171,6 +171,15 @@ describe('ScoringSystem', () => {
       expect(result).toBe(scoringSystem);
     });
 
+    test('should push current hole strokes to holeScores', () => {
+      scoringSystem.addStroke();
+      scoringSystem.addStroke();
+
+      scoringSystem.completeHole();
+
+      expect(scoringSystem.holeScores).toEqual([2]);
+    });
+
     test('should not affect stroke counts', () => {
       scoringSystem.addStroke();
       scoringSystem.addStroke();
@@ -182,6 +191,47 @@ describe('ScoringSystem', () => {
 
       expect(scoringSystem.getTotalStrokes()).toBe(totalBefore);
       expect(scoringSystem.getCurrentStrokes()).toBe(currentBefore);
+    });
+  });
+
+  describe('getHoleScores', () => {
+    test('should return empty array initially', () => {
+      expect(scoringSystem.getHoleScores()).toEqual([]);
+    });
+
+    test('should return all hole scores after completing holes', () => {
+      scoringSystem.addStroke();
+      scoringSystem.addStroke();
+      scoringSystem.completeHole();
+      scoringSystem.resetCurrentStrokes();
+
+      scoringSystem.addStroke();
+      scoringSystem.addStroke();
+      scoringSystem.addStroke();
+      scoringSystem.completeHole();
+
+      expect(scoringSystem.getHoleScores()).toEqual([2, 3]);
+    });
+  });
+
+  describe('getScoreForHole', () => {
+    test('should return null for non-existent hole', () => {
+      expect(scoringSystem.getScoreForHole(0)).toBeNull();
+    });
+
+    test('should return score for completed hole', () => {
+      scoringSystem.addStroke();
+      scoringSystem.addStroke();
+      scoringSystem.completeHole();
+
+      expect(scoringSystem.getScoreForHole(0)).toBe(2);
+    });
+
+    test('should return null for out-of-range index', () => {
+      scoringSystem.addStroke();
+      scoringSystem.completeHole();
+
+      expect(scoringSystem.getScoreForHole(5)).toBeNull();
     });
   });
 

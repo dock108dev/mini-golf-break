@@ -326,7 +326,7 @@ describe('HoleEntity', () => {
 
       expect(result).toBeUndefined(); // Promise.resolve() returns undefined
       expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('Initialization complete for hole index 0')
+        '[DEBUG]', expect.stringContaining('Initialization complete for hole index 0')
       );
     });
 
@@ -481,8 +481,8 @@ describe('HoleEntity', () => {
     test('should log initialization messages', () => {
       new HoleEntity(mockWorld, mockConfig, mockScene);
 
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Created for hole index 1'));
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('World Start:'));
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', expect.stringContaining('Created for hole index 1'));
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', expect.stringContaining('World Start:'));
     });
   });
 

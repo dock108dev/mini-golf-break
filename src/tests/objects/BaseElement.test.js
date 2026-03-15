@@ -218,14 +218,14 @@ describe('BaseElement', () => {
       new BaseElement(mockWorld, mockConfig, mockScene);
 
       expect(console.log).toHaveBeenCalledWith(
-        '[BaseElement] Initializing test (Test Element):',
+        '[DEBUG]', '[BaseElement] Initializing test (Test Element):',
         expect.objectContaining({
           id: 'test-element',
           position: expect.any(Object)
         })
       );
 
-      expect(console.log).toHaveBeenCalledWith('[BaseElement] Added group to scene for test');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[BaseElement] Added group to scene for test');
     });
   });
 
@@ -484,8 +484,8 @@ describe('BaseElement', () => {
 
       element.destroy();
 
-      expect(console.log).toHaveBeenCalledWith('[BaseElement] Destroying test (Test Element)');
-      expect(console.log).toHaveBeenCalledWith('[BaseElement] Cleanup complete for test');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[BaseElement] Destroying test (Test Element)');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[BaseElement] Cleanup complete for test');
     });
   });
 

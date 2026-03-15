@@ -1,3 +1,4 @@
+import { debug } from '../utils/debug';
 import * as THREE from 'three';
 import { HoleEntity } from './HoleEntity';
 import { BaseElement } from './BaseElement';
@@ -23,7 +24,7 @@ export class CourseElementRegistry {
     this.register('bunker', BunkerElement);
     this.register('wall', WallElement);
 
-    console.log(
+    debug.log(
       '[CourseElementRegistry] Registered built-in element types:',
       Object.keys(this.elementTypes)
     );
@@ -83,7 +84,7 @@ export class CourseElementRegistry {
     // Create and return the element
     const element = new ElementClass(world, config, scene);
 
-    console.log(
+    debug.log(
       `[CourseElementRegistry] Created element of type "${elementType}": ${element.name} (${element.id})`
     );
 
@@ -141,7 +142,7 @@ export class CourseElementRegistry {
       }
     }
 
-    console.log(`[CourseElementRegistry] Created ${elements.length} elements from config`);
+    debug.log(`[CourseElementRegistry] Created ${elements.length} elements from config`);
     return elements;
   }
 

@@ -1,3 +1,4 @@
+import { debug } from '../utils/debug';
 import * as THREE from 'three';
 
 /**
@@ -140,7 +141,7 @@ export class PerformanceManager {
       this.performanceDisplay.style.display = this.displayEnabled ? 'block' : 'none';
     }
 
-    console.log(`Performance display: ${this.displayEnabled ? 'ON' : 'OFF'}`);
+    debug.log(`Performance display: ${this.displayEnabled ? 'ON' : 'OFF'}`);
   }
 
   /**

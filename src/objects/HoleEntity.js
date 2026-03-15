@@ -1,3 +1,4 @@
+import { debug } from '../utils/debug';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { CSG } from 'three-csg-ts';
@@ -67,13 +68,13 @@ export class HoleEntity extends BaseElement {
       Array.isArray(config.boundaryShape) && config.boundaryShape.length >= 3
         ? config.boundaryShape.map(p => new THREE.Vector2(p.x, p.y)) // Ensure Vector2, use y for world z
         : [
-            // Default rectangular shape if invalid
-            new THREE.Vector2(-2, -10),
-            new THREE.Vector2(-2, 10),
-            new THREE.Vector2(2, 10),
-            new THREE.Vector2(2, -10),
-            new THREE.Vector2(-2, -10)
-          ];
+          // Default rectangular shape if invalid
+          new THREE.Vector2(-2, -10),
+          new THREE.Vector2(-2, 10),
+          new THREE.Vector2(2, 10),
+          new THREE.Vector2(2, -10),
+          new THREE.Vector2(-2, -10)
+        ];
 
     // Hole-specific properties
     this.wallHeight = 1.0;
@@ -87,21 +88,21 @@ export class HoleEntity extends BaseElement {
       config.startPosition instanceof THREE.Vector3
         ? config.startPosition.clone()
         : new THREE.Vector3(
-            config.startPosition?.x || 0,
-            config.startPosition?.y || 0,
-            config.startPosition?.z || 0
-          );
+          config.startPosition?.x || 0,
+          config.startPosition?.y || 0,
+          config.startPosition?.z || 0
+        );
     this.worldHolePosition =
       config.holePosition instanceof THREE.Vector3
         ? config.holePosition.clone()
         : new THREE.Vector3(
-            config.holePosition?.x || 0,
-            config.holePosition?.y || 0,
-            config.holePosition?.z || 0
-          );
+          config.holePosition?.x || 0,
+          config.holePosition?.y || 0,
+          config.holePosition?.z || 0
+        );
 
-    console.log(`[HoleEntity] Created for hole index ${config.index + 1}. Group at (0,0,0).`);
-    console.log(
+    debug.log(`[HoleEntity] Created for hole index ${config.index + 1}. Group at (0,0,0).`);
+    debug.log(
       `[HoleEntity] World Start: (${this.worldStartPosition.x}, ${this.worldStartPosition.z}), World Hole: (${this.worldHolePosition.x}, ${this.worldHolePosition.z})`
     );
   }
@@ -122,7 +123,7 @@ export class HoleEntity extends BaseElement {
       this.createStartPosition();
       this.createHazards();
       this.createBumpers();
-      console.log(`[HoleEntity] Initialization complete for hole index ${this.config.index}.`);
+      debug.log(`[HoleEntity] Initialization complete for hole index ${this.config.index}.`);
       return Promise.resolve();
     } catch (error) {
       console.error(
@@ -462,10 +463,10 @@ export class HoleEntity extends BaseElement {
           hazardConfig.position instanceof THREE.Vector3
             ? hazardConfig.position.clone()
             : new THREE.Vector3(
-                hazardConfig.position?.x || 0,
-                hazardConfig.position?.y || 0,
-                hazardConfig.position?.z || 0
-              );
+              hazardConfig.position?.x || 0,
+              hazardConfig.position?.y || 0,
+              hazardConfig.position?.z || 0
+            );
 
         // Create config to pass, ensuring WORLD position is used
         const factoryConfig = {
@@ -502,20 +503,20 @@ export class HoleEntity extends BaseElement {
           bumperConfig.position instanceof THREE.Vector3
             ? bumperConfig.position.clone()
             : new THREE.Vector3(
-                bumperConfig.position?.x || 0,
-                bumperConfig.position?.y || 0,
-                bumperConfig.position?.z || 0
-              );
+              bumperConfig.position?.x || 0,
+              bumperConfig.position?.y || 0,
+              bumperConfig.position?.z || 0
+            );
 
         // Ensure bumper rotation is Euler
         const worldBumperRot =
           bumperConfig.rotation instanceof THREE.Euler
             ? bumperConfig.rotation.clone()
             : new THREE.Euler(
-                bumperConfig.rotation?.x || 0,
-                bumperConfig.rotation?.y || 0,
-                bumperConfig.rotation?.z || 0
-              );
+              bumperConfig.rotation?.x || 0,
+              bumperConfig.rotation?.y || 0,
+              bumperConfig.rotation?.z || 0
+            );
 
         // Create visual mesh
         const bumperMaterial = new THREE.MeshStandardMaterial({
@@ -577,7 +578,7 @@ export class HoleEntity extends BaseElement {
    * but leaves the main container group (this.group or this.parentGroup) intact.
    */
   destroy() {
-    console.log(`[HoleEntity] Destroying components for Hole ${this.config.index + 1}`);
+    debug.log(`[HoleEntity] Destroying components for Hole ${this.config.index + 1}`);
 
     // Remove physics bodies
     for (let i = this.bodies.length - 1; i >= 0; i--) {
@@ -619,7 +620,7 @@ export class HoleEntity extends BaseElement {
 
     // DO NOT remove this.group or this.parentGroup from the scene here.
     // The NineHoleCourse manages those groups.
-    console.log(`[HoleEntity] Component cleanup complete for Hole ${this.config.index + 1}`);
+    debug.log(`[HoleEntity] Component cleanup complete for Hole ${this.config.index + 1}`);
     // Setting group to null might cause issues if reused, let NineHoleCourse manage it.
     // this.group = null;
   }

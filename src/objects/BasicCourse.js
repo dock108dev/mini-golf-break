@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { CoursesManager } from '../managers/CoursesManager.js';
 import { HoleEntity } from './HoleEntity';
+import { debug } from '../utils/debug';
 
 /**
  * BasicCourse - A mini golf course in space with support for multiple holes
@@ -98,7 +99,7 @@ export class BasicCourse extends CoursesManager {
 
     // Set total holes from configs
     this.totalHoles = this.holeConfigs.length;
-    console.log(`[BasicCourse] Configured ${this.totalHoles} holes`);
+    debug.log(`[BasicCourse] Configured ${this.totalHoles} holes`);
 
     // Initialize tracking - start at first hole (index 0)
     this.currentHoleIndex = 0;
@@ -111,24 +112,24 @@ export class BasicCourse extends CoursesManager {
    * @returns {Promise<BasicCourse>} The initialized course instance
    */
   static async create(game) {
-    console.log('[BasicCourse.create] Start');
+    debug.log('[BasicCourse.create] Start');
     const physicsWorld = game.physicsManager.getWorld();
     if (!physicsWorld) {
       throw new Error('Physics world not available');
     }
 
     const course = new BasicCourse(game, { physicsWorld });
-    console.log('[BasicCourse.create] Instance created');
+    debug.log('[BasicCourse.create] Instance created');
 
-    console.log('[BasicCourse.create] Awaiting initializeHole(0)...');
+    debug.log('[BasicCourse.create] Awaiting initializeHole(0)...');
     const success = await course.initializeHole(0);
-    console.log(`[BasicCourse.create] initializeHole(0) returned: ${success}`);
+    debug.log(`[BasicCourse.create] initializeHole(0) returned: ${success}`);
 
     // --- CRITICAL CHECK ---
-    console.log('[BasicCourse.create] Checking state AFTER initializeHole:');
-    console.log(`  - course.currentHoleIndex: ${course.currentHoleIndex}`);
-    console.log(`  - course.currentHole: ${course.currentHole ? 'Exists' : 'NULL'}`);
-    console.log(
+    debug.log('[BasicCourse.create] Checking state AFTER initializeHole:');
+    debug.log(`  - course.currentHoleIndex: ${course.currentHoleIndex}`);
+    debug.log(`  - course.currentHole: ${course.currentHole ? 'Exists' : 'NULL'}`);
+    debug.log(
       `  - course.startPosition: ${course.startPosition ? course.startPosition.toArray().join(',') : 'UNDEFINED'}`
     );
     // --- END CRITICAL CHECK ---
@@ -138,7 +139,7 @@ export class BasicCourse extends CoursesManager {
       throw new Error('Failed to initialize first hole or required state missing');
     }
 
-    console.log('[BasicCourse.create] End');
+    debug.log('[BasicCourse.create] End');
     return course;
   }
 
@@ -148,7 +149,7 @@ export class BasicCourse extends CoursesManager {
    * @returns {Promise<boolean>} - True if successful, false otherwise
    */
   async initializeHole(holeIndex) {
-    console.log(`[BasicCourse.initializeHole] Start (Index: ${holeIndex})`);
+    debug.log(`[BasicCourse.initializeHole] Start (Index: ${holeIndex})`);
     if (
       typeof holeIndex !== 'number' ||
       isNaN(holeIndex) ||
@@ -165,14 +166,14 @@ export class BasicCourse extends CoursesManager {
         console.error(`[BasicCourse.initializeHole] No config for index ${holeIndex}`);
         return false;
       }
-      console.log(`[BasicCourse.initializeHole] Found config for hole ${holeIndex + 1}`);
+      debug.log(`[BasicCourse.initializeHole] Found config for hole ${holeIndex + 1}`);
 
-      console.log('[BasicCourse.initializeHole] Creating HoleEntity...');
+      debug.log('[BasicCourse.initializeHole] Creating HoleEntity...');
       this.currentHole = new HoleEntity(this.physicsWorld, holeConfig, this.scene);
 
       // Call init() after construction to set up geometry, physics, etc.
       this.currentHole.init();
-      console.log('[BasicCourse.initializeHole] Called HoleEntity.init()');
+      debug.log('[BasicCourse.initializeHole] Called HoleEntity.init()');
 
       // Assume init() is synchronous and successful if no error is thrown
       // We could add error handling in init() if needed
@@ -186,13 +187,13 @@ export class BasicCourse extends CoursesManager {
       }
 
       this.currentHoleIndex = holeIndex;
-      console.log(`[BasicCourse.initializeHole] Set currentHoleIndex: ${this.currentHoleIndex}`);
+      debug.log(`[BasicCourse.initializeHole] Set currentHoleIndex: ${this.currentHoleIndex}`);
 
-      console.log('[BasicCourse.initializeHole] Calling setStartPosition...');
+      debug.log('[BasicCourse.initializeHole] Calling setStartPosition...');
       this.setStartPosition(holeConfig.startPosition);
-      console.log('[BasicCourse.initializeHole] Returned from setStartPosition.');
+      debug.log('[BasicCourse.initializeHole] Returned from setStartPosition.');
 
-      console.log('[BasicCourse.initializeHole] End (Success: true)');
+      debug.log('[BasicCourse.initializeHole] End (Success: true)');
       return true;
     } catch (error) {
       console.error(`[BasicCourse.initializeHole] Error for index ${holeIndex}:`, error);
@@ -207,19 +208,19 @@ export class BasicCourse extends CoursesManager {
    * @param {THREE.Vector3} position - The start position
    */
   setStartPosition(position) {
-    console.log('[BasicCourse.setStartPosition] Start');
+    debug.log('[BasicCourse.setStartPosition] Start');
     if (!position || !(position instanceof THREE.Vector3)) {
       console.error('[BasicCourse.setStartPosition] Invalid position received:', position);
       // Do NOT set this.startPosition if invalid
-      console.log('[BasicCourse.setStartPosition] End (Invalid)');
+      debug.log('[BasicCourse.setStartPosition] End (Invalid)');
       return;
     }
     this.startPosition = position;
-    console.log(
+    debug.log(
       '[BasicCourse.setStartPosition] Set this.startPosition to:',
       this.startPosition.toArray().join(',')
     );
-    console.log('[BasicCourse.setStartPosition] End (Success)');
+    debug.log('[BasicCourse.setStartPosition] End (Success)');
   }
 
   /**
@@ -228,7 +229,7 @@ export class BasicCourse extends CoursesManager {
    * @returns {Promise<boolean>} - True if successful, false otherwise
    */
   async createCourse(targetHoleNumber) {
-    console.log(`[BasicCourse] Creating course for hole #${targetHoleNumber}`);
+    debug.log(`[BasicCourse] Creating course for hole #${targetHoleNumber}`);
 
     // Validate hole number
     if (!targetHoleNumber || targetHoleNumber < 1 || targetHoleNumber > this.holeConfigs.length) {
@@ -253,7 +254,7 @@ export class BasicCourse extends CoursesManager {
 
       // Update the instance's physics world reference *before* initializing hole
       this.physicsWorld = currentCannonWorld;
-      console.log('[BasicCourse] Updated instance physicsWorld reference.');
+      debug.log('[BasicCourse] Updated instance physicsWorld reference.');
 
       // Initialize the new hole (HoleEntity constructor uses this.physicsWorld)
       const holeIndex = targetHoleNumber - 1;
@@ -264,7 +265,7 @@ export class BasicCourse extends CoursesManager {
         return false;
       }
 
-      console.log(`[BasicCourse] Successfully created hole #${targetHoleNumber}`);
+      debug.log(`[BasicCourse] Successfully created hole #${targetHoleNumber}`);
       return true;
     } catch (error) {
       console.error('[BasicCourse] Error creating course:', error);
@@ -277,14 +278,14 @@ export class BasicCourse extends CoursesManager {
    * @param {number} holeIndex - The index of the hole the ball entered
    */
   onBallInHole(holeIndex) {
-    console.log(`[BasicCourse] Ball entered hole ${holeIndex + 1}`);
+    debug.log(`[BasicCourse] Ball entered hole ${holeIndex + 1}`);
 
     // Only process if this is the current hole and we're not already transitioning
     if (holeIndex === this.currentHoleIndex && !this.isTransitioning) {
-      console.log('[BasicCourse] Setting hole completion flag');
+      debug.log('[BasicCourse] Setting hole completion flag');
       this.isHoleComplete = true;
     } else {
-      console.log('[BasicCourse] Ignoring ball in hole - already transitioning or wrong hole', {
+      debug.log('[BasicCourse] Ignoring ball in hole - already transitioning or wrong hole', {
         currentHole: this.currentHoleIndex,
         ballHole: holeIndex,
         isTransitioning: this.isTransitioning
@@ -303,7 +304,7 @@ export class BasicCourse extends CoursesManager {
       return false;
     }
 
-    console.log('[BasicCourse] Attempting to load next hole');
+    debug.log('[BasicCourse] Attempting to load next hole');
     this.isTransitioning = true;
 
     try {
@@ -314,7 +315,7 @@ export class BasicCourse extends CoursesManager {
         return false;
       }
 
-      console.log(
+      debug.log(
         `[BasicCourse] Transitioning from hole ${this.currentHoleIndex + 1} to ${nextHoleIndex + 1}`
       );
 
@@ -338,7 +339,7 @@ export class BasicCourse extends CoursesManager {
       // Create new ball *after* course is ready, passing the verified start position
       await this.game.ballManager.createBall(startPosition);
 
-      console.log(`[BasicCourse] Successfully loaded hole ${nextHoleIndex + 1}`);
+      debug.log(`[BasicCourse] Successfully loaded hole ${nextHoleIndex + 1}`);
       return true;
     } catch (error) {
       console.error('[BasicCourse] Failed to load next hole:', error);
@@ -354,14 +355,14 @@ export class BasicCourse extends CoursesManager {
    * Clear the current hole and its resources
    */
   clearCurrentHole() {
-    console.log('[BasicCourse] Clearing current hole resources');
+    debug.log('[BasicCourse] Clearing current hole resources');
 
     if (this.currentHole) {
       this.currentHole.destroy();
       this.currentHole = null;
     }
 
-    console.log('[BasicCourse] Cleanup complete');
+    debug.log('[BasicCourse] Cleanup complete');
   }
 
   /**
@@ -390,7 +391,7 @@ export class BasicCourse extends CoursesManager {
    */
   hasNextHole() {
     const hasNext = this.currentHoleIndex < this.totalHoles - 1;
-    console.log(
+    debug.log(
       `[BasicCourse] Checking for next hole: ${hasNext} (current: ${this.currentHoleIndex + 1}, total: ${this.totalHoles})`
     );
     return hasNext;
@@ -403,7 +404,7 @@ export class BasicCourse extends CoursesManager {
   update(dt) {
     // Handle deferred hole completion
     if (this.isHoleComplete && !this.pendingHoleTransition) {
-      console.log('[BasicCourse] Processing deferred hole completion');
+      debug.log('[BasicCourse] Processing deferred hole completion');
       this.pendingHoleTransition = true;
 
       // Schedule the transition for the next frame

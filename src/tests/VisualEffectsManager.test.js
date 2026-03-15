@@ -11,30 +11,6 @@ describe('VisualEffectsManager', () => {
   let visualEffectsManager;
 
   beforeEach(() => {
-    // Mock THREE objects
-    Object.defineProperty(THREE, 'PointLight', {
-      value: jest.fn(() => ({
-        position: { set: jest.fn(), copy: jest.fn() },
-        color: new THREE.Color(),
-        intensity: 1,
-        distance: 100,
-        decay: 2
-      })),
-      writable: true,
-      configurable: true
-    });
-
-    Object.defineProperty(THREE, 'Color', {
-      value: jest.fn(() => ({
-        setHex: jest.fn(),
-        r: 1,
-        g: 1,
-        b: 1
-      })),
-      writable: true,
-      configurable: true
-    });
-
     // Setup mock scene
     mockScene = {
       add: jest.fn(),
@@ -67,35 +43,27 @@ describe('VisualEffectsManager', () => {
   });
 
   describe('init', () => {
-    beforeEach(() => {
+    test('should not throw', () => {
       visualEffectsManager = new VisualEffectsManager(mockGame);
-    });
-
-    test('should log initialization', () => {
-      // Clear previous constructor logs
-      mockGame.debugManager.log.mockClear();
-
-      visualEffectsManager.init();
-
-      // Check if console.log was called (not debugManager)
-      expect(console.log).toHaveBeenCalledWith('[VisualEffectsManager] init() called.');
+      expect(() => visualEffectsManager.init()).not.toThrow();
     });
   });
 
   describe('triggerRejectionEffect', () => {
     beforeEach(() => {
       visualEffectsManager = new VisualEffectsManager(mockGame);
-      visualEffectsManager.init();
     });
 
-    test('should log rejection effect placeholder message', () => {
+    test('should create particles and add to scene', () => {
       const position = new THREE.Vector3(10, 5, 15);
 
       visualEffectsManager.triggerRejectionEffect(position);
 
-      expect(console.log).toHaveBeenCalledWith(
-        '[VisualEffectsManager] Placeholder: Trigger rejection effect at (10.00, 5.00, 15.00)'
-      );
+      expect(mockScene.add).toHaveBeenCalledTimes(1);
+      expect(visualEffectsManager.effects.length).toBe(1);
+      expect(visualEffectsManager.effects[0].age).toBe(0);
+      expect(visualEffectsManager.effects[0].lifetime).toBe(1.0);
+      expect(visualEffectsManager.effects[0].velocities.length).toBe(40);
     });
 
     test('should handle missing scene gracefully', () => {
@@ -106,16 +74,64 @@ describe('VisualEffectsManager', () => {
         visualEffectsManager.triggerRejectionEffect(position);
       }).not.toThrow();
 
-      expect(console.error).toHaveBeenCalledWith(
-        '[VisualEffectsManager] Cannot trigger effect: Scene not available.'
-      );
+      expect(visualEffectsManager.effects.length).toBe(0);
+    });
+  });
+
+  describe('update', () => {
+    beforeEach(() => {
+      visualEffectsManager = new VisualEffectsManager(mockGame);
+    });
+
+    test('should age effects and update positions', () => {
+      const position = new THREE.Vector3(0, 0, 0);
+      visualEffectsManager.triggerRejectionEffect(position);
+
+      const effect = visualEffectsManager.effects[0];
+      const initialAge = effect.age;
+
+      visualEffectsManager.update(0.1);
+
+      expect(effect.age).toBeGreaterThan(initialAge);
+    });
+
+    test('should remove expired effects', () => {
+      const position = new THREE.Vector3(0, 0, 0);
+      visualEffectsManager.triggerRejectionEffect(position);
+
+      // Fast-forward past lifetime
+      visualEffectsManager.effects[0].age = 1.5;
+      visualEffectsManager.update(0.016);
+
+      expect(visualEffectsManager.effects.length).toBe(0);
+      expect(mockScene.remove).toHaveBeenCalledTimes(1);
+    });
+
+    test('should fade opacity over time', () => {
+      const position = new THREE.Vector3(0, 0, 0);
+      visualEffectsManager.triggerRejectionEffect(position);
+
+      const effect = visualEffectsManager.effects[0];
+      effect.age = 0.5; // Half lifetime
+
+      visualEffectsManager.update(0.016);
+
+      expect(effect.points.material.opacity).toBeLessThan(1.0);
+    });
+
+    test('should handle non-number dt gracefully', () => {
+      const position = new THREE.Vector3(0, 0, 0);
+      visualEffectsManager.triggerRejectionEffect(position);
+
+      expect(() => {
+        visualEffectsManager.update(null);
+      }).not.toThrow();
     });
   });
 
   describe('resetBallVisuals', () => {
     beforeEach(() => {
       visualEffectsManager = new VisualEffectsManager(mockGame);
-      visualEffectsManager.init();
     });
 
     test('should reset ball material and scale', () => {
@@ -144,6 +160,31 @@ describe('VisualEffectsManager', () => {
 
       expect(() => {
         visualEffectsManager.resetBallVisuals(mockBall);
+      }).not.toThrow();
+    });
+  });
+
+  describe('cleanup', () => {
+    beforeEach(() => {
+      visualEffectsManager = new VisualEffectsManager(mockGame);
+    });
+
+    test('should dispose all effects and clear array', () => {
+      const position = new THREE.Vector3(0, 0, 0);
+      visualEffectsManager.triggerRejectionEffect(position);
+      visualEffectsManager.triggerRejectionEffect(position);
+
+      expect(visualEffectsManager.effects.length).toBe(2);
+
+      visualEffectsManager.cleanup();
+
+      expect(visualEffectsManager.effects.length).toBe(0);
+      expect(mockScene.remove).toHaveBeenCalledTimes(2);
+    });
+
+    test('should handle empty effects array', () => {
+      expect(() => {
+        visualEffectsManager.cleanup();
       }).not.toThrow();
     });
   });

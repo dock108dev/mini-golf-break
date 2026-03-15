@@ -15,7 +15,6 @@ export class CameraController {
 
     // Managers
     this.ballManager = null;
-    this.adShipManager = null;
 
     // Setup camera and controls with increased far plane
     this.camera = new THREE.PerspectiveCamera(
@@ -41,17 +40,6 @@ export class CameraController {
     this._userAdjustedCamera = false; // Flag to track if user manually adjusted camera
     this._lastManualControlTime = 0; // Track when user last manually adjusted camera
 
-    // --- Ad Focus Blending State ---
-    this.wasBallMovingLastFrame = false;
-    this.closestAdShip = null;
-    this.targetAdFocusWeight = 0.0; // Target weight (0 or 1)
-    this.currentAdFocusWeight = 0.0; // Smoothed weight (0 to 1)
-
-    // --- Ad Focus Config ---
-    this.ballMoveThresholdSq = 0.2 * 0.2; // Squared velocity threshold to consider ball moving
-    this.adFocusLerpFactor = 2.0; // Speed of blending towards target weight
-    this.maxAdShipCheckDistanceSq = 70 * 70; // Don't focus on ships too far away (squared)
-    this.adFocusMaxWeight = 0.35; // Max blend amount towards ad ship (0 to 1)
   }
 
   /**
@@ -67,7 +55,7 @@ export class CameraController {
    * Initialize camera and controls
    */
   init() {
-    console.log('[CameraController.init] Starting...');
+    debug.log('[CameraController.init] Starting...');
     try {
       // Guard against multiple initialization
       if (this.isInitialized) {
@@ -77,21 +65,20 @@ export class CameraController {
 
       // Get manager references
       this.ballManager = this.game.ballManager;
-      this.adShipManager = this.game.adShipManager;
-      if (!this.ballManager || !this.adShipManager) {
-        console.warn('[CameraController.init] BallManager or AdShipManager not found!');
+      if (!this.ballManager) {
+        console.warn('[CameraController.init] BallManager not found!');
       }
 
       // Setup camera
-      console.log('[CameraController.init] Setting up camera...');
+      debug.log('[CameraController.init] Setting up camera...');
       this.setupCamera();
-      console.log('[CameraController.init] Camera setup finished.');
+      debug.log('[CameraController.init] Camera setup finished.');
 
       // Setup controls if renderer is available
       if (this.renderer) {
-        console.log('[CameraController.init] Setting up controls...');
+        debug.log('[CameraController.init] Setting up controls...');
         this.setupControls();
-        console.log('[CameraController.init] Controls setup finished.');
+        debug.log('[CameraController.init] Controls setup finished.');
       } else {
         console.warn(
           '[CameraController.init] Initialized without renderer, orbit controls will be disabled'
@@ -99,23 +86,23 @@ export class CameraController {
       }
 
       // Set up event listeners
-      console.log('[CameraController.init] Setting up event listeners...');
+      debug.log('[CameraController.init] Setting up event listeners...');
       this.setupEventListeners();
-      console.log('[CameraController.init] Event listeners setup finished.');
+      debug.log('[CameraController.init] Event listeners setup finished.');
 
       // Set up resize event listener
       try {
-        console.log('[CameraController.init] Adding resize listener...');
+        debug.log('[CameraController.init] Adding resize listener...');
         this.handleResize = this.handleResize.bind(this);
         window.addEventListener('resize', this.handleResize);
-        console.log('[CameraController.init] Resize listener added.');
+        debug.log('[CameraController.init] Resize listener added.');
       } catch (error) {
         console.warn('[CameraController.init] Failed to add resize listener:', error);
       }
 
       // Mark as initialized
       this.isInitialized = true;
-      console.log('[CameraController.init] Finished.');
+      debug.log('[CameraController.init] Finished.');
     } catch (error) {
       console.error('[CameraController.init] Failed:', error);
     }
@@ -127,7 +114,7 @@ export class CameraController {
    * Set up event listeners
    */
   setupEventListeners() {
-    console.log('[CameraController.setupEventListeners] Starting...');
+    debug.log('[CameraController.setupEventListeners] Starting...');
     if (!this.game.eventManager) {
       console.warn('[CameraController.setupEventListeners] EventManager not available, skipping.');
       return;
@@ -136,27 +123,27 @@ export class CameraController {
     try {
       this.eventSubscriptions = this.eventSubscriptions || [];
 
-      console.log('[CameraController.setupEventListeners] Subscribing to BALL_MOVED...');
+      debug.log('[CameraController.setupEventListeners] Subscribing to BALL_MOVED...');
       this.eventSubscriptions.push(
         this.game.eventManager.subscribe(EventTypes.BALL_MOVED, this.handleBallMoved, this)
       );
 
-      console.log('[CameraController.setupEventListeners] Subscribing to HOLE_STARTED...');
+      debug.log('[CameraController.setupEventListeners] Subscribing to HOLE_STARTED...');
       this.eventSubscriptions.push(
         this.game.eventManager.subscribe(EventTypes.HOLE_STARTED, this.handleHoleStarted, this)
       );
 
-      console.log('[CameraController.setupEventListeners] Subscribing to BALL_CREATED...');
+      debug.log('[CameraController.setupEventListeners] Subscribing to BALL_CREATED...');
       this.eventSubscriptions.push(
         this.game.eventManager.subscribe(EventTypes.BALL_CREATED, this.handleBallCreated, this)
       );
 
-      console.log('[CameraController.setupEventListeners] Subscribing to BALL_HIT...');
+      debug.log('[CameraController.setupEventListeners] Subscribing to BALL_HIT...');
       this.eventSubscriptions.push(
         this.game.eventManager.subscribe(EventTypes.BALL_HIT, this.handleBallHit, this)
       );
 
-      console.log('[CameraController.setupEventListeners] Finished.');
+      debug.log('[CameraController.setupEventListeners] Finished.');
     } catch (error) {
       console.error('[CameraController.setupEventListeners] Failed:', error);
     }
@@ -289,14 +276,6 @@ export class CameraController {
    * Position camera to view the current hole
    */
   positionCameraForHole() {
-    // --- Force Reset Ad Focus State ---
-    this.targetAdFocusWeight = 0.0;
-    this.currentAdFocusWeight = 0.0;
-    this.closestAdShip = null;
-    this.wasBallMovingLastFrame = false; // Ensure ball state is reset too
-    console.log('[CameraController] Resetting ad focus state for new hole.');
-    // --- End Reset ---
-
     if (!this.course) {
       console.warn('Cannot position camera: Course not available');
       return this;
@@ -314,7 +293,7 @@ export class CameraController {
       return this;
     }
 
-    console.log(
+    debug.log(
       'Positioning camera for hole. ' +
         `World Start: ${worldStartPosition.toArray().join(',')}, World Hole: ${worldHolePosition.toArray().join(',')}`
     );
@@ -441,57 +420,6 @@ export class CameraController {
       return;
     }
 
-    // === Ad Focus Blending Logic ===
-    const finalLookAtTarget = ballPosition.clone();
-    finalLookAtTarget.y -= 1.5; // Default look-at point slightly below ball
-
-    if (this.adShipManager && this.ballManager && this.ballManager.ball?.body) {
-      const ballVelocitySq = this.ballManager.ball.body.velocity.lengthSquared();
-      const isBallMoving = ballVelocitySq > this.ballMoveThresholdSq;
-
-      // Detect state change: Ball starts moving
-      if (isBallMoving && !this.wasBallMovingLastFrame) {
-        this.closestAdShip = this._findClosestVisibleAdShip(ballPosition);
-        if (this.closestAdShip) {
-          this.targetAdFocusWeight = 1.0;
-          // console.log(`[Camera] Ball started moving. Targeting ad ship: ${this.closestAdShip.adData.title}`);
-        } else {
-          this.targetAdFocusWeight = 0.0; // No suitable ship found
-        }
-      }
-      // Detect state change: Ball stops moving
-      else if (!isBallMoving && this.wasBallMovingLastFrame) {
-        this.targetAdFocusWeight = 0.0;
-        // Don't clear closestAdShip immediately, let weight blend out
-        // console.log("[Camera] Ball stopped moving. Blending back focus.");
-      }
-
-      // Smoothly blend the focus weight
-      this.currentAdFocusWeight = THREE.MathUtils.lerp(
-        this.currentAdFocusWeight,
-        this.targetAdFocusWeight,
-        this.adFocusLerpFactor * deltaTime
-      );
-      if (this.currentAdFocusWeight < 0.01) {
-        this.currentAdFocusWeight = 0.0; // Snap to zero if close enough
-        this.closestAdShip = null; // Clear target once blend is finished
-      }
-
-      // Calculate final look-at target if blending towards an ad ship
-      if (this.currentAdFocusWeight > 0 && this.closestAdShip) {
-        const baseTarget = ballPosition.clone(); // Start with ball position
-        baseTarget.y -= 1.5; // Lower target
-        const adShipTarget = this.closestAdShip.group.position.clone();
-        // Blend towards the ad ship, but apply max weight limit
-        const blendWeight = this.currentAdFocusWeight * this.adFocusMaxWeight;
-        finalLookAtTarget.lerpVectors(baseTarget, adShipTarget, blendWeight);
-        // console.log(`[Camera] Blending focus. Weight: ${this.currentAdFocusWeight.toFixed(2)}, Blend: ${blendWeight.toFixed(2)}`);
-      }
-
-      this.wasBallMovingLastFrame = isBallMoving;
-    }
-    // === End Ad Focus Blending ===
-
     // Always reset user adjustment flag when ball is moving
     // This ensures that after a shot, the camera starts following again
     if (this.game.stateManager && this.game.stateManager.isBallInMotion()) {
@@ -541,19 +469,6 @@ export class CameraController {
       }
     } else {
       // When ball is stopped, calculate target relative to WORLD hole position
-      // Reset ad focus when ball is stopped
-      this.targetAdFocusWeight = 0.0;
-      // Smoothly blend out any remaining focus weight
-      this.currentAdFocusWeight = THREE.MathUtils.lerp(
-        this.currentAdFocusWeight,
-        this.targetAdFocusWeight,
-        this.adFocusLerpFactor * deltaTime
-      );
-      if (this.currentAdFocusWeight < 0.01) {
-        this.currentAdFocusWeight = 0.0;
-        this.closestAdShip = null;
-      }
-
       if (!this._userAdjustedCamera && this.controls && this.course) {
         const worldHolePosition = this.course.getHolePosition(); // Already returns WORLD
         if (worldHolePosition) {
@@ -745,7 +660,7 @@ export class CameraController {
       this.controls.addEventListener('start', () => {
         this._userAdjustedCamera = true;
         this._lastManualControlTime = Date.now();
-        console.log('[CameraController] User manually adjusted camera');
+        debug.log('[CameraController] User manually adjusted camera');
       });
 
       if (this.game.debugManager) {
@@ -768,34 +683,11 @@ export class CameraController {
    * Sets the initial camera position after the first hole is confirmed ready.
    */
   setupInitialCameraPosition() {
-    console.log('[CameraController] Setting up initial camera position.');
+    debug.log('[CameraController] Setting up initial camera position.');
     // Reset manual adjustment flag
     this._userAdjustedCamera = false;
     // Now it's safe to position the camera for the initial hole
     this.positionCameraForHole();
-  }
-
-  /** Helper to find the closest ad ship within a certain distance */
-  _findClosestVisibleAdShip(ballPosition) {
-    if (!this.adShipManager || !this.adShipManager.ships || this.adShipManager.ships.length === 0) {
-      return null;
-    }
-
-    let closestShip = null;
-    let minDistanceSq = this.maxAdShipCheckDistanceSq;
-
-    this.adShipManager.ships.forEach(ship => {
-      const distanceSq = ballPosition.distanceToSquared(ship.group.position);
-      if (distanceSq < minDistanceSq) {
-        // Basic visibility check (could be enhanced with raycasting or frustum checks)
-        // For now, just use distance
-        minDistanceSq = distanceSq;
-        closestShip = ship;
-      }
-    });
-
-    // if (closestShip) console.log(`[Camera] Closest ship found: ${closestShip.adData.title} at dist ${Math.sqrt(minDistanceSq).toFixed(1)}`);
-    return closestShip;
   }
 
   /**

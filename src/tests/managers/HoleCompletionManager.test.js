@@ -196,7 +196,7 @@ describe('HoleCompletionManager', () => {
       holeCompletionManager.handleBallInHole();
 
       expect(console.log).toHaveBeenCalledWith(
-        '[HoleCompletionManager] Ball in hole for hole 3 of 18'
+        '[DEBUG]', '[HoleCompletionManager] Ball in hole for hole 3 of 18'
       );
       expect(holeCompletionManager.isTransitioning).toBe(true);
       expect(mockGame.audioManager.playSound).toHaveBeenCalledWith('success', 0.7);
@@ -212,7 +212,7 @@ describe('HoleCompletionManager', () => {
 
       holeCompletionManager.handleBallInHole();
 
-      expect(console.log).toHaveBeenCalledWith('[HoleCompletionManager] Final hole 18 completed');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[HoleCompletionManager] Final hole 18 completed');
       expect(mockGame.stateManager.setGameState).toHaveBeenCalledWith(GameState.GAME_COMPLETED);
       expect(holeCompletionManager.isTransitioning).toBe(false);
     });
@@ -223,7 +223,7 @@ describe('HoleCompletionManager', () => {
       holeCompletionManager.handleBallInHole();
 
       expect(console.log).toHaveBeenCalledWith(
-        '[HoleCompletionManager] Hole already completed or transitioning, ignoring ball in hole event'
+        '[DEBUG]', '[HoleCompletionManager] Hole already completed or transitioning, ignoring ball in hole event'
       );
       expect(mockGame.audioManager.playSound).not.toHaveBeenCalled();
     });
@@ -234,7 +234,7 @@ describe('HoleCompletionManager', () => {
       holeCompletionManager.handleBallInHole();
 
       expect(console.log).toHaveBeenCalledWith(
-        '[HoleCompletionManager] Hole already completed or transitioning, ignoring ball in hole event'
+        '[DEBUG]', '[HoleCompletionManager] Hole already completed or transitioning, ignoring ball in hole event'
       );
       expect(mockGame.audioManager.playSound).not.toHaveBeenCalled();
     });
@@ -388,7 +388,7 @@ describe('HoleCompletionManager', () => {
       holeCompletionManager.onHoleTransition(3, 4);
 
       expect(console.log).toHaveBeenCalledWith(
-        '[HoleCompletionManager] Handling transition from hole 3 to 4'
+        '[DEBUG]', '[HoleCompletionManager] Handling transition from hole 3 to 4'
       );
       expect(resetCompletionStateSpy).toHaveBeenCalled();
       expect(holeCompletionManager.currentHoleNumber).toBe(4);
@@ -397,7 +397,7 @@ describe('HoleCompletionManager', () => {
       expect(mockGame.uiManager.updateHoleNumber).toHaveBeenCalledWith(4);
       expect(mockGame.uiManager.updatePar).toHaveBeenCalledWith(3);
       expect(console.log).toHaveBeenCalledWith(
-        '[HoleCompletionManager] Transition to hole 4 complete'
+        '[DEBUG]', '[HoleCompletionManager] Transition to hole 4 complete'
       );
 
       resetCompletionStateSpy.mockRestore();

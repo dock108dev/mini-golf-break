@@ -1,3 +1,4 @@
+import { debug } from '../utils/debug';
 import { EventTypes } from '../events/EventTypes';
 import { GameState } from '../states/GameState';
 
@@ -49,13 +50,13 @@ export class HoleCompletionManager {
     const currentHoleNumber = this.game.stateManager.getCurrentHoleNumber();
     const totalHoles = this.game.course.getTotalHoles();
 
-    console.log(
+    debug.log(
       `[HoleCompletionManager] Ball in hole for hole ${currentHoleNumber} of ${totalHoles}`
     );
 
     // Prevent multiple triggers
     if (this.game.stateManager.isHoleCompleted() || this.isTransitioning) {
-      console.log(
+      debug.log(
         '[HoleCompletionManager] Hole already completed or transitioning, ignoring ball in hole event'
       );
       return;
@@ -97,7 +98,7 @@ export class HoleCompletionManager {
 
     // Check if this was the last hole
     if (currentHoleNumber >= totalHoles) {
-      console.log(`[HoleCompletionManager] Final hole ${currentHoleNumber} completed`);
+      debug.log(`[HoleCompletionManager] Final hole ${currentHoleNumber} completed`);
       this.game.stateManager.setGameState(GameState.GAME_COMPLETED);
       this.isTransitioning = false;
       return;
@@ -106,11 +107,11 @@ export class HoleCompletionManager {
     // Add a delay before transitioning to allow for visual feedback
     setTimeout(() => {
       if (!this.isTransitioning) {
-        console.log('[HoleCompletionManager] Transition already handled, skipping');
+        debug.log('[HoleCompletionManager] Transition already handled, skipping');
         return;
       }
 
-      console.log('[HoleCompletionManager] Scheduling transition to next hole');
+      debug.log('[HoleCompletionManager] Scheduling transition to next hole');
       this.game.holeTransitionManager.transitionToNextHole();
       this.isTransitioning = false;
     }, 1500);
@@ -188,7 +189,7 @@ export class HoleCompletionManager {
    * @param {number} toHole - The hole number we're transitioning to
    */
   onHoleTransition(fromHole, toHole) {
-    console.log(`[HoleCompletionManager] Handling transition from hole ${fromHole} to ${toHole}`);
+    debug.log(`[HoleCompletionManager] Handling transition from hole ${fromHole} to ${toHole}`);
 
     // Reset completion state
     this.resetCompletionState();
@@ -207,7 +208,7 @@ export class HoleCompletionManager {
       this.game.uiManager.updatePar(this.currentPar);
     }
 
-    console.log(`[HoleCompletionManager] Transition to hole ${toHole} complete`);
+    debug.log(`[HoleCompletionManager] Transition to hole ${toHole} complete`);
   }
 
   /**

@@ -539,13 +539,13 @@ export class NineHoleCourse extends CoursesManager {
       const scene = holeGroup; // Use the group as the "scene"
       const physicsWorld = this.game.physicsManager.getWorld();
 
-      console.log(
+      debug.log(
         `[NineHoleCourse.initializeHole] Found config for hole ${holeIndex + 1}: ${holeConfig.description}`
       );
 
       // If we already have a hole entity for this hole, just make it visible
       if (this.currentHoleEntity && this.currentHoleEntity.config.index === holeIndex) {
-        console.log(
+        debug.log(
           `[NineHoleCourse.initializeHole] Hole ${holeIndex + 1} already initialized, making visible.`
         );
         // Just ensure it's visible
@@ -563,7 +563,7 @@ export class NineHoleCourse extends CoursesManager {
       });
 
       // Create a new HoleEntity for this hole
-      console.log(
+      debug.log(
         `[NineHoleCourse.initializeHole] Creating HoleEntity for hole ${holeIndex + 1}...`
       );
       try {
@@ -572,7 +572,7 @@ export class NineHoleCourse extends CoursesManager {
         // Initialize the hole (create visual and physics elements)
         await this.currentHoleEntity.init();
 
-        console.log(
+        debug.log(
           `[NineHoleCourse.initializeHole] Called HoleEntity.init() for hole ${holeIndex + 1}`
         );
       } catch (error) {
@@ -584,26 +584,26 @@ export class NineHoleCourse extends CoursesManager {
 
       // Make the current hole group visible
       holeGroup.visible = true;
-      console.log(`[NineHoleCourse.initializeHole] Made ${holeGroup.name} visible.`);
+      debug.log(`[NineHoleCourse.initializeHole] Made ${holeGroup.name} visible.`);
 
       // Set current hole
       this.currentHoleIndex = holeIndex;
       this.currentHole = this.currentHoleEntity; // Set currentHole for BallManager compatibility
-      console.log(`[NineHoleCourse.initializeHole] Set currentHoleIndex: ${holeIndex}`);
+      debug.log(`[NineHoleCourse.initializeHole] Set currentHoleIndex: ${holeIndex}`);
 
       // Set start position for the ball
-      console.log('[NineHoleCourse.initializeHole] Calling setStartPosition...');
+      debug.log('[NineHoleCourse.initializeHole] Calling setStartPosition...');
       this.setStartPosition(holeConfig.startPosition);
-      console.log('[NineHoleCourse.initializeHole] Returned from setStartPosition.');
+      debug.log('[NineHoleCourse.initializeHole] Returned from setStartPosition.');
 
-      console.log('[NineHoleCourse.initializeHole] End (Success: true)');
+      debug.log('[NineHoleCourse.initializeHole] End (Success: true)');
       return true;
     } catch (error) {
       console.error(
         `[NineHoleCourse.initializeHole] Error initializing hole ${holeIndex + 1}:`,
         error
       );
-      console.log('[NineHoleCourse.initializeHole] End (Success: false)');
+      debug.log('[NineHoleCourse.initializeHole] End (Success: false)');
       return false;
     }
   }
@@ -613,19 +613,19 @@ export class NineHoleCourse extends CoursesManager {
    * @param {THREE.Vector3} position - The start position
    */
   setStartPosition(position) {
-    console.log('[NineHoleCourse.setStartPosition] Start');
+    debug.log('[NineHoleCourse.setStartPosition] Start');
     if (!position || !(position instanceof THREE.Vector3)) {
       console.error('[NineHoleCourse.setStartPosition] Invalid position received:', position);
-      console.log('[NineHoleCourse.setStartPosition] End (Invalid)');
+      debug.log('[NineHoleCourse.setStartPosition] End (Invalid)');
       return;
     }
     // This sets the *course's* overall start position, used by BallManager
     this.startPosition = position.clone();
-    console.log(
+    debug.log(
       '[NineHoleCourse.setStartPosition] Set course startPosition to:',
       this.startPosition.toArray().join(',')
     );
-    console.log('[NineHoleCourse.setStartPosition] End (Success)');
+    debug.log('[NineHoleCourse.setStartPosition] End (Success)');
   }
 
   /**
@@ -634,7 +634,7 @@ export class NineHoleCourse extends CoursesManager {
    * @returns {Promise<boolean>} - True if successful, false otherwise
    */
   async createCourse(targetHoleNumber) {
-    console.log(`[NineHoleCourse] Creating course for hole #${targetHoleNumber}`);
+    debug.log(`[NineHoleCourse] Creating course for hole #${targetHoleNumber}`);
 
     if (!targetHoleNumber || targetHoleNumber < 1 || targetHoleNumber > this.totalHoles) {
       console.error(`[NineHoleCourse] Invalid hole number: ${targetHoleNumber}`);
@@ -653,7 +653,7 @@ export class NineHoleCourse extends CoursesManager {
         return false;
       }
 
-      console.log(`[NineHoleCourse] Successfully prepared hole #${targetHoleNumber}`);
+      debug.log(`[NineHoleCourse] Successfully prepared hole #${targetHoleNumber}`);
       return true;
     } catch (error) {
       console.error('[NineHoleCourse] Error creating course:', error);
@@ -666,14 +666,14 @@ export class NineHoleCourse extends CoursesManager {
    * @param {number} holeIndex - The index of the hole the ball entered
    */
   onBallInHole(holeIndex) {
-    console.log(`[NineHoleCourse] Ball entered hole ${holeIndex + 1}`);
+    debug.log(`[NineHoleCourse] Ball entered hole ${holeIndex + 1}`);
 
     // Only process if this is the current hole and we're not already transitioning
     if (holeIndex === this.currentHoleIndex && !this.isTransitioning) {
-      console.log('[NineHoleCourse] Setting hole completion flag');
+      debug.log('[NineHoleCourse] Setting hole completion flag');
       this.isHoleComplete = true;
     } else {
-      console.log('[NineHoleCourse] Ignoring ball in hole - already transitioning or wrong hole', {
+      debug.log('[NineHoleCourse] Ignoring ball in hole - already transitioning or wrong hole', {
         currentHole: this.currentHoleIndex,
         ballHole: holeIndex,
         isTransitioning: this.isTransitioning
@@ -691,7 +691,7 @@ export class NineHoleCourse extends CoursesManager {
       return false;
     }
 
-    console.log('[NineHoleCourse] Attempting to load next hole');
+    debug.log('[NineHoleCourse] Attempting to load next hole');
     this.isTransitioning = true;
 
     try {
@@ -703,7 +703,7 @@ export class NineHoleCourse extends CoursesManager {
         return false; // Indicate no *new* hole was loaded
       }
 
-      console.log(
+      debug.log(
         `[NineHoleCourse] Transitioning from hole ${this.currentHoleIndex + 1} to ${nextHoleIndex + 1}`
       );
 
@@ -726,9 +726,9 @@ export class NineHoleCourse extends CoursesManager {
 
       // Reset ball using BallManager, which should use this.startPosition
       await this.game.ballManager.resetBall(startPosition);
-      console.log('[NineHoleCourse] Ball reset to start position for new hole.');
+      debug.log('[NineHoleCourse] Ball reset to start position for new hole.');
 
-      console.log(`[NineHoleCourse] Successfully loaded hole ${nextHoleIndex + 1}`);
+      debug.log(`[NineHoleCourse] Successfully loaded hole ${nextHoleIndex + 1}`);
       return true;
     } catch (error) {
       console.error('[NineHoleCourse] Failed to load next hole:', error);
@@ -745,14 +745,14 @@ export class NineHoleCourse extends CoursesManager {
    * Makes the corresponding THREE.Group invisible.
    */
   clearCurrentHole() {
-    console.log(`[NineHoleCourse] Clearing resources for hole ${this.currentHoleIndex + 1}`);
+    debug.log(`[NineHoleCourse] Clearing resources for hole ${this.currentHoleIndex + 1}`);
 
     // Destroy the HoleEntity (which should clean up its CANNON bodies)
     if (this.currentHoleEntity) {
       this.currentHoleEntity.destroy();
       this.currentHoleEntity = null;
       this.currentHole = null; // Also clear the currentHole reference
-      console.log('[NineHoleCourse] Destroyed current HoleEntity.');
+      debug.log('[NineHoleCourse] Destroyed current HoleEntity.');
     } else {
       console.warn('[NineHoleCourse] No current HoleEntity to destroy.');
     }
@@ -764,7 +764,7 @@ export class NineHoleCourse extends CoursesManager {
         holeGroup.visible = false;
         // Don't remove the group from the scene - just make it invisible
         // This keeps the parent references intact
-        console.log(`[NineHoleCourse] Made ${holeGroup.name} invisible.`);
+        debug.log(`[NineHoleCourse] Made ${holeGroup.name} invisible.`);
       } else {
         console.warn(
           `[NineHoleCourse] No THREE.Group found for index ${this.currentHoleIndex} to hide.`
@@ -776,7 +776,7 @@ export class NineHoleCourse extends CoursesManager {
       );
     }
 
-    console.log('[NineHoleCourse] Hole resource cleanup complete');
+    debug.log('[NineHoleCourse] Hole resource cleanup complete');
     // Note: We resolve immediately, actual async cleanup might need Promises
     return Promise.resolve();
   }
@@ -807,7 +807,7 @@ export class NineHoleCourse extends CoursesManager {
    */
   hasNextHole() {
     const hasNext = this.currentHoleIndex < this.totalHoles - 1;
-    console.log(
+    debug.log(
       `[NineHoleCourse] Checking for next hole: ${hasNext} (current: ${this.currentHoleIndex + 1}, total: ${this.totalHoles})`
     );
     return hasNext;
@@ -820,7 +820,7 @@ export class NineHoleCourse extends CoursesManager {
   update(dt) {
     // Handle deferred hole completion transition
     if (this.isHoleComplete && !this.pendingHoleTransition && !this.isTransitioning) {
-      console.log('[NineHoleCourse] Processing deferred hole completion');
+      debug.log('[NineHoleCourse] Processing deferred hole completion');
       this.pendingHoleTransition = true; // Prevents re-triggering
 
       // Schedule the transition for the next frame/tick to avoid issues during physics step etc.

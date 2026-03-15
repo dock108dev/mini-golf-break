@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { EventTypes } from '../events/EventTypes';
 import { GameState } from '../states/GameState';
+import { debug } from '../utils/debug';
 
 /**
  * HoleTransitionManager - Handles loading and unloading of holes
@@ -27,7 +28,7 @@ export class HoleTransitionManager {
     const totalHoles = this.game.course.getTotalHoles();
     const targetHoleNumber = currentHoleNumber + 1;
 
-    console.log(
+    debug.log(
       `[HoleTransitionManager] Checking transition from hole ${currentHoleNumber} to ${targetHoleNumber} (Total holes: ${totalHoles})`
     );
 
@@ -41,7 +42,7 @@ export class HoleTransitionManager {
       if (this.game.eventManager) {
         // Publish event - UIManager will fetch scores directly
         const eventData = { timestamp: Date.now() }; // Simple payload
-        console.log('[HoleTransitionManager] Publishing GAME_COMPLETED event.', eventData);
+        debug.log('[HoleTransitionManager] Publishing GAME_COMPLETED event.', eventData);
         this.game.eventManager.publish(EventTypes.GAME_COMPLETED, eventData, this);
       } else {
         console.error(
@@ -56,7 +57,7 @@ export class HoleTransitionManager {
       return false; // Stop the transition process
     }
 
-    console.log(
+    debug.log(
       `[HoleTransitionManager] Starting transition to hole ${targetHoleNumber} of ${totalHoles}`
     );
 
@@ -69,13 +70,13 @@ export class HoleTransitionManager {
       if (this.game.physicsManager?.resetWorld) {
         newWorld = await this.game.physicsManager.resetWorld(); // Capture the returned world
         if (newWorld && newWorld.world) {
-          console.log('[HoleTransitionManager] Physics world reset for new hole');
+          debug.log('[HoleTransitionManager] Physics world reset for new hole');
           // Update the CannonDebugRenderer with the new world instance
           if (this.game.cannonDebugRenderer) {
             // Explicitly clear old meshes from the renderer
             this.game.cannonDebugRenderer.clearMeshes();
             this.game.cannonDebugRenderer.world = newWorld.world; // Assign the inner CANNON.World
-            console.log('[HoleTransitionManager] Updated CannonDebugRenderer world reference.');
+            debug.log('[HoleTransitionManager] Updated CannonDebugRenderer world reference.');
           }
         } else {
           console.error(
@@ -100,7 +101,7 @@ export class HoleTransitionManager {
 
       // Log the actual hole number after state update
       const newHoleNumber = this.game.stateManager.getCurrentHoleNumber();
-      console.log(
+      debug.log(
         `[HoleTransitionManager] Successfully transitioned to hole ${newHoleNumber} of ${totalHoles}`
       );
 
@@ -113,18 +114,18 @@ export class HoleTransitionManager {
         return false;
       }
 
-      console.log('[HoleTransitionManager] New hole position:', holePosition);
-      console.log('[HoleTransitionManager] New start position:', startPosition);
+      debug.log('[HoleTransitionManager] New hole position:', holePosition);
+      debug.log('[HoleTransitionManager] New start position:', startPosition);
 
       // --- CREATE BALL FOR NEW HOLE ---
-      console.log('[HoleTransitionManager] Creating ball for the new hole...');
+      debug.log('[HoleTransitionManager] Creating ball for the new hole...');
       if (this.game.ballManager) {
         const ballCreated = this.game.ballManager.createBall(startPosition);
         if (!ballCreated) {
           console.error('[HoleTransitionManager] Failed to create ball for new hole!');
           // Maybe return false or throw error?
         } else {
-          console.log('[HoleTransitionManager] Ball created successfully for new hole.');
+          debug.log('[HoleTransitionManager] Ball created successfully for new hole.');
         }
       } else {
         console.error(
@@ -134,10 +135,10 @@ export class HoleTransitionManager {
       // --- END CREATE BALL ---
 
       // --- ENABLE INPUT FOR NEW HOLE ---
-      console.log('[HoleTransitionManager] Enabling input controller for new hole...');
+      debug.log('[HoleTransitionManager] Enabling input controller for new hole...');
       if (this.game.inputController) {
         this.game.inputController.enableInput();
-        console.log('[HoleTransitionManager] Input controller enabled.');
+        debug.log('[HoleTransitionManager] Input controller enabled.');
       } else {
         console.warn(
           '[HoleTransitionManager] InputController not available to enable for new hole.'
@@ -148,7 +149,7 @@ export class HoleTransitionManager {
       // Preserve debug mode state
       const debugMode = this.game.stateManager.state.debugMode;
       if (debugMode) {
-        console.log('[HoleTransitionManager] Preserving debug mode state:', debugMode);
+        debug.log('[HoleTransitionManager] Preserving debug mode state:', debugMode);
         this.game.stateManager.state.debugMode = debugMode;
       }
 
@@ -163,7 +164,7 @@ export class HoleTransitionManager {
    * Completely unload the current hole and all its resources
    */
   async unloadCurrentHole() {
-    console.log('[HoleTransitionManager] Starting hole cleanup');
+    debug.log('[HoleTransitionManager] Starting hole cleanup');
 
     // Remove all meshes and physics objects
     if (this.game.course) {
@@ -178,7 +179,7 @@ export class HoleTransitionManager {
     // Clear the scene except for lights and camera
     this.cleanScene();
 
-    console.log('[HoleTransitionManager] Hole cleanup complete');
+    debug.log('[HoleTransitionManager] Hole cleanup complete');
   }
 
   /**
@@ -187,7 +188,7 @@ export class HoleTransitionManager {
    * @returns {Promise<boolean>} - True if successful, false otherwise
    */
   async loadNewHole(targetHoleNumber) {
-    console.log(`[HoleTransitionManager] Loading hole #${targetHoleNumber}`);
+    debug.log(`[HoleTransitionManager] Loading hole #${targetHoleNumber}`);
 
     // Verify game and course are available
     if (!this.game || !this.game.course) {
@@ -227,7 +228,7 @@ export class HoleTransitionManager {
       }
 
       // Log success
-      console.log(`[HoleTransitionManager] Successfully loaded hole #${targetHoleNumber}`);
+      debug.log(`[HoleTransitionManager] Successfully loaded hole #${targetHoleNumber}`);
 
       // Verify physics world state after loading
       if (!this.verifyPhysicsWorld()) {
@@ -257,12 +258,10 @@ export class HoleTransitionManager {
         object.isLight ||
         object.isCamera ||
         object.userData.permanent || // Keep objects marked as permanent
-        (object.type === 'Points' && object.userData.type === 'starfield') ||
-        (object.type === 'Group' && object.userData.type === 'AdShipContainer')
+        (object.type === 'Points' && object.userData.type === 'starfield')
       ) {
-        // Keep the AdShip container
         objectsToKeep.push(object);
-        console.log('[HoleTransitionManager] Keeping object:', object.type, object.userData);
+        debug.log('[HoleTransitionManager] Keeping object:', object.type, object.userData);
       }
     });
 
@@ -278,7 +277,7 @@ export class HoleTransitionManager {
     );
 
     if (!hasStarfield) {
-      console.log('[HoleTransitionManager] Recreating starfield');
+      debug.log('[HoleTransitionManager] Recreating starfield');
       this.game.createStarfield();
     }
   }
@@ -289,7 +288,7 @@ export class HoleTransitionManager {
    * @param {number} toHole - The hole number we're transitioning to
    */
   onHoleTransition(fromHole, toHole) {
-    console.log(`[HoleTransitionManager] Handling transition from hole ${fromHole} to ${toHole}`);
+    debug.log(`[HoleTransitionManager] Handling transition from hole ${fromHole} to ${toHole}`);
 
     // Store transition info
     this.fromHole = fromHole;
@@ -303,7 +302,7 @@ export class HoleTransitionManager {
     // Start transition effects
     this.startTransitionEffects();
 
-    console.log(`[HoleTransitionManager] Transition started from hole ${fromHole} to ${toHole}`);
+    debug.log(`[HoleTransitionManager] Transition started from hole ${fromHole} to ${toHole}`);
   }
 
   /**
@@ -366,7 +365,7 @@ export class HoleTransitionManager {
     } else {
       // Transition complete
       this.isTransitioning = false;
-      console.log(`[HoleTransitionManager] Transition to hole ${this.toHole} complete`);
+      debug.log(`[HoleTransitionManager] Transition to hole ${this.toHole} complete`);
 
       // Reset material opacity
       if (this.game.course) {
@@ -421,7 +420,7 @@ export class HoleTransitionManager {
     }
 
     // Log current physics world state
-    console.log('[HoleTransitionManager] Physics world state:', {
+    debug.log('[HoleTransitionManager] Physics world state:', {
       bodies: cannonWorld.bodies.length,
       gravity: cannonWorld.gravity.toString(),
       solver: {
@@ -439,7 +438,7 @@ export class HoleTransitionManager {
 
     // Log all physics bodies for debugging
     if (cannonWorld.bodies.length > 0) {
-      console.log(
+      debug.log(
         '[HoleTransitionManager] Physics bodies:',
         cannonWorld.bodies.map(body => ({
           type: body.userData?.type || 'unknown',

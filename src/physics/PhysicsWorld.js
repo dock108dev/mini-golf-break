@@ -1,4 +1,5 @@
 import * as CANNON from 'cannon-es';
+import { debug } from '../utils/debug';
 
 export class PhysicsWorld {
   constructor() {
@@ -58,7 +59,7 @@ export class PhysicsWorld {
     // Add collide event listener for hole detection
     this.setupCollideListener();
 
-    console.log('Physics world initialized');
+    debug.log('Physics world initialized');
   }
 
   createContactMaterials() {
@@ -74,7 +75,7 @@ export class PhysicsWorld {
     this.world.addContactMaterial(ballGroundContact);
 
     // Set up contact between ball and bumpers (obstacles)
-    console.log(
+    debug.log(
       `[PhysicsWorld] Defining ballBumperContact with ballMat ID: ${this.ballMaterial?.id}, bumperMat ID: ${this.bumperMaterial?.id}`
     ); // Log IDs before definition
     const ballBumperContact = new CANNON.ContactMaterial(this.ballMaterial, this.bumperMaterial, {
@@ -86,7 +87,7 @@ export class PhysicsWorld {
       frictionEquationRelaxation: 1 // Reduced from 2 for firmer friction response
     });
     this.world.addContactMaterial(ballBumperContact);
-    console.log(
+    debug.log(
       '[PhysicsWorld] World contact materials after adding ballBumper:',
       this.world.contactmaterials.map(
         cm =>
@@ -104,7 +105,7 @@ export class PhysicsWorld {
       frictionEquationRelaxation: 3
     });
     this.world.addContactMaterial(ballHoleCupContact);
-    console.log('[PhysicsWorld] Added ballHoleCupContact.');
+    debug.log('[PhysicsWorld] Added ballHoleCupContact.');
 
     // Set up contact between ball and hole rim/funnel - low bounce
     const ballRimContact = new CANNON.ContactMaterial(this.ballMaterial, this.holeRimMaterial, {
@@ -116,7 +117,7 @@ export class PhysicsWorld {
       frictionEquationRelaxation: 1
     });
     this.world.addContactMaterial(ballRimContact);
-    console.log('[PhysicsWorld] Added ballRimContact.');
+    debug.log('[PhysicsWorld] Added ballRimContact.');
 
     // Default contact material for everything else
     if (this.world.defaultContactMaterial) {
@@ -124,7 +125,7 @@ export class PhysicsWorld {
       this.world.defaultContactMaterial.restitution = 0.1; // Restored original value
     } else {
       // In testing environment, defaultContactMaterial might be null
-      console.log(
+      debug.log(
         '[PhysicsWorld] defaultContactMaterial is null, skipping default material configuration'
       );
     }
@@ -145,7 +146,7 @@ export class PhysicsWorld {
     const debugRate = 0.0005;
     if (Math.random() < debugRate) {
       const bodyCount = this.world ? this.world.bodies.length : 0;
-      console.log(
+      debug.log(
         `DEBUG PhysicsWorld.update: Physics update dt=${dt.toFixed(4)}, bodyCount=${bodyCount}`
       );
 
@@ -155,7 +156,7 @@ export class PhysicsWorld {
       );
 
       if (ballBody) {
-        console.log(
+        debug.log(
           'DEBUG PhysicsWorld.update: Ball found in physics world. ' +
             `Position: (${ballBody.position.x.toFixed(2)}, ${ballBody.position.y.toFixed(2)}, ${ballBody.position.z.toFixed(2)}), ` +
             `Velocity: (${ballBody.velocity.x.toFixed(2)}, ${ballBody.velocity.y.toFixed(2)}, ${ballBody.velocity.z.toFixed(2)}), ` +
@@ -224,7 +225,7 @@ export class PhysicsWorld {
       // Check if we're still in the grace period
       const timeSinceCreation = Date.now() - this.creationTime;
       if (timeSinceCreation < this.collisionGracePeriod) {
-        console.log(
+        debug.log(
           `[PhysicsWorld] Ignoring collide event during grace period (${timeSinceCreation}ms < ${this.collisionGracePeriod}ms)`
         );
         return;
@@ -252,7 +253,7 @@ export class PhysicsWorld {
       //
       // // If we found a ball and hole collision
       // if (ball && hole) {
-      //     console.log(`[PhysicsWorld] Ball entered hole ${hole.userData.holeIndex + 1}`);
+      //     debug.log(`[PhysicsWorld] Ball entered hole ${hole.userData.holeIndex + 1}`);
       //
       //     // Check if we have a game object with onBallInHole method
       //     if (this.game && typeof this.game.onBallInHole === 'function') {
@@ -274,7 +275,7 @@ export class PhysicsWorld {
       // Check if we're still in the grace period
       const timeSinceCreation = Date.now() - this.creationTime;
       if (timeSinceCreation < this.collisionGracePeriod) {
-        console.log(
+        debug.log(
           `[PhysicsWorld] Ignoring collision during grace period (${timeSinceCreation}ms < ${this.collisionGracePeriod}ms)`
         );
         return;
@@ -304,7 +305,7 @@ export class PhysicsWorld {
    * Currently just logs, but could be used to remove listeners or objects.
    */
   cleanup() {
-    console.log('[PhysicsWorld] Cleanup called.');
+    debug.log('[PhysicsWorld] Cleanup called.');
     // Remove collide listener if it exists
     if (this._collideCallback) {
       this.world?.removeEventListener('collide', this._collideCallback);
@@ -318,7 +319,7 @@ export class PhysicsWorld {
       // Log body details before adding with defensive checks
       const shapes = body.shapes || [];
       const userData = body.userData || {};
-      console.log(
+      debug.log(
         '[PhysicsWorld] Adding body: ' +
           `ID=${body.id || 'unknown'}, Type=${body.type || 'unknown'}, Mass=${body.mass || 0}, ` +
           `ShapeType=${shapes[0]?.type || 'none'}, MaterialID=${body.material?.id || 'none'}, ` +
@@ -359,7 +360,7 @@ export class PhysicsWorld {
       this.world.removeBody(body);
 
       // Log body removal
-      console.log(
+      debug.log(
         `[PhysicsWorld] Removed body of type: ${body.userData ? body.userData.type : 'unknown'}`
       );
     }
@@ -442,7 +443,7 @@ export class PhysicsWorld {
    * Reset the physics world to its initial state
    */
   reset() {
-    console.log('[PhysicsWorld] Resetting physics world');
+    debug.log('[PhysicsWorld] Resetting physics world');
 
     // Remove all bodies
     const bodies = [...this.world.bodies];
@@ -482,12 +483,12 @@ export class PhysicsWorld {
 
     // Reset grace period
     this.creationTime = Date.now();
-    console.log(`[PhysicsWorld] Reset collision grace period at ${this.creationTime}`);
+    debug.log(`[PhysicsWorld] Reset collision grace period at ${this.creationTime}`);
 
     // Reset collision listeners
     this.setupCollideListener();
 
-    console.log('[PhysicsWorld] Physics world reset complete');
+    debug.log('[PhysicsWorld] Physics world reset complete');
   }
 
   /**

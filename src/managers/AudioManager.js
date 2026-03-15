@@ -1,3 +1,4 @@
+import { debug } from '../utils/debug';
 import * as THREE from 'three';
 
 /**
@@ -186,7 +187,7 @@ export class AudioManager {
     ) {
       // In a real implementation, we would call context.resume()
       // For now, just log the action
-      console.log('[AudioManager] Would resume audio context');
+      debug.log('[AudioManager] Would resume audio context');
     }
   }
 

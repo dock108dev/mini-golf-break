@@ -1,3 +1,4 @@
+import { debug } from '../utils/debug';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 
@@ -31,7 +32,7 @@ export class BaseElement {
         ? config.position.clone()
         : new THREE.Vector3(0, 0, 0);
 
-    console.log(`[BaseElement] Initializing ${this.elementType} (${this.name}):`, {
+    debug.log(`[BaseElement] Initializing ${this.elementType} (${this.name}):`, {
       id: this.id,
       position: this.position
     });
@@ -43,7 +44,7 @@ export class BaseElement {
     // Check scene validity again before adding the group
     if (this.scene && typeof this.scene.add === 'function') {
       this.scene.add(this.group);
-      console.log(`[BaseElement] Added group to scene for ${this.elementType}`);
+      debug.log(`[BaseElement] Added group to scene for ${this.elementType}`);
     } else {
       console.error(
         '[BaseElement] Cannot add group to scene - scene is invalid or lacks add() method'
@@ -79,7 +80,7 @@ export class BaseElement {
    * Clean up all resources
    */
   destroy() {
-    console.log(`[BaseElement] Destroying ${this.elementType} (${this.name})`);
+    debug.log(`[BaseElement] Destroying ${this.elementType} (${this.name})`);
 
     // Remove meshes from scene and dispose resources
     // Start from end to avoid issues when removing from array being iterated
@@ -121,6 +122,6 @@ export class BaseElement {
     this.bodies = [];
     this.group = null; // Nullify the group reference
 
-    console.log(`[BaseElement] Cleanup complete for ${this.elementType}`);
+    debug.log(`[BaseElement] Cleanup complete for ${this.elementType}`);
   }
 }

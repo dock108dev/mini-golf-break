@@ -180,6 +180,12 @@ export class StateManager {
     this.state.holeCompleted = false;
     this.state.ballInMotion = false;
 
+    // Record per-hole score before resetting
+    if (this.game.scoringSystem) {
+      this.game.scoringSystem.completeHole();
+      debug.log('[StateManager] Called scoringSystem.completeHole()');
+    }
+
     // Reset current strokes in scoring system
     if (this.game.scoringSystem) {
       this.game.scoringSystem.resetCurrentStrokes();

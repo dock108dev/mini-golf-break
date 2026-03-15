@@ -93,7 +93,7 @@ describe('CourseElementRegistry', () => {
       new CourseElementRegistry();
 
       expect(console.log).toHaveBeenCalledWith(
-        '[CourseElementRegistry] Registered built-in element types:',
+        '[DEBUG]', '[CourseElementRegistry] Registered built-in element types:',
         ['hole', 'bunker', 'wall']
       );
     });
@@ -225,7 +225,7 @@ describe('CourseElementRegistry', () => {
       registry.createElement('hole', config, mockWorld, mockScene);
 
       expect(console.log).toHaveBeenCalledWith(
-        '[CourseElementRegistry] Created element of type "hole": Test Element (test-id)'
+        '[DEBUG]', '[CourseElementRegistry] Created element of type "hole": Test Element (test-id)'
       );
     });
 
@@ -363,7 +363,7 @@ describe('CourseElementRegistry', () => {
       registry.createElementsFromConfig(configs, mockWorld, mockScene);
 
       expect(console.log).toHaveBeenCalledWith(
-        '[CourseElementRegistry] Created 2 elements from config'
+        '[DEBUG]', '[CourseElementRegistry] Created 2 elements from config'
       );
     });
 
@@ -372,7 +372,7 @@ describe('CourseElementRegistry', () => {
 
       expect(elements).toEqual([]);
       expect(console.log).toHaveBeenCalledWith(
-        '[CourseElementRegistry] Created 0 elements from config'
+        '[DEBUG]', '[CourseElementRegistry] Created 0 elements from config'
       );
     });
   });

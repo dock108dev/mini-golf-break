@@ -1,3 +1,4 @@
+import { debug } from '../../utils/debug';
 /**
  * DebugErrorOverlay - Manages the UI overlay for displaying critical errors.
  */
@@ -59,11 +60,11 @@ export class DebugErrorOverlay {
     // Check if element already exists
     this.errorOverlay = document.getElementById(this.OVERLAY_ID);
     if (this.errorOverlay) {
-      console.log('[DebugErrorOverlay] Found existing error overlay.');
+      debug.log('[DebugErrorOverlay] Found existing error overlay.');
       return; // Already initialized
     }
 
-    console.log('[DebugErrorOverlay] Creating error overlay element...');
+    debug.log('[DebugErrorOverlay] Creating error overlay element...');
     this.errorOverlay = document.createElement('div');
     this.errorOverlay.id = this.OVERLAY_ID;
     this.errorOverlay.style.cssText = this.OVERLAY_STYLE;
@@ -78,7 +79,7 @@ export class DebugErrorOverlay {
 
     this.errorOverlay.appendChild(closeButton);
     this.parentContainer.appendChild(this.errorOverlay);
-    console.log('[DebugErrorOverlay] Error overlay initialized.');
+    debug.log('[DebugErrorOverlay] Error overlay initialized.');
   }
 
   /**
@@ -102,7 +103,7 @@ export class DebugErrorOverlay {
       return;
     }
 
-    console.log(`[DebugErrorOverlay] Displaying error: ${message}`);
+    debug.log(`[DebugErrorOverlay] Displaying error: ${message}`);
     // Create error message element
     const errorElement = document.createElement('div');
     errorElement.textContent = message;
@@ -123,7 +124,7 @@ export class DebugErrorOverlay {
     setTimeout(() => {
       if (errorElement.parentNode === this.errorOverlay) {
         errorElement.remove();
-        console.log(
+        debug.log(
           `[DebugErrorOverlay] Auto-removed error message: ${message.substring(0, 50)}...`
         );
         // Optionally hide overlay if no more errors are present
@@ -147,7 +148,7 @@ export class DebugErrorOverlay {
   hide() {
     if (this.errorOverlay) {
       this.errorOverlay.style.display = 'none';
-      console.log('[DebugErrorOverlay] Overlay hidden by user.');
+      debug.log('[DebugErrorOverlay] Overlay hidden by user.');
     }
   }
 
@@ -157,7 +158,7 @@ export class DebugErrorOverlay {
   hideIfEmpty() {
     if (this.errorOverlay && this.errorOverlay.children && this.errorOverlay.children.length <= 1) {
       this.hide();
-      console.log('[DebugErrorOverlay] Overlay hidden automatically as it is empty.');
+      debug.log('[DebugErrorOverlay] Overlay hidden automatically as it is empty.');
     }
   }
 
@@ -167,6 +168,6 @@ export class DebugErrorOverlay {
   cleanup() {
     this.errorOverlay?.remove();
     this.errorOverlay = null;
-    console.log('[DebugErrorOverlay] Cleaned up.');
+    debug.log('[DebugErrorOverlay] Cleaned up.');
   }
 }

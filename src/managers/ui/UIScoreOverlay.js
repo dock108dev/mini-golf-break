@@ -164,10 +164,23 @@ export class UIScoreOverlay {
     scoreTable.classList.add(this.SCORECARD_TABLE_CLASS);
     const tbody = document.createElement('tbody');
 
-    // Example: Add total score row
+    // Add header row
+    const headerRow = document.createElement('tr');
+    headerRow.innerHTML = '<th>Hole</th><th>Strokes</th>';
+    tbody.appendChild(headerRow);
+
+    // Add per-hole score rows
+    const holeScores = this.game.scoringSystem.getHoleScores();
+    holeScores.forEach((strokes, index) => {
+      const row = document.createElement('tr');
+      row.innerHTML = `<td>Hole ${index + 1}</td><td>${strokes}</td>`;
+      tbody.appendChild(row);
+    });
+
+    // Add total score row
     const totalStrokesValue = this.game.scoringSystem.getTotalStrokes();
     const scoreRow = document.createElement('tr');
-    scoreRow.innerHTML = `<td>Total Strokes</td><td>${totalStrokesValue}</td>`;
+    scoreRow.innerHTML = `<td><strong>Total</strong></td><td><strong>${totalStrokesValue}</strong></td>`;
     tbody.appendChild(scoreRow);
 
     scoreTable.appendChild(tbody);

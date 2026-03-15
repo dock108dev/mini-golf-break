@@ -158,19 +158,9 @@ export class UIManager {
       debug.log('[UIManager.setupEventListeners] Subscribing to HAZARD_DETECTED...');
       subscribe(EventTypes.HAZARD_DETECTED, this.handleHazardDetected);
 
-      // Listen for events needed for the final scorecard buttons
-      subscribe(EventTypes.UI_REQUEST_MAIN_MENU, () => {
-        debug.log('[UIManager] Received UI_REQUEST_MAIN_MENU');
-        // TODO: Implement logic to switch state to main menu
-        // TEMP DISABLE: this.game.stateManager?.setGameState('MAIN_MENU');
-        console.warn('[UIManager] TEMP: State change to MAIN_MENU disabled for debugging.');
-      });
       subscribe(EventTypes.UI_REQUEST_RESTART_GAME, () => {
         debug.log('[UIManager] Received UI_REQUEST_RESTART_GAME');
-        // TEMP DISABLE: window.location.reload();
-        console.warn('[UIManager] TEMP: window.location.reload() disabled for debugging.');
-        // FIX: Implement restart via full page reload for simplicity
-        // OLD: // TODO: Implement logic to restart the game
+        window.location.reload();
       });
 
       debug.log('[UIManager.setupEventListeners] Finished.');

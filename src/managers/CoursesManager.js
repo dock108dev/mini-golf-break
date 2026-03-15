@@ -1,3 +1,4 @@
+import { debug } from '../utils/debug';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { CSG } from 'three-csg-ts';
@@ -176,7 +177,7 @@ export class CoursesManager {
    * Clear the current hole and its resources
    */
   clearCurrentHole() {
-    console.log('[CoursesManager] Clearing current hole resources');
+    debug.log('[CoursesManager] Clearing current hole resources');
 
     // Remove existing hole meshes and dispose of resources
     this.courseObjects.forEach(obj => {

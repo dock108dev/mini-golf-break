@@ -580,7 +580,7 @@ describe('CoursesManager', () => {
     test('should log clearing message', () => {
       coursesManager.clearCurrentHole();
 
-      expect(console.log).toHaveBeenCalledWith('[CoursesManager] Clearing current hole resources');
+      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[CoursesManager] Clearing current hole resources');
     });
   });
 

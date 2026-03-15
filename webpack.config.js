@@ -82,11 +82,6 @@ module.exports = (env, argv) => {
             from: 'public/sitemap.xml',
             to: 'sitemap.xml',
             noErrorOnMissing: true
-          },
-          {
-            from: 'public/ads.txt',
-            to: 'ads.txt',
-            noErrorOnMissing: true
           }
         ]
       })

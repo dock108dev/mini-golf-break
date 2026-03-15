@@ -1,3 +1,4 @@
+import { debug } from '../utils/debug';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { BaseElement } from './BaseElement';
@@ -35,7 +36,7 @@ export class WallElement extends BaseElement {
     // Call base implementation first
     super.create();
 
-    console.log(`[WallElement] Creating wall ${this.name}`);
+    debug.log(`[WallElement] Creating wall ${this.name}`);
 
     // Create visuals
     this.createVisuals();
@@ -78,7 +79,7 @@ export class WallElement extends BaseElement {
     // Optionally add some detail like beveled edges or texture
     this.addWallDetails(wallMesh);
 
-    console.log(`[WallElement] Created wall visuals: ${this.width}x${this.height}x${this.depth}`);
+    debug.log(`[WallElement] Created wall visuals: ${this.width}x${this.height}x${this.depth}`);
     return true;
   }
 
@@ -109,7 +110,7 @@ export class WallElement extends BaseElement {
    */
   addStonePattern(wallMesh) {
     // In a real implementation, this would add a stone texture or geometry detail
-    console.log('[WallElement] Adding stone pattern to wall (not implemented)');
+    debug.log('[WallElement] Adding stone pattern to wall (not implemented)');
   }
 
   /**
@@ -117,7 +118,7 @@ export class WallElement extends BaseElement {
    */
   addWoodPattern(wallMesh) {
     // In a real implementation, this would add a wood texture or geometry detail
-    console.log('[WallElement] Adding wood pattern to wall (not implemented)');
+    debug.log('[WallElement] Adding wood pattern to wall (not implemented)');
   }
 
   /**
@@ -152,7 +153,7 @@ export class WallElement extends BaseElement {
     this.world.addBody(wallBody);
     this.bodies.push(wallBody);
 
-    console.log(
+    debug.log(
       `[WallElement] Created wall physics body at (${this.position.x}, ${this.position.y}, ${this.position.z})`
     );
     return true;

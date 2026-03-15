@@ -1,3 +1,4 @@
+import { debug } from '../utils/debug';
 import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 
@@ -68,7 +69,7 @@ export function isLipOut(speed, angleDeg, thresholds) {
 
   // Simple initial logic: lip out if both fast and glancing
   if (isFast && isGlancing) {
-    console.log(
+    debug.log(
       `[PhysicsUtils] Lip Out: Fast (${speed.toFixed(2)} > ${thresholds.LIP_OUT_SPEED_THRESHOLD}) and Glancing (${angleDeg.toFixed(1)} < ${thresholds.LIP_OUT_ANGLE_THRESHOLD})`
     );
     return true;
@@ -108,12 +109,12 @@ export function checkHoleEntry(ballBody, holeTriggerBody, thresholds) {
   const distanceFromHoleCenter = Math.sqrt(dx * dx + dz * dz);
 
   // Log positions being used
-  console.log(
+  debug.log(
     `[PhysicsUtils.checkHoleEntry] Positions: Ball=(${ballPosition.x.toFixed(2)},${ballPosition.z.toFixed(2)}), Hole=(${holePosition.x.toFixed(2)},${holePosition.z.toFixed(2)})`
   );
 
   // Log proximity values
-  console.log(
+  debug.log(
     `[PhysicsUtils.checkHoleEntry] Proximity Check: Distance=${distanceFromHoleCenter.toFixed(3)}, Radius=${holeRadius.toFixed(3)}`
   );
 
@@ -121,33 +122,33 @@ export function checkHoleEntry(ballBody, holeTriggerBody, thresholds) {
     // --- 2. Speed Check ---
     const ballSpeed = ballVelocity.length();
     // Log speed values
-    console.log(
+    debug.log(
       `[PhysicsUtils.checkHoleEntry] Speed Check: Speed=${ballSpeed.toFixed(3)}, MAX_SAFE_SPEED=${thresholds.MAX_SAFE_SPEED.toFixed(3)}`
     );
 
     if (ballSpeed <= thresholds.MAX_SAFE_SPEED) {
-      console.log('[PhysicsUtils.checkHoleEntry] Result: Safe Entry (Slow)');
+      debug.log('[PhysicsUtils.checkHoleEntry] Result: Safe Entry (Slow)');
       return true;
     }
 
     // --- 3. Lip-Out Check (for faster balls) ---
     const angleDeg = calculateImpactAngle(ballVelocity, holePosition, ballPosition);
     // Log lip-out check values
-    console.log(
+    debug.log(
       `[PhysicsUtils.checkHoleEntry] Lip-Out Check: Speed=${ballSpeed.toFixed(3)}, Angle=${angleDeg.toFixed(1)}, SpeedThreshold=${thresholds.LIP_OUT_SPEED_THRESHOLD.toFixed(3)}, AngleThreshold=${thresholds.LIP_OUT_ANGLE_THRESHOLD.toFixed(1)}`
     );
 
     if (isLipOut(ballSpeed, angleDeg, thresholds)) {
-      console.log('[PhysicsUtils.checkHoleEntry] Result: Lip-Out');
+      debug.log('[PhysicsUtils.checkHoleEntry] Result: Lip-Out');
       return false; // Lip-out occurred
     }
 
-    console.log('[PhysicsUtils.checkHoleEntry] Result: Fast but Direct Entry');
+    debug.log('[PhysicsUtils.checkHoleEntry] Result: Fast but Direct Entry');
     return true;
   }
 
   // Ball is not within the hole trigger radius
-  console.log('[PhysicsUtils.checkHoleEntry] Result: Missed (Outside Radius)');
+  debug.log('[PhysicsUtils.checkHoleEntry] Result: Missed (Outside Radius)');
   return false;
 }
 

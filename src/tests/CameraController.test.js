@@ -286,9 +286,6 @@ describe('CameraController', () => {
           }
         }
       },
-      adShipManager: {
-        ships: []
-      },
       stateManager: {
         isBallInMotion: jest.fn(() => false)
       }

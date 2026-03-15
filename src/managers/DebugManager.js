@@ -1,3 +1,4 @@
+import { debug } from '../utils/debug';
 import * as THREE from 'three';
 import { DebugErrorOverlay } from './debug/DebugErrorOverlay';
 import { DebugCourseUI } from './debug/DebugCourseUI';
@@ -96,21 +97,21 @@ export class DebugManager {
    * Initialize debug functionality
    */
   init() {
-    console.log('[DebugManager.init] Initializing...');
+    debug.log('[DebugManager.init] Initializing...');
     // Listen for main debug key press
     this.addMainKeyListener();
 
     // Initialize UI Submodules
-    console.log('[DebugManager.init] Initializing Error Overlay...');
+    debug.log('[DebugManager.init] Initializing Error Overlay...');
     this.errorOverlay = new DebugErrorOverlay(this); // Pass self
     this.errorOverlay.init();
 
     if (DEBUG_CONFIG.courseDebug.enabled) {
-      console.log('[DebugManager.init] Initializing Course Debug UI...');
+      debug.log('[DebugManager.init] Initializing Course Debug UI...');
       this.courseDebugUI = new DebugCourseUI(this); // Pass self
       this.courseDebugUI.init();
     } else {
-      console.log('[DebugManager.init] Course Debug UI disabled by config.');
+      debug.log('[DebugManager.init] Course Debug UI disabled by config.');
     }
 
     // Set up initial 3D helpers if enabled by default
@@ -118,7 +119,7 @@ export class DebugManager {
       this.setupDebugHelpers();
     }
 
-    console.log('[DebugManager.init] Finished.');
+    debug.log('[DebugManager.init] Finished.');
     return this;
   }
 
@@ -126,7 +127,7 @@ export class DebugManager {
   addMainKeyListener() {
     if (process.env.NODE_ENV !== 'production' || DEBUG_CONFIG.enabled) {
       window.addEventListener('keydown', this.boundHandleMainKey);
-      console.log(
+      debug.log(
         "[DebugManager] Debug mode available - press '" + DEBUG_CONFIG.enableKey + "' to toggle"
       );
     }
@@ -150,7 +151,7 @@ export class DebugManager {
    */
   toggleDebugMode() {
     this.enabled = !this.enabled;
-    console.log('Debug mode:', this.enabled ? 'ON' : 'OFF');
+    debug.log('Debug mode:', this.enabled ? 'ON' : 'OFF');
 
     // Update debug mode for components that need it
     this.game.cameraController?.setDebugMode(this.enabled);
@@ -266,7 +267,7 @@ export class DebugManager {
     }
 
     // Log to console
-    console.log(`Ball speed: ${speed.toFixed(2)} m/s`);
+    debug.log(`Ball speed: ${speed.toFixed(2)} m/s`);
 
     return this;
   }
@@ -311,7 +312,7 @@ export class DebugManager {
       case ERROR_LEVELS.INFO:
       case ERROR_LEVELS.DEBUG:
       default:
-        console.log(formattedMessage, data !== null ? data : '');
+        debug.log(formattedMessage, data !== null ? data : '');
         break;
     }
 
@@ -432,7 +433,7 @@ export class DebugManager {
     this.errorOverlay = null; // Clear submodule ref
     this.courseDebugUI = null; // Clear submodule ref
 
-    console.log('[DebugManager] Cleanup finished.');
+    debug.log('[DebugManager] Cleanup finished.');
     return this;
   }
 
@@ -444,7 +445,7 @@ export class DebugManager {
     const newCourseType =
       this.courseDebugState.courseType === 'BasicCourse' ? 'NineHoleCourse' : 'BasicCourse';
 
-    console.log(
+    debug.log(
       `[DebugManager] Toggling course type from ${this.courseDebugState.courseType} to ${newCourseType}`
     );
     this.courseDebugState.courseType = newCourseType;
@@ -484,7 +485,7 @@ export class DebugManager {
    * @param {number} holeNumber - The hole number to load (1-based)
    */
   loadSpecificHole(holeNumber) {
-    console.log(`[DebugManager] Loading ${this.courseDebugState.courseType} hole #${holeNumber}`);
+    debug.log(`[DebugManager] Loading ${this.courseDebugState.courseType} hole #${holeNumber}`);
 
     // Store the current hole for debug UI
     this.courseDebugState.currentHole = holeNumber;
@@ -513,7 +514,7 @@ export class DebugManager {
    * @param {number} [holeNumber] - Optional hole number to load
    */
   async loadCourseWithType(courseType, holeNumber = 1) {
-    console.log(`[DebugManager] Loading course type: ${courseType}, hole: ${holeNumber}`);
+    debug.log(`[DebugManager] Loading course type: ${courseType}, hole: ${holeNumber}`);
 
     try {
       // Import the appropriate course class dynamically
