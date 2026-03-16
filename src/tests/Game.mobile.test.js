@@ -303,9 +303,9 @@ describe('Game - Mobile Optimizations', () => {
       }))
     }));
 
-    // Mock course classes
-    jest.doMock('../objects/NineHoleCourse', () => ({
-      NineHoleCourse: {
+    // Mock course class
+    jest.doMock('../objects/OrbitalDriftCourse', () => ({
+      OrbitalDriftCourse: {
         create: jest.fn(async () => ({
           totalHoles: 9,
           currentHoleEntity: { config: { index: 0 } },
@@ -388,10 +388,10 @@ describe('Game - Mobile Optimizations', () => {
     expect(game.scene.add).toHaveBeenCalled();
   });
 
-  test('should use NineHoleCourse by default', async () => {
+  test('should use OrbitalDriftCourse by default', async () => {
     await game.init();
 
-    // Check that NineHoleCourse is created
+    // Check that OrbitalDriftCourse is created
     expect(game.course).toBeDefined();
 
     // Instead of checking if the mock was called, check if the course has expected properties

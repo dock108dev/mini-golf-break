@@ -2,9 +2,7 @@ import * as THREE from 'three';
 import { InputController } from '../controls/InputController';
 import { CameraController } from '../controls/CameraController';
 import { ScoringSystem } from '../game/ScoringSystem';
-// Both course types are available for debug mode
-import { BasicCourse } from '../objects/BasicCourse';
-import { NineHoleCourse } from '../objects/NineHoleCourse';
+import { OrbitalDriftCourse } from '../objects/OrbitalDriftCourse';
 import { SpaceDecorations } from '../objects/SpaceDecorations';
 import { EventTypes } from '../events/EventTypes';
 import { GameState } from '../states/GameState';
@@ -264,12 +262,7 @@ export class Game {
         throw new Error('PhysicsManager must be initialized before creating the course.');
       }
 
-      const useNineHoleCourse = true; // Or based on a setting
-      if (useNineHoleCourse) {
-        this.course = await NineHoleCourse.create(this);
-      } else {
-        this.course = await BasicCourse.create(this);
-      }
+      this.course = await OrbitalDriftCourse.create(this);
 
       if (!this.course || !this.course.currentHoleEntity) {
         throw new Error('Course or initial HoleEntity failed to initialize.');
@@ -293,7 +286,6 @@ export class Game {
         this.cameraController.positionCameraForHole();
       }
 
-      this.eventManager.publish(EventTypes.COURSE_CREATED, { course: this.course }, this);
     } catch (error) {
       this.debugManager.error('Game.createCourse', 'Failed to create course', error, true);
       console.error('CRITICAL: Failed to create course:', error);
@@ -409,10 +401,9 @@ export class Game {
   }
 
   /**
-   * Set up event listeners
+   * Set up event listeners (resize is handled in init via boundHandleResize)
    */
   setupEventListeners() {
-    // Add other event subscriptions as needed
-    window.addEventListener('resize', this.handleResize.bind(this));
+    // Additional event subscriptions can be added here
   }
 }

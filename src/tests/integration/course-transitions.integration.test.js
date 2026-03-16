@@ -3,12 +3,12 @@
  * Focus on basic flow: course creation, hole transitions, and cleanup
  */
 
-import { NineHoleCourse } from '../../objects/NineHoleCourse';
+import { OrbitalDriftCourse } from '../../objects/OrbitalDriftCourse';
 import { HoleTransitionManager } from '../../managers/HoleTransitionManager';
 
-// Simple mock for NineHoleCourse
-jest.mock('../../objects/NineHoleCourse', () => ({
-  NineHoleCourse: {
+// Simple mock for OrbitalDriftCourse
+jest.mock('../../objects/OrbitalDriftCourse', () => ({
+  OrbitalDriftCourse: {
     create: jest.fn(async () => {
       const mockCourse = {
         totalHoles: 9,
@@ -90,7 +90,7 @@ describe('Course Transitions - Simplified Tests', () => {
     };
 
     // Create course
-    course = await NineHoleCourse.create();
+    course = await OrbitalDriftCourse.create();
     game.course = course;
 
     // Create transition manager

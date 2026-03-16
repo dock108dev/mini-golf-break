@@ -9,7 +9,7 @@ import { debug } from '../utils/debug';
  */
 export class OrbitalDriftCourse extends CoursesManager {
   constructor(game, options = {}) {
-    super();
+    super(undefined, undefined, { autoCreate: false });
     this.game = game;
     this.options = { debug: options.debug || false };
     this.scene = game.scene;
@@ -97,7 +97,7 @@ export class OrbitalDriftCourse extends CoursesManager {
       this.currentHoleEntity = null;
       this.currentHole = null;
     }
-    if (this.currentHoleIndex >= 0 && this.currentHoleIndex < this.holeGroups.length) {
+    if (this.holeGroups && this.currentHoleIndex >= 0 && this.currentHoleIndex < this.holeGroups.length) {
       this.holeGroups[this.currentHoleIndex].visible = false;
     }
     return Promise.resolve();

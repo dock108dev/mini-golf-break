@@ -55,24 +55,9 @@ jest.mock('../../objects/Ball', () => ({
   }))
 }));
 
-// Mock courses with minimal implementation
-jest.mock('../../objects/BasicCourse', () => ({
-  BasicCourse: {
-    create: jest.fn(async () => ({
-      currentHoleEntity: {
-        hole: {},
-        ballStartPosition: { x: 0, y: 0, z: 0 }
-      },
-      holeNumber: 1,
-      totalHoles: 1,
-      getHoleStartPosition: jest.fn(() => ({ x: 0, y: 0.1, z: 0 })),
-      getHolePosition: jest.fn(() => ({ x: 0, y: 0, z: -5 }))
-    }))
-  }
-}));
-
-jest.mock('../../objects/NineHoleCourse', () => ({
-  NineHoleCourse: {
+// Mock course with minimal implementation
+jest.mock('../../objects/OrbitalDriftCourse', () => ({
+  OrbitalDriftCourse: {
     create: jest.fn(async () => ({
       currentHoleEntity: {
         hole: {},

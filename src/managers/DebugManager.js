@@ -24,7 +24,7 @@ export class DebugManager {
     };
     this.courseDebugState = {
       active: false,
-      courseType: 'NineHoleCourse',
+      courseType: 'OrbitalDriftCourse',
       currentHole: 1,
       previousCourseType: null,
       courseOverrideActive: false
@@ -207,16 +207,12 @@ export class DebugManager {
   }
 
   toggleCourseType() {
-    const newCourseType =
-      this.courseDebugState.courseType === 'BasicCourse' ? 'NineHoleCourse' : 'BasicCourse';
-    debug.log(`[DebugManager] Toggling course type from ${this.courseDebugState.courseType} to ${newCourseType}`);
-    this.courseDebugState.courseType = newCourseType;
-    this.loadCourseWithType(newCourseType);
-    this.courseDebugUI?.updateDisplay();
+    // Only one course type available (OrbitalDriftCourse)
+    debug.log('[DebugManager] Only OrbitalDriftCourse available');
   }
 
   promptForHoleNumber() {
-    const maxHole = this.courseDebugState.courseType === 'BasicCourse' ? 3 : 9;
+    const maxHole = 9;
     const holeNumber = prompt(`Enter hole number to load (1-${maxHole}):`, this.courseDebugState.currentHole);
     if (holeNumber === null) {return;}
     const holeNum = parseInt(holeNumber, 10);
@@ -243,9 +239,7 @@ export class DebugManager {
   async loadCourseWithType(courseType, holeNumber = 1) {
     debug.log(`[DebugManager] Loading course type: ${courseType}, hole: ${holeNumber}`);
     try {
-      const CourseClass = courseType === 'BasicCourse'
-        ? (await import('../objects/BasicCourse.js')).BasicCourse
-        : (await import('../objects/NineHoleCourse.js')).NineHoleCourse;
+      const CourseClass = (await import('../objects/OrbitalDriftCourse.js')).OrbitalDriftCourse;
 
       if (this.game.course) {
         this.game.course.clearCurrentHole();

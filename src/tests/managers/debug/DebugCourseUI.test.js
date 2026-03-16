@@ -43,7 +43,7 @@ describe('DebugCourseUI', () => {
       enabled: true,
       game: mockGame,
       courseDebugState: {
-        courseType: 'NineHoleCourse',
+        courseType: 'OrbitalDriftCourse',
         currentHole: 1
       },
       toggleCourseType: jest.fn(),
@@ -335,7 +335,7 @@ describe('DebugCourseUI', () => {
       debugCourseUI.updateDisplay();
 
       expect(debugCourseUI.courseDebugUI.style.display).toBe('block');
-      expect(mockTypeElement.textContent).toBe('Course Type: NineHoleCourse');
+      expect(mockTypeElement.textContent).toBe('Course Type: OrbitalDriftCourse');
       expect(mockHoleElement.textContent).toBe('Current Hole: 1');
     });
 
@@ -361,7 +361,7 @@ describe('DebugCourseUI', () => {
     test('should update course type and hole information', () => {
       mockDebugManager.enabled = true;
       mockDebugManager.courseDebugState = {
-        courseType: 'BasicCourse',
+        courseType: 'OrbitalDriftCourse',
         currentHole: 5
       };
 
@@ -374,7 +374,7 @@ describe('DebugCourseUI', () => {
 
       debugCourseUI.updateDisplay();
 
-      expect(mockTypeElement.textContent).toBe('Course Type: BasicCourse');
+      expect(mockTypeElement.textContent).toBe('Course Type: OrbitalDriftCourse');
       expect(mockHoleElement.textContent).toBe('Current Hole: 5');
     });
   });

@@ -16,7 +16,7 @@ export const DEBUG_CONFIG = {
   },
   courseDebug: {
     enabled: true, // Enable course debugging features
-    toggleCourseTypeKey: 'c', // Key to toggle between BasicCourse and NineHoleCourse
+    toggleCourseTypeKey: 'c', // Key to reload course
     loadSpecificHoleKey: 'h', // Key to trigger load specific hole prompt
     quickLoadKeys: {
       // Number keys 1-9 to quickly load specific holes

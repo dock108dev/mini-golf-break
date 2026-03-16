@@ -16,7 +16,7 @@ import '../mechanics/index';
  */
 export class HoleEntity extends BaseElement {
   constructor(world, config, scene) {
-    // Scene can be a THREE.Group when used with NineHoleCourse
+    // Scene can be a THREE.Group when used with course manager
     const sceneIsGroup = scene instanceof THREE.Group;
     const actualScene = sceneIsGroup ? scene.parent || scene : scene;
     const targetGroup = sceneIsGroup ? scene : null; // The specific group for this hole if provided
@@ -547,9 +547,9 @@ export class HoleEntity extends BaseElement {
     this.meshes = [];
 
     // DO NOT remove this.group or this.parentGroup from the scene here.
-    // The NineHoleCourse manages those groups.
+    // The course manager manages those groups.
     debug.log(`[HoleEntity] Component cleanup complete for Hole ${this.config.index + 1}`);
-    // Setting group to null might cause issues if reused, let NineHoleCourse manage it.
+    // Setting group to null might cause issues if reused, let course manager manage it.
     // this.group = null;
   }
 }

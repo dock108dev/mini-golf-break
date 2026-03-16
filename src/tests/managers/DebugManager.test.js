@@ -101,7 +101,7 @@ describe('DebugManager', () => {
         clearCurrentHole: jest.fn(),
         createCourse: jest.fn().mockResolvedValue(true),
         startPosition: { x: 0, y: 0, z: 0 },
-        constructor: { name: 'NineHoleCourse' }
+        constructor: { name: 'OrbitalDriftCourse' }
       }
     };
 
@@ -159,7 +159,7 @@ describe('DebugManager', () => {
     test('should initialize course debug state', () => {
       expect(debugManager.courseDebugState).toEqual({
         active: false,
-        courseType: 'NineHoleCourse',
+        courseType: 'OrbitalDriftCourse',
         currentHole: 1,
         previousCourseType: null,
         courseOverrideActive: false
@@ -641,48 +641,34 @@ describe('DebugManager', () => {
 
   describe('course debugging features', () => {
     describe('toggleCourseType', () => {
-      test('should toggle from NineHoleCourse to BasicCourse', () => {
-        debugManager.courseDebugState.courseType = 'NineHoleCourse';
-        const loadSpy = jest.spyOn(debugManager, 'loadCourseWithType').mockImplementation();
-
+      test('should log that only OrbitalDriftCourse is available', () => {
         debugManager.toggleCourseType();
-
-        expect(debugManager.courseDebugState.courseType).toBe('BasicCourse');
-        expect(loadSpy).toHaveBeenCalledWith('BasicCourse');
-      });
-
-      test('should toggle from BasicCourse to NineHoleCourse', () => {
-        debugManager.courseDebugState.courseType = 'BasicCourse';
-        const loadSpy = jest.spyOn(debugManager, 'loadCourseWithType').mockImplementation();
-
-        debugManager.toggleCourseType();
-
-        expect(debugManager.courseDebugState.courseType).toBe('NineHoleCourse');
-        expect(loadSpy).toHaveBeenCalledWith('NineHoleCourse');
+        // Only one course type exists, no toggle behavior
+        expect(debugManager.courseDebugState.courseType).toBe('OrbitalDriftCourse');
       });
     });
 
     describe('promptForHoleNumber', () => {
       test('should prompt for valid hole number and load it', () => {
-        debugManager.courseDebugState.courseType = 'BasicCourse';
+        debugManager.courseDebugState.courseType = 'OrbitalDriftCourse';
         global.prompt.mockReturnValue('2');
         const loadSpy = jest.spyOn(debugManager, 'loadSpecificHole').mockImplementation();
 
         debugManager.promptForHoleNumber();
 
-        expect(global.prompt).toHaveBeenCalledWith('Enter hole number to load (1-3):', 1);
+        expect(global.prompt).toHaveBeenCalledWith('Enter hole number to load (1-9):', 1);
         expect(loadSpy).toHaveBeenCalledWith(2);
       });
 
       test('should handle invalid hole number', () => {
-        debugManager.courseDebugState.courseType = 'BasicCourse';
-        global.prompt.mockReturnValue('10'); // Invalid for BasicCourse
+        debugManager.courseDebugState.courseType = 'OrbitalDriftCourse';
+        global.prompt.mockReturnValue('10'); // Invalid for OrbitalDriftCourse
         const loadSpy = jest.spyOn(debugManager, 'loadSpecificHole');
 
         debugManager.promptForHoleNumber();
 
         expect(global.alert).toHaveBeenCalledWith(
-          'Please enter a valid hole number between 1 and 3.'
+          'Please enter a valid hole number between 1 and 9.'
         );
         expect(loadSpy).not.toHaveBeenCalled();
       });
@@ -696,8 +682,8 @@ describe('DebugManager', () => {
         expect(loadSpy).not.toHaveBeenCalled();
       });
 
-      test('should handle different max holes for NineHoleCourse', () => {
-        debugManager.courseDebugState.courseType = 'NineHoleCourse';
+      test('should handle different max holes for OrbitalDriftCourse', () => {
+        debugManager.courseDebugState.courseType = 'OrbitalDriftCourse';
         global.prompt.mockReturnValue('5');
 
         debugManager.promptForHoleNumber();
@@ -720,15 +706,16 @@ describe('DebugManager', () => {
       });
 
       test('should load new course when course type changed', () => {
-        mockGame.course.constructor.name = 'BasicCourse';
-        debugManager.courseDebugState.courseType = 'NineHoleCourse';
-        const loadCourseTypeSpy = jest
-          .spyOn(debugManager, 'loadCourseWithType')
+        mockGame.course.constructor.name = 'OrbitalDriftCourse';
+        debugManager.courseDebugState.courseType = 'OrbitalDriftCourse';
+        const loadHoleSpy = jest
+          .spyOn(debugManager, 'loadHoleInExistingCourse')
           .mockImplementation();
 
         debugManager.loadSpecificHole(2);
 
-        expect(loadCourseTypeSpy).toHaveBeenCalledWith('NineHoleCourse', 2);
+        // Course type matches existing course, so loads hole in existing course
+        expect(loadHoleSpy).toHaveBeenCalledWith(2);
       });
 
       test('should load new course when no course exists', () => {
@@ -739,7 +726,7 @@ describe('DebugManager', () => {
 
         debugManager.loadSpecificHole(1);
 
-        expect(loadCourseTypeSpy).toHaveBeenCalledWith('NineHoleCourse', 1);
+        expect(loadCourseTypeSpy).toHaveBeenCalledWith('OrbitalDriftCourse', 1);
       });
     });
   });
