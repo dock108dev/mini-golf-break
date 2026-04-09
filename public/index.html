@@ -2,9 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Mini Golf Break - Relaxing 3D Mini Golf Game</title>
-    
+
+    <!-- Favicon and Touch Icons -->
+    <link rel="icon" type="image/png" href="./assets/logo.png">
+    <link rel="apple-touch-icon" href="./assets/logo.png">
+
     <!-- SEO Meta Tags -->
     <meta name="description" content="Play Mini Golf Break, a relaxing 3D mini golf game. Perfect for short breaks and casual gaming with beautiful courses and satisfying gameplay.">
     <meta name="keywords" content="mini golf, 3D game, relaxing game, casual game, browser game">
@@ -38,25 +42,59 @@
     </script>
 </head>
 <body>
+    <!-- Loading indicator: pure CSS, visible immediately, dismissed by JS -->
+    <div id="loading-screen" aria-label="Loading game">
+        <div id="loading-content" class="loading-content">
+            <div id="loading-spinner" class="loading-spinner"></div>
+            <p id="loading-text" class="loading-text">Loading...</p>
+        </div>
+    </div>
     <div id="game-container">
         <!-- Menu Screen -->
-        <div id="menu-screen">
+        <div id="menu-screen" role="dialog" aria-label="Start menu" style="display: none;">
             <div class="menu-content">
                 <div class="logo-container">
                     <img src="/assets/logo.png" alt="Mini Golf Break logo featuring a UFO hovering over a green with golf ball, putter, and red flag in space - a relaxing 3D browser golf game" width="200" height="200">
                 </div>
-                <div class="menu-instructions">
-                    <h2>How to Play</h2>
-                    <ul>
-                        <li>Click and drag to aim</li>
-                        <li>Hold to increase power</li>
-                        <li>Release to shoot</li>
-                        <li>Get the ball in the hole</li>
-                        <li>Try to use as few strokes as possible!</li>
-                    </ul>
+                <div class="course-info">
+                    <h1 class="course-title">Orbital Drift</h1>
+                    <p class="course-details">9 Holes &middot; Par 24</p>
+                    <p id="menu-best-score" class="menu-best-score" style="display: none;"></p>
                 </div>
-                <button id="play-course">Play Course</button>
+                <button id="how-to-play-menu" class="how-to-play-button" aria-label="How to Play">How to Play</button>
+                <button id="play-course" aria-label="Start game" autofocus>Play</button>
             </div>
+        </div>
+    </div>
+    <!-- Controls Help Overlay -->
+    <div id="controls-overlay" class="controls-overlay" role="dialog" aria-label="Controls help" style="display: none;">
+        <div class="controls-content">
+            <h2 class="controls-title">How to Play</h2>
+            <div class="controls-section">
+                <h3>Mouse / Touch</h3>
+                <ul>
+                    <li>Click (or tap) and drag backward to aim</li>
+                    <li>The aim line shows your shot direction</li>
+                    <li>Drag further for more power</li>
+                    <li>Release to shoot</li>
+                </ul>
+            </div>
+            <div class="controls-section">
+                <h3>Gameplay</h3>
+                <ul>
+                    <li>Get the ball in the hole in the fewest strokes</li>
+                    <li>Water hazards add a 1-stroke penalty</li>
+                    <li>Complete all 9 holes for your final score</li>
+                </ul>
+            </div>
+            <div class="controls-section">
+                <h3>Keyboard Shortcuts</h3>
+                <ul>
+                    <li><kbd>D</kbd> &mdash; Toggle debug mode</li>
+                    <li><kbd>Esc</kbd> &mdash; Pause / Resume</li>
+                </ul>
+            </div>
+            <button id="controls-close" class="controls-close-button" aria-label="Close controls help">Got it!</button>
         </div>
     </div>
     <div id="ui-overlay">

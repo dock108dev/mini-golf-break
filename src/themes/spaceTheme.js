@@ -12,5 +12,19 @@ export const spaceTheme = {
   tee: { color: 0x00aaff, roughness: 0.3, metalness: 0.5 },
   rim: { color: 0xaaaacc, roughness: 0.3, metalness: 0.8 },
   holeInterior: { color: 0x0a0a1a, roughness: 0.9, metalness: 0.1 },
-  background: 0x000008
+  background: 0x000008,
+  mechanics: {
+    boostStrip: { color: 0x00ff88 },
+    movingSweeper: { color: 0xff2222, postColor: 0x666688 },
+    portalGate: { color: 0xaa00ff },
+    timedGate: { color: 0x3366aa },
+    timedHazard: { waterColor: 0xff3300, sandColor: 0xdd8800 },
+    bankWall: { color: 0x5555aa },
+    suctionZone: { color: 0x7700dd },
+    lowGravityZone: { color: 0x3388ff },
+    bowlContour: { color: 0x776633 },
+    elevatedGreen: { color: 0x1a3a2a, sideColor: 0x0d2d1d },
+    splitRoute: { color: 0x6666aa },
+    ricochetBumpers: { color: 0xff5500 }
+  }
 };

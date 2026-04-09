@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { spaceTheme } from '../themes/spaceTheme';
 
 /**
  * Orbital Drift - 9-hole space-themed course with advanced mechanics.
@@ -11,6 +12,7 @@ export function createOrbitalDriftConfigs() {
       index: 0,
       description: '1. Launch Bay',
       par: 2,
+      theme: spaceTheme,
       boundaryShape: [
         new THREE.Vector2(-4, -12), new THREE.Vector2(-4, 12),
         new THREE.Vector2(4, 12), new THREE.Vector2(4, -12),
@@ -35,6 +37,7 @@ export function createOrbitalDriftConfigs() {
       index: 1,
       description: '2. Crater Rim',
       par: 2,
+      theme: spaceTheme,
       boundaryShape: [
         new THREE.Vector2(-8, -8), new THREE.Vector2(-8, 8),
         new THREE.Vector2(8, 8), new THREE.Vector2(8, -8),
@@ -58,6 +61,7 @@ export function createOrbitalDriftConfigs() {
       index: 2,
       description: '3. Satellite Slingshot',
       par: 3,
+      theme: spaceTheme,
       boundaryShape: [
         new THREE.Vector2(-6, -12), new THREE.Vector2(-6, 12),
         new THREE.Vector2(6, 12), new THREE.Vector2(6, -12),
@@ -82,6 +86,7 @@ export function createOrbitalDriftConfigs() {
       index: 3,
       description: '4. Asteroid Belt Bounce',
       par: 3,
+      theme: spaceTheme,
       boundaryShape: [
         new THREE.Vector2(-8, -10), new THREE.Vector2(-8, 10),
         new THREE.Vector2(8, 10), new THREE.Vector2(8, -10),
@@ -115,6 +120,7 @@ export function createOrbitalDriftConfigs() {
       index: 4,
       description: '5. Wormhole Transfer',
       par: 2,
+      theme: spaceTheme,
       boundaryShape: [
         new THREE.Vector2(-5, -8), new THREE.Vector2(-5, 8),
         new THREE.Vector2(5, 8), new THREE.Vector2(5, -8),
@@ -140,6 +146,7 @@ export function createOrbitalDriftConfigs() {
       index: 5,
       description: '6. Solar Flare Run',
       par: 3,
+      theme: spaceTheme,
       boundaryShape: [
         new THREE.Vector2(-3, -14), new THREE.Vector2(-3, 14),
         new THREE.Vector2(3, 14), new THREE.Vector2(3, -14),
@@ -163,6 +170,7 @@ export function createOrbitalDriftConfigs() {
       index: 6,
       description: '7. Zero G Lab',
       par: 2,
+      theme: spaceTheme,
       boundaryShape: [
         new THREE.Vector2(-5, -7), new THREE.Vector2(-5, 7),
         new THREE.Vector2(5, 7), new THREE.Vector2(5, -7),
@@ -188,6 +196,7 @@ export function createOrbitalDriftConfigs() {
       index: 7,
       description: '8. Event Horizon',
       par: 3,
+      theme: spaceTheme,
       boundaryShape: [
         new THREE.Vector2(-8, -8), new THREE.Vector2(-8, 8),
         new THREE.Vector2(8, 8), new THREE.Vector2(8, -8),
@@ -210,6 +219,7 @@ export function createOrbitalDriftConfigs() {
       index: 8,
       description: '9. Station Core Finale',
       par: 4,
+      theme: spaceTheme,
       boundaryShape: [
         new THREE.Vector2(-8, -14), new THREE.Vector2(-8, 14),
         new THREE.Vector2(8, 14), new THREE.Vector2(8, -14),

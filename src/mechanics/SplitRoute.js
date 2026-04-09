@@ -13,13 +13,13 @@ import { registerMechanic } from './MechanicRegistry';
  *   color: number (optional) - Wall color (default 0x8888aa)
  */
 class SplitRoute extends MechanicBase {
-  constructor(world, group, config, surfaceHeight) {
-    super(world, group, config, surfaceHeight);
+  constructor(world, group, config, surfaceHeight, theme) {
+    super(world, group, config, surfaceHeight, theme);
 
     const walls = config.walls || [];
     const wallHeight = config.height || 0.8;
     const thickness = config.thickness || 0.15;
-    const color = config.color || 0x8888aa;
+    const color = config.color || theme?.mechanics?.splitRoute?.color || 0x8888aa;
 
     const material = new THREE.MeshStandardMaterial({
       color,
@@ -67,6 +67,6 @@ class SplitRoute extends MechanicBase {
   }
 }
 
-registerMechanic('split_route', (world, group, config, sh) => new SplitRoute(world, group, config, sh));
+registerMechanic('split_route', (world, group, config, sh, theme) => new SplitRoute(world, group, config, sh, theme));
 
 export { SplitRoute };

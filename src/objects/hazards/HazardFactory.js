@@ -10,15 +10,16 @@ import { CSG } from 'three-csg-ts';
  * @param {object} hazardConfig - Configuration for the hazard
  * @param {number} visualGreenY - The Y-level of the visual green surface
  * @param {object} courseBounds - Course boundaries for CSG {width, length}
+ * @param {object} [theme] - Optional theme object for hazard colors
  * @returns {{meshes: THREE.Mesh[], bodies: CANNON.Body[]}} Created meshes and bodies
  */
-export function createHazard(world, group, hazardConfig, visualGreenY, courseBounds) {
+export function createHazard(world, group, hazardConfig, visualGreenY, courseBounds, theme) {
   debug.log('[HazardFactory] Creating hazard:', hazardConfig);
   switch (hazardConfig.type) {
     case 'sand':
-      return createSandHazard(world, group, hazardConfig, visualGreenY, courseBounds);
+      return createSandHazard(world, group, hazardConfig, visualGreenY, courseBounds, theme);
     case 'water':
-      return createWaterHazard(world, group, hazardConfig, visualGreenY, courseBounds);
+      return createWaterHazard(world, group, hazardConfig, visualGreenY, courseBounds, theme);
     default:
       console.warn('[HazardFactory] Unknown hazard type:', hazardConfig.type);
       return { meshes: [], bodies: [] };
@@ -29,14 +30,15 @@ export function createHazard(world, group, hazardConfig, visualGreenY, courseBou
  * Creates visuals and physics trigger for a sand hazard.
  * Handles simple shapes ('circle', 'rectangle') and 'compound' shapes.
  */
-function createSandHazard(world, group, config, visualGreenY, courseBounds) {
+function createSandHazard(world, group, config, visualGreenY, courseBounds, theme) {
   const allMeshes = [];
   const allBodies = [];
 
+  const sandTheme = theme?.sand || {};
   const sandMaterial = new THREE.MeshStandardMaterial({
-    color: 0xe6c388, // Sandy color
-    roughness: 0.9,
-    metalness: 0.1
+    color: sandTheme.color || 0xe6c388,
+    roughness: sandTheme.roughness ?? 0.9,
+    metalness: sandTheme.metalness ?? 0.1
   });
 
   const hazardDepth = config.depth || 0.2; // Default depth if not specified
@@ -237,16 +239,17 @@ function createSandHazardPart(config, world, group, material, visualY, triggerY,
  * Creates visuals and physics trigger for a water hazard.
  * Handles simple shapes ('circle', 'rectangle') and 'compound' shapes.
  */
-function createWaterHazard(world, group, config, visualGreenY, courseBounds) {
+function createWaterHazard(world, group, config, visualGreenY, courseBounds, theme) {
   const allMeshes = [];
   const allBodies = [];
 
   // Define water material
+  const waterTheme = theme?.water || {};
   const waterMaterial = new THREE.MeshStandardMaterial({
-    color: 0x3399ff, // Water blue
+    color: waterTheme.color || 0x3399ff,
     transparent: true,
-    opacity: 0.7,
-    roughness: 0.2,
+    opacity: waterTheme.opacity ?? 0.7,
+    roughness: waterTheme.roughness ?? 0.2,
     metalness: 0.1
   });
 

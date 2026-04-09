@@ -10,7 +10,6 @@ jest.mock('../../../managers/DebugManager', () => ({
   DEBUG_CONFIG: {
     courseDebug: {
       enabled: true,
-      toggleCourseTypeKey: 'c',
       loadSpecificHoleKey: 'h',
       quickLoadKeys: {
         1: 1,
@@ -46,7 +45,6 @@ describe('DebugCourseUI', () => {
         courseType: 'OrbitalDriftCourse',
         currentHole: 1
       },
-      toggleCourseType: jest.fn(),
       promptForHoleNumber: jest.fn(),
       loadSpecificHole: jest.fn()
     };
@@ -244,22 +242,22 @@ describe('DebugCourseUI', () => {
 
     test('should not process keys when debug manager disabled', () => {
       mockDebugManager.enabled = false;
-      const event = { key: 'c', preventDefault: jest.fn() };
+      const event = { key: 'h', preventDefault: jest.fn() };
 
       debugCourseUI.handleKeyPress(event);
 
-      expect(mockDebugManager.toggleCourseType).not.toHaveBeenCalled();
+      expect(mockDebugManager.promptForHoleNumber).not.toHaveBeenCalled();
       expect(event.preventDefault).not.toHaveBeenCalled();
     });
 
-    test('should toggle course type on "c" key', () => {
+    test('should ignore "c" key (no course toggle)', () => {
       const event = { key: 'c', preventDefault: jest.fn() };
 
       debugCourseUI.handleKeyPress(event);
 
-      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[DebugCourseUI] Toggle Course Type key pressed.');
-      expect(mockDebugManager.toggleCourseType).toHaveBeenCalled();
-      expect(event.preventDefault).toHaveBeenCalled();
+      expect(mockDebugManager.promptForHoleNumber).not.toHaveBeenCalled();
+      expect(mockDebugManager.loadSpecificHole).not.toHaveBeenCalled();
+      expect(event.preventDefault).not.toHaveBeenCalled();
     });
 
     test('should prompt for hole number on "h" key', () => {
@@ -299,7 +297,6 @@ describe('DebugCourseUI', () => {
 
       debugCourseUI.handleKeyPress(event);
 
-      expect(mockDebugManager.toggleCourseType).not.toHaveBeenCalled();
       expect(mockDebugManager.promptForHoleNumber).not.toHaveBeenCalled();
       expect(mockDebugManager.loadSpecificHole).not.toHaveBeenCalled();
       expect(event.preventDefault).not.toHaveBeenCalled();
@@ -335,7 +332,7 @@ describe('DebugCourseUI', () => {
       debugCourseUI.updateDisplay();
 
       expect(debugCourseUI.courseDebugUI.style.display).toBe('block');
-      expect(mockTypeElement.textContent).toBe('Course Type: OrbitalDriftCourse');
+      expect(mockTypeElement.textContent).toBe('Course: Orbital Drift');
       expect(mockHoleElement.textContent).toBe('Current Hole: 1');
     });
 
@@ -374,7 +371,7 @@ describe('DebugCourseUI', () => {
 
       debugCourseUI.updateDisplay();
 
-      expect(mockTypeElement.textContent).toBe('Course Type: OrbitalDriftCourse');
+      expect(mockTypeElement.textContent).toBe('Course: Orbital Drift');
       expect(mockHoleElement.textContent).toBe('Current Hole: 5');
     });
   });
@@ -416,10 +413,10 @@ describe('DebugCourseUI', () => {
       debugCourseUI.updateDisplay();
       expect(debugCourseUI.courseDebugUI.style.display).toBe('block');
 
-      // Handle key press
-      const event = { key: 'c', preventDefault: jest.fn() };
+      // Handle key press (hole jump)
+      const event = { key: '3', preventDefault: jest.fn() };
       debugCourseUI.handleKeyPress(event);
-      expect(mockDebugManager.toggleCourseType).toHaveBeenCalled();
+      expect(mockDebugManager.loadSpecificHole).toHaveBeenCalledWith(3);
 
       // Cleanup
       debugCourseUI.cleanup();

@@ -14,8 +14,9 @@ import { registerMechanic } from './MechanicRegistry';
  *   color: number (optional) - Visual color (default 0x44aaff)
  */
 class LowGravityZone extends MechanicBase {
-  constructor(world, group, config, surfaceHeight) {
-    super(world, group, config, surfaceHeight);
+  constructor(world, group, config, surfaceHeight, theme) {
+    super(world, group, config, surfaceHeight, theme);
+    this.isForceField = true;
 
     const pos = config.position || new THREE.Vector3(0, 0, 0);
     this.centerX = pos.x;
@@ -25,7 +26,7 @@ class LowGravityZone extends MechanicBase {
     // Gravity is -9.81, so to keep 30% gravity we apply 70% upward counter
     const gravMult = config.gravityMultiplier ?? 0.3;
     this.counterForce = 9.81 * (1 - gravMult); // upward force per unit mass
-    const color = config.color || 0x44aaff;
+    const color = config.color || theme?.mechanics?.lowGravityZone?.color || 0x44aaff;
 
     // Visual: semi-transparent disc with emissive glow
     const geometry = new THREE.CircleGeometry(this.radius, 32);
@@ -62,6 +63,6 @@ class LowGravityZone extends MechanicBase {
   }
 }
 
-registerMechanic('low_gravity_zone', (world, group, config, sh) => new LowGravityZone(world, group, config, sh));
+registerMechanic('low_gravity_zone', (world, group, config, sh, theme) => new LowGravityZone(world, group, config, sh, theme));
 
 export { LowGravityZone };

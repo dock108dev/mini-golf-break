@@ -18,6 +18,9 @@ The dev server starts automatically via the Playwright config.
 |------|----------|
 | `game-flow.test.js` | Game init, hole playthrough, scoring, transitions, completion |
 | `mobile.test.js` | Touch input, device orientation, multi-touch, cross-device |
+| `mobile-mechanics.test.js` | Touch compatibility with mechanics (force fields, portals, sweepers) |
+| `orbital-drift.test.js` | Orbital Drift course loading, all 9 holes, mechanics presence |
+| `cross-browser.test.js` | Firefox, Edge compatibility, WebGL rendering, input |
 | `visual-regression.test.js` | UI layout, canvas rendering, responsive design |
 | `performance.test.js` | FPS, memory, load times, WebGL performance |
 

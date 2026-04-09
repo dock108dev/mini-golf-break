@@ -557,6 +557,7 @@ describe('DebugManager', () => {
       expect(info).toEqual({
         FPS: 63, // Math.round(1 / 0.016)
         'Debug Mode': 'ON',
+        'Force Fields': 'Visible',
         'Ball Position': 'X: 1.00, Y: 2.00, Z: 3.00',
         'Ball Velocity': '5.50 m/s'
       });
@@ -640,14 +641,6 @@ describe('DebugManager', () => {
   });
 
   describe('course debugging features', () => {
-    describe('toggleCourseType', () => {
-      test('should log that only OrbitalDriftCourse is available', () => {
-        debugManager.toggleCourseType();
-        // Only one course type exists, no toggle behavior
-        expect(debugManager.courseDebugState.courseType).toBe('OrbitalDriftCourse');
-      });
-    });
-
     describe('promptForHoleNumber', () => {
       test('should prompt for valid hole number and load it', () => {
         debugManager.courseDebugState.courseType = 'OrbitalDriftCourse';
@@ -728,6 +721,102 @@ describe('DebugManager', () => {
 
         expect(loadCourseTypeSpy).toHaveBeenCalledWith('OrbitalDriftCourse', 1);
       });
+    });
+  });
+
+  describe('force field visibility toggle', () => {
+    test('should initialize with force fields visible', () => {
+      expect(debugManager.forceFieldsVisible).toBe(true);
+    });
+
+    test('should toggle force field visibility on f key press', () => {
+      const toggleSpy = jest.spyOn(debugManager, 'toggleForceFieldVisibility');
+      debugManager.handleForceFieldKey({ key: 'f' });
+      expect(toggleSpy).toHaveBeenCalled();
+    });
+
+    test('should not toggle on other key press', () => {
+      const toggleSpy = jest.spyOn(debugManager, 'toggleForceFieldVisibility');
+      debugManager.handleForceFieldKey({ key: 'x' });
+      expect(toggleSpy).not.toHaveBeenCalled();
+    });
+
+    test('should toggle forceFieldsVisible state', () => {
+      expect(debugManager.forceFieldsVisible).toBe(true);
+      debugManager.toggleForceFieldVisibility();
+      expect(debugManager.forceFieldsVisible).toBe(false);
+      debugManager.toggleForceFieldVisibility();
+      expect(debugManager.forceFieldsVisible).toBe(true);
+    });
+
+    test('should apply visibility to force field mechanics', () => {
+      const forceFieldMechanic = { isForceField: true, setMeshVisibility: jest.fn() };
+      const nonForceFieldMechanic = { isForceField: false, setMeshVisibility: jest.fn() };
+      mockGame.course = {
+        currentHoleEntity: {
+          mechanics: [forceFieldMechanic, nonForceFieldMechanic]
+        }
+      };
+
+      debugManager.toggleForceFieldVisibility();
+
+      expect(forceFieldMechanic.setMeshVisibility).toHaveBeenCalledWith(false);
+      expect(nonForceFieldMechanic.setMeshVisibility).not.toHaveBeenCalled();
+    });
+
+    test('should handle missing course gracefully', () => {
+      mockGame.course = null;
+      expect(() => debugManager.toggleForceFieldVisibility()).not.toThrow();
+    });
+
+    test('should handle missing currentHoleEntity gracefully', () => {
+      mockGame.course = { currentHoleEntity: null };
+      expect(() => debugManager.toggleForceFieldVisibility()).not.toThrow();
+    });
+
+    test('should update debug overlay when debug mode is active', () => {
+      debugManager.enabled = true;
+      debugManager.toggleForceFieldVisibility();
+      expect(mockGame.uiManager.updateDebugDisplay).toHaveBeenCalled();
+    });
+
+    test('should not update debug overlay when debug mode is inactive', () => {
+      debugManager.enabled = false;
+      debugManager.toggleForceFieldVisibility();
+      expect(mockGame.uiManager.updateDebugDisplay).not.toHaveBeenCalled();
+    });
+
+    test('should show force field state as Hidden in debug info', () => {
+      debugManager.enabled = true;
+      debugManager.forceFieldsVisible = false;
+      const info = debugManager.getDebugInfo();
+      expect(info['Force Fields']).toBe('Hidden');
+    });
+
+    test('should show force field state as Visible in debug info', () => {
+      debugManager.enabled = true;
+      debugManager.forceFieldsVisible = true;
+      const info = debugManager.getDebugInfo();
+      expect(info['Force Fields']).toBe('Visible');
+    });
+
+    test('should work independently of main debug mode', () => {
+      debugManager.enabled = false;
+      const forceFieldMechanic = { isForceField: true, setMeshVisibility: jest.fn() };
+      mockGame.course = {
+        currentHoleEntity: { mechanics: [forceFieldMechanic] }
+      };
+
+      debugManager.toggleForceFieldVisibility();
+
+      expect(forceFieldMechanic.setMeshVisibility).toHaveBeenCalledWith(false);
+      expect(debugManager.enabled).toBe(false);
+    });
+
+    test('should reset forceFieldsVisible on cleanup', () => {
+      debugManager.forceFieldsVisible = false;
+      debugManager.cleanup();
+      expect(debugManager.forceFieldsVisible).toBe(true);
     });
   });
 

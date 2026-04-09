@@ -184,6 +184,29 @@ export class SpaceDecorations {
         }
       }
     });
+
+    // Animate shooting stars
+    this.decorations.forEach(decoration => {
+      if (decoration.userData.type === 'shootingStar') {
+        if (decoration.visible) {
+          // Move the shooting star
+          decoration.position.x += deltaTime * 40;
+          decoration.position.y -= deltaTime * 10;
+          // Hide when it moves off screen
+          if (decoration.position.x > 80) {
+            decoration.visible = false;
+          }
+        } else if (Math.random() < deltaTime * 0.05) {
+          // Randomly trigger a shooting star
+          decoration.position.set(
+            Math.random() * 60 - 80,
+            Math.random() * 20 + 25,
+            -40 - Math.random() * 30
+          );
+          decoration.visible = true;
+        }
+      }
+    });
   }
 
   /**

@@ -194,19 +194,30 @@ export class PhysicsWorld {
           this.world.addEventListener('beginContact', tempCallback);
         }
       } catch (error) {
-        console.error('Error in physics update:', error);
-        // If we get an error, try to recover by resetting all bodies
-        this.world.bodies.forEach(body => {
-          if (body) {
-            body.velocity.set(0, 0, 0);
-            body.angularVelocity.set(0, 0, 0);
-            body.force.set(0, 0, 0);
-            body.torque.set(0, 0, 0);
-            if (typeof body.wakeUp === 'function') {
-              body.wakeUp();
+        // Track consecutive physics errors to detect persistent issues
+        this._physicsErrorCount = (this._physicsErrorCount || 0) + 1;
+        console.error(
+          `Error in physics update (occurrence #${this._physicsErrorCount}, bodies: ${this.world.bodies.length}):`,
+          error
+        );
+
+        // Only reset all bodies as a last resort after repeated failures.
+        // A single error may be transient (e.g., NaN from one body's state).
+        if (this._physicsErrorCount >= 3) {
+          console.warn('PhysicsWorld: Repeated physics errors — resetting all body velocities as recovery.');
+          this.world.bodies.forEach(body => {
+            if (body) {
+              body.velocity.set(0, 0, 0);
+              body.angularVelocity.set(0, 0, 0);
+              body.force.set(0, 0, 0);
+              body.torque.set(0, 0, 0);
+              if (typeof body.wakeUp === 'function') {
+                body.wakeUp();
+              }
             }
-          }
-        });
+          });
+          this._physicsErrorCount = 0;
+        }
       }
     }
   }

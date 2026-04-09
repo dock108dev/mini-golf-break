@@ -104,6 +104,36 @@ module.exports = {
           ]
         }
       },
+    },
+    {
+      name: 'firefox-desktop',
+      use: {
+        ...require('@playwright/test').devices['Desktop Firefox'],
+        viewport: { width: 1920, height: 1080 },
+        launchOptions: {
+          firefoxUserPrefs: {
+            'webgl.force-enabled': true,
+            'webgl.disabled': false
+          }
+        }
+      },
+    },
+    {
+      name: 'edge-desktop',
+      use: {
+        ...require('@playwright/test').devices['Desktop Edge'],
+        viewport: { width: 1920, height: 1080 },
+        channel: 'msedge',
+        launchOptions: {
+          args: [
+            '--enable-webgl',
+            '--enable-gpu',
+            '--use-gl=swiftshader',
+            '--no-sandbox',
+            '--disable-setuid-sandbox'
+          ]
+        }
+      },
     }
   ],
   webServer: {

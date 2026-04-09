@@ -11,15 +11,34 @@ import { registerMechanic } from './MechanicRegistry';
  *   elevation: number - Height above base surface (default 0.5)
  *   ramp: { start: Vector3, end: Vector3, width: number } - Ramp connecting base to platform
  *   color: number (optional) - Platform color (default 0x2ecc71, matches green)
+ *
+ * Ramp angle is clamped to 30 degrees max so the ball can traverse it.
  */
 class ElevatedGreen extends MechanicBase {
-  constructor(world, group, config, surfaceHeight) {
-    super(world, group, config, surfaceHeight);
+  constructor(world, group, config, surfaceHeight, theme) {
+    super(world, group, config, surfaceHeight, theme);
 
     const platformConfig = config.platform || { position: new THREE.Vector3(0, 0, -5), width: 4, length: 4 };
-    const elevation = config.elevation || 0.5;
     const rampConfig = config.ramp || { start: new THREE.Vector3(0, 0, -3), end: new THREE.Vector3(0, 0, -5), width: 2 };
-    const color = config.color || 0x2ecc71;
+    const color = config.color || theme?.mechanics?.elevatedGreen?.color || 0x2ecc71;
+
+    // Calculate ramp horizontal length to determine max allowed elevation
+    const rampStart = rampConfig.start;
+    const rampEnd = rampConfig.end;
+    const rampWidth = rampConfig.width || 2;
+    const rampDx = rampEnd.x - rampStart.x;
+    const rampDz = rampEnd.z - rampStart.z;
+    const rampHorizontalLength = Math.sqrt(rampDx * rampDx + rampDz * rampDz);
+
+    // Clamp ramp angle to 30 degrees max (traversable by ball)
+    const MAX_RAMP_ANGLE = Math.PI / 6; // 30 degrees
+    const requestedElevation = config.elevation || 0.5;
+    const maxElevation = Math.tan(MAX_RAMP_ANGLE) * rampHorizontalLength;
+    const elevation = Math.min(requestedElevation, maxElevation);
+
+    const rampAngleY = Math.atan2(rampDx, rampDz);
+    const rampAngleX = Math.atan2(elevation, rampHorizontalLength);
+    const rampActualLength = Math.sqrt(rampHorizontalLength * rampHorizontalLength + elevation * elevation);
 
     const platformY = surfaceHeight + elevation;
 
@@ -38,7 +57,7 @@ class ElevatedGreen extends MechanicBase {
     this.meshes.push(platMesh);
 
     // Platform side walls (visual depth indicator)
-    const sideColor = 0x1a8a4a;
+    const sideColor = theme?.mechanics?.elevatedGreen?.sideColor || 0x1a8a4a;
     const sideMat = new THREE.MeshStandardMaterial({ color: sideColor, roughness: 0.7 });
     // Front side
     const frontGeom = new THREE.BoxGeometry(platWidth, elevation, platThickness);
@@ -60,17 +79,6 @@ class ElevatedGreen extends MechanicBase {
     this.bodies.push(platBody);
 
     // --- Ramp (visual + physics) ---
-    const rampStart = rampConfig.start;
-    const rampEnd = rampConfig.end;
-    const rampWidth = rampConfig.width || 2;
-
-    // Calculate ramp geometry
-    const rampDx = rampEnd.x - rampStart.x;
-    const rampDz = rampEnd.z - rampStart.z;
-    const rampHorizontalLength = Math.sqrt(rampDx * rampDx + rampDz * rampDz);
-    const rampAngleY = Math.atan2(rampDx, rampDz); // Rotation around Y
-    const rampAngleX = Math.atan2(elevation, rampHorizontalLength); // Tilt angle
-    const rampActualLength = Math.sqrt(rampHorizontalLength * rampHorizontalLength + elevation * elevation);
 
     // Visual: tilted plane for ramp
     const rampGeom = new THREE.PlaneGeometry(rampWidth, rampActualLength);
@@ -149,6 +157,6 @@ class ElevatedGreen extends MechanicBase {
   }
 }
 
-registerMechanic('elevated_green', (world, group, config, sh) => new ElevatedGreen(world, group, config, sh));
+registerMechanic('elevated_green', (world, group, config, sh, theme) => new ElevatedGreen(world, group, config, sh, theme));
 
 export { ElevatedGreen };

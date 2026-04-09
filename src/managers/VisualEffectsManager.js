@@ -1,4 +1,3 @@
-import { debug } from '../utils/debug';
 import * as THREE from 'three';
 
 /**

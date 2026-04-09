@@ -70,6 +70,7 @@ export class OrbitalDriftCourse extends CoursesManager {
 
     const physicsWorld = this.game.physicsManager.getWorld();
     this.currentHoleEntity = new HoleEntity(physicsWorld, holeConfig, holeGroup);
+    this.currentHoleEntity.audioManager = this.game.audioManager || null;
     await this.currentHoleEntity.init();
 
     holeGroup.visible = true;
@@ -109,11 +110,8 @@ export class OrbitalDriftCourse extends CoursesManager {
   getHolePosition() { return this.getCurrentHoleConfig()?.holePosition || null; }
   getHoleStartPosition() { return this.getCurrentHoleConfig()?.startPosition || null; }
   getHolePar() { return this.getCurrentHoleConfig()?.par || 0; }
+  getAllHolePars() { return this.holeConfigs.map(c => c.par || 0); }
+  getCameraHint() { return this.getCurrentHoleConfig()?.cameraHint || null; }
 
-  update(dt) {
-    if (this.currentHoleEntity?.update) {
-      const ballBody = this.game.ballManager?.ball?.body || null;
-      this.currentHoleEntity.update(dt, ballBody);
-    }
-  }
+  // update(dt) is inherited from CoursesManager — it threads ballBody to currentHoleEntity
 }

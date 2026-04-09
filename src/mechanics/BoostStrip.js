@@ -14,8 +14,9 @@ import { registerMechanic } from './MechanicRegistry';
  *   color: number (optional) - Strip color (default 0x00ffaa)
  */
 class BoostStrip extends MechanicBase {
-  constructor(world, group, config, surfaceHeight) {
-    super(world, group, config, surfaceHeight);
+  constructor(world, group, config, surfaceHeight, theme) {
+    super(world, group, config, surfaceHeight, theme);
+    this.isForceField = true;
 
     const pos = config.position || new THREE.Vector3(0, 0, 0);
     const dir = config.direction || new THREE.Vector3(0, 0, -1);
@@ -24,7 +25,7 @@ class BoostStrip extends MechanicBase {
 
     const width = config.size?.width || 1.5;
     const length = config.size?.length || 3;
-    const color = config.color || 0x00ffaa;
+    const color = config.color || theme?.mechanics?.boostStrip?.color || 0x00ffaa;
 
     // Visual: glowing strip on the surface
     const geometry = new THREE.PlaneGeometry(width, length);
@@ -61,20 +62,34 @@ class BoostStrip extends MechanicBase {
     this.bodies.push(this.triggerBody);
 
     this.triggerPos = pos;
+    this.boostSoundCooldown = 0;
   }
 
-  update(_dt, ballBody) {
-    if (!ballBody || ballBody.sleepState === CANNON.Body.SLEEPING) {
+  update(dt, ballBody) {
+    if (this.boostSoundCooldown > 0) {
+      this.boostSoundCooldown -= dt;
+    }
+
+    if (!ballBody) {
       return;
     }
 
     // Check if ball is over the strip
     if (this.isBallInZone(ballBody, this.triggerBody, this.radius)) {
+      // Wake sleeping balls — a boost strip should push a resting ball
+      if (ballBody.sleepState === CANNON.Body.SLEEPING) {
+        ballBody.wakeUp();
+      }
       ballBody.applyForce(this.direction);
+
+      if (this.audioManager && this.boostSoundCooldown <= 0) {
+        this.audioManager.playSound('boost');
+        this.boostSoundCooldown = 0.3;
+      }
     }
   }
 }
 
-registerMechanic('boost_strip', (world, group, config, sh) => new BoostStrip(world, group, config, sh));
+registerMechanic('boost_strip', (world, group, config, sh, theme) => new BoostStrip(world, group, config, sh, theme));
 
 export { BoostStrip };

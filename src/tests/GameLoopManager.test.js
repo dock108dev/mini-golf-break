@@ -41,7 +41,6 @@ describe('GameLoopManager', () => {
       performanceManager: {
         beginFrame: jest.fn(),
         endFrame: jest.fn(),
-        startFrame: jest.fn(),
         startTimer: jest.fn(),
         endTimer: jest.fn()
       },
@@ -58,6 +57,9 @@ describe('GameLoopManager', () => {
         update: jest.fn()
       },
       visualEffectsManager: {
+        update: jest.fn()
+      },
+      spaceDecorations: {
         update: jest.fn()
       },
       debugManager: {
@@ -79,7 +81,7 @@ describe('GameLoopManager', () => {
       gameLoopManager = new GameLoopManager(mockGame);
 
       expect(gameLoopManager.game).toBe(mockGame);
-      expect(gameLoopManager.isLoopRunning).toBe(false);
+      expect(gameLoopManager.isRunning).toBe(false);
       expect(gameLoopManager.animationFrameId).toBe(null);
     });
   });
@@ -105,7 +107,7 @@ describe('GameLoopManager', () => {
     test('should start the game loop', () => {
       gameLoopManager.startLoop();
 
-      expect(gameLoopManager.isLoopRunning).toBe(true);
+      expect(gameLoopManager.isRunning).toBe(true);
       expect(global.requestAnimationFrame).toHaveBeenCalled();
     });
 
@@ -136,7 +138,7 @@ describe('GameLoopManager', () => {
       gameLoopManager.startLoop();
       gameLoopManager.stopLoop();
 
-      expect(gameLoopManager.isLoopRunning).toBe(false);
+      expect(gameLoopManager.isRunning).toBe(false);
       expect(global.cancelAnimationFrame).toHaveBeenCalledWith(1);
       expect(gameLoopManager.animationFrameId).toBe(null);
     });
@@ -165,14 +167,8 @@ describe('GameLoopManager', () => {
     test('should call performance manager frame methods', () => {
       animationFrameCallback();
 
-      // Updated to use the correct method names based on implementation
-      if (mockGame.performanceManager.startFrame) {
-        expect(mockGame.performanceManager.startFrame).toHaveBeenCalled();
-        expect(mockGame.performanceManager.endFrame).toHaveBeenCalled();
-      } else {
-        expect(mockGame.performanceManager.beginFrame).toHaveBeenCalled();
-        expect(mockGame.performanceManager.endFrame).toHaveBeenCalled();
-      }
+      expect(mockGame.performanceManager.beginFrame).toHaveBeenCalled();
+      expect(mockGame.performanceManager.endFrame).toHaveBeenCalled();
     });
 
     test('should update all managers in correct order', () => {
@@ -187,6 +183,12 @@ describe('GameLoopManager', () => {
       animationFrameCallback();
 
       expect(callOrder).toEqual(['physics', 'ball', 'hazard', 'camera', 'effects']);
+    });
+
+    test('should update space decorations', () => {
+      animationFrameCallback();
+
+      expect(mockGame.spaceDecorations.update).toHaveBeenCalled();
     });
 
     test('should render scene', () => {
@@ -227,6 +229,55 @@ describe('GameLoopManager', () => {
       animationFrameCallback();
 
       expect(global.requestAnimationFrame).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('dt clamping', () => {
+    beforeEach(() => {
+      gameLoopManager = new GameLoopManager(mockGame);
+      gameLoopManager.init();
+      gameLoopManager.startLoop();
+    });
+
+    test('should clamp dt to 1/30s after a long pause', () => {
+      // Simulate a 5-second tab switch by setting lastFrameTime far in the past
+      gameLoopManager.lastFrameTime = performance.now() - 5000;
+
+      animationFrameCallback();
+
+      // dt should be clamped to 1/30 (~0.0333), not 5.0
+      expect(gameLoopManager.deltaTime).toBeCloseTo(1 / 30, 4);
+    });
+
+    test('should not clamp dt during normal 60fps gameplay', () => {
+      // Simulate normal frame: ~16ms ago
+      const now = performance.now();
+      gameLoopManager.lastFrameTime = now - 16;
+
+      animationFrameCallback();
+
+      // dt should be approximately 0.016, not clamped
+      expect(gameLoopManager.deltaTime).toBeLessThanOrEqual(1 / 30);
+    });
+
+    test('should pass clamped dt to physics manager', () => {
+      gameLoopManager.lastFrameTime = performance.now() - 5000;
+
+      animationFrameCallback();
+
+      expect(mockGame.physicsManager.update).toHaveBeenCalledWith(
+        expect.closeTo(1 / 30, 4)
+      );
+    });
+
+    test('should pass clamped dt to camera controller', () => {
+      gameLoopManager.lastFrameTime = performance.now() - 5000;
+
+      animationFrameCallback();
+
+      expect(mockGame.cameraController.update).toHaveBeenCalledWith(
+        expect.closeTo(1 / 30, 4)
+      );
     });
   });
 

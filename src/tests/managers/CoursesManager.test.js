@@ -600,6 +600,61 @@ describe('CoursesManager', () => {
         coursesManager.update();
       }).not.toThrow();
     });
+
+    test('should retrieve ballBody from game.ballManager and pass to currentHoleEntity.update', () => {
+      const mockBallBody = { position: { x: 0, y: 0, z: 0 } };
+      const mockUpdate = jest.fn();
+      coursesManager.game = {
+        ballManager: {
+          ball: { body: mockBallBody }
+        }
+      };
+      coursesManager.currentHoleEntity = { update: mockUpdate };
+
+      coursesManager.update(0.016);
+
+      expect(mockUpdate).toHaveBeenCalledWith(0.016, mockBallBody, { dtWasClamped: false });
+    });
+
+    test('should pass null ballBody when ball is not available', () => {
+      const mockUpdate = jest.fn();
+      coursesManager.game = { ballManager: { ball: null } };
+      coursesManager.currentHoleEntity = { update: mockUpdate };
+
+      coursesManager.update(0.016);
+
+      expect(mockUpdate).toHaveBeenCalledWith(0.016, null, { dtWasClamped: false });
+    });
+
+    test('should pass null ballBody when ballManager is not available', () => {
+      const mockUpdate = jest.fn();
+      coursesManager.game = { ballManager: null };
+      coursesManager.currentHoleEntity = { update: mockUpdate };
+
+      coursesManager.update(0.016);
+
+      expect(mockUpdate).toHaveBeenCalledWith(0.016, null, { dtWasClamped: false });
+    });
+
+    test('should pass null ballBody when game is not available', () => {
+      const mockUpdate = jest.fn();
+      coursesManager.game = null;
+      coursesManager.currentHoleEntity = { update: mockUpdate };
+
+      coursesManager.update(0.016);
+
+      expect(mockUpdate).toHaveBeenCalledWith(0.016, null, { dtWasClamped: false });
+    });
+
+    test('should not throw when currentHoleEntity is null', () => {
+      coursesManager.currentHoleEntity = null;
+      expect(() => coursesManager.update(0.016)).not.toThrow();
+    });
+
+    test('should not call update when currentHoleEntity has no update method', () => {
+      coursesManager.currentHoleEntity = {};
+      expect(() => coursesManager.update(0.016)).not.toThrow();
+    });
   });
 
   describe('getCurrentHole', () => {

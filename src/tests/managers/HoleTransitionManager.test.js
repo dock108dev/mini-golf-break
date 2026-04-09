@@ -91,7 +91,9 @@ describe('HoleTransitionManager', () => {
       },
       uiManager: {
         updateHoleInfo: jest.fn(),
-        showMessage: jest.fn()
+        showMessage: jest.fn(),
+        showTransitionOverlay: jest.fn(),
+        hideTransitionOverlay: jest.fn()
       },
       holeCompletionManager: {
         resetGracePeriod: jest.fn()

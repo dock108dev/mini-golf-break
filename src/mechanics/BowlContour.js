@@ -14,15 +14,16 @@ import { registerMechanic } from './MechanicRegistry';
  *   color: number (optional) - Visual tint (default 0x887744)
  */
 class BowlContour extends MechanicBase {
-  constructor(world, group, config, surfaceHeight) {
-    super(world, group, config, surfaceHeight);
+  constructor(world, group, config, surfaceHeight, theme) {
+    super(world, group, config, surfaceHeight, theme);
+    this.isForceField = true;
 
     const pos = config.position || new THREE.Vector3(0, 0, 0);
     this.centerX = pos.x;
     this.centerZ = pos.z;
     this.radius = config.radius || 4;
     this.force = config.force || 3;
-    const color = config.color || 0x887744;
+    const color = config.color || theme?.mechanics?.bowlContour?.color || 0x887744;
 
     // Visual: subtle tinted disc showing the bowl area
     const geometry = new THREE.CircleGeometry(this.radius, 32);
@@ -63,6 +64,6 @@ class BowlContour extends MechanicBase {
   }
 }
 
-registerMechanic('bowl_contour', (world, group, config, sh) => new BowlContour(world, group, config, sh));
+registerMechanic('bowl_contour', (world, group, config, sh, theme) => new BowlContour(world, group, config, sh, theme));
 
 export { BowlContour };

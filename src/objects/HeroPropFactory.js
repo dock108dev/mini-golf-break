@@ -50,7 +50,7 @@ export function createHeroProp(group, propConfig) {
       meshes.push(...buildStationReactor(propGroup));
       break;
     default:
-      // Generic placeholder: glowing cylinder
+      console.warn(`[HeroPropFactory] Unknown prop type "${propConfig.type}", using generic placeholder`);
       meshes.push(...buildGenericProp(propGroup, propConfig));
       break;
   }

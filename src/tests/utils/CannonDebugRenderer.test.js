@@ -6,6 +6,11 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { CannonDebugRenderer } from '../../utils/CannonDebugRenderer';
 
+// Mock debug utility
+jest.mock('../../utils/debug', () => ({
+  debug: { log: jest.fn(), warn: jest.fn(), error: jest.fn() }
+}));
+
 // Mock Three.js
 jest.mock('three', () => ({
   MeshBasicMaterial: jest.fn(() => ({
@@ -213,7 +218,8 @@ describe('CannonDebugRenderer', () => {
       expect(mockParent.remove).toHaveBeenCalledWith(mockMesh2);
       expect(mockParent.remove).toHaveBeenCalledTimes(2);
       expect(debugRenderer._meshes).toHaveLength(0);
-      expect(console.log).toHaveBeenCalledWith('[CannonDebugRenderer] Cleared tracked meshes.');
+      const { debug } = require('../../utils/debug');
+      expect(debug.log).toHaveBeenCalledWith('[CannonDebugRenderer] Cleared tracked meshes.');
     });
 
     test('should handle empty meshes array', () => {
@@ -222,7 +228,8 @@ describe('CannonDebugRenderer', () => {
       debugRenderer.clearMeshes();
 
       expect(debugRenderer._meshes).toHaveLength(0);
-      expect(console.log).toHaveBeenCalledWith('[CannonDebugRenderer] Cleared tracked meshes.');
+      const { debug } = require('../../utils/debug');
+      expect(debug.log).toHaveBeenCalledWith('[CannonDebugRenderer] Cleared tracked meshes.');
     });
   });
 

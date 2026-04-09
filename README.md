@@ -1,6 +1,6 @@
 # Mini Golf Break
 
-A 3D mini-golf game built with [Three.js](https://threejs.org/) and [Cannon-es](https://pmndrs.github.io/cannon-es/). Nine space-themed holes. Click-and-drag to aim, release to shoot, get the ball in the hole.
+A 3D mini-golf game built with [Three.js](https://threejs.org/) and [Cannon-es](https://pmndrs.github.io/cannon-es/). Features the **Orbital Drift** course — 9 space-themed holes with moving obstacles, force fields, portals, timed hazards, and elevation changes. Click-and-drag to aim, release to shoot, get the ball in the hole.
 
 ## Quick Start
 
@@ -32,20 +32,26 @@ Press `d` during gameplay to toggle debug mode (physics wireframes, axes helpers
 | `npm run lint` | ESLint check |
 | `npm run quality` | Lint + format check + tests |
 
+## Courses
+
+The game currently ships with the **Orbital Drift** course (9 holes, par 24). The course is displayed on the start screen and begins when you click **Play**.
+
 ## Project Structure
 
 ```
 src/
-  config/         # Hole layouts, debug configuration
+  config/         # Hole layouts (orbitalDriftConfigs), debug configuration
   controls/       # InputController, CameraController, DeviceCapabilities
   events/         # EventManager, EventTypes
-  game/           # ScoringSystem
-  managers/       # BallManager, UIManager, StateManager, GameLoopManager, etc.
-  objects/        # Ball, HoleEntity, courses, hazards, GreenSurfaceBuilder
-  physics/        # PhysicsWorld, physics utilities
+  game/           # ScoringSystem, HighScoreManager
+  managers/       # BallManager, UIManager, StateManager, GameLoopManager, StuckBallManager, etc.
+  mechanics/      # MechanicBase, MechanicRegistry, 12 mechanic types
+  objects/        # Ball, HoleEntity, OrbitalDriftCourse, hazards, GreenSurfaceBuilder
+  physics/        # PhysicsWorld
   scenes/         # Game (main coordinator)
   states/         # GameState enum
-  utils/          # Debug logging, styles
+  themes/         # Theme definitions (defaultTheme, spaceTheme)
+  utils/          # Debug logging, holeValidator, WebGL detection
 public/           # Static assets (index.html, CSS, logo)
 tests/uat/        # Playwright end-to-end tests
 ```
@@ -60,9 +66,9 @@ Deploy the `dist/` folder to any static host. Vercel configuration is included (
 
 ## Documentation
 
-- [Architecture & Game Loop](docs/architecture.md)
-- [Development Guide](docs/development.md)
+- [Architecture](docs/architecture.md) -- system design, game loop, managers, mechanics
+- [Development Guide](docs/development.md) -- setup, testing, debugging, build, deployment
 
 ## License
 
-Open source.
+ISC

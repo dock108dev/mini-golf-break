@@ -16,8 +16,8 @@ import { registerMechanic } from './MechanicRegistry';
  *   color: number (optional) - Active hazard color
  */
 class TimedHazard extends MechanicBase {
-  constructor(world, group, config, surfaceHeight) {
-    super(world, group, config, surfaceHeight);
+  constructor(world, group, config, surfaceHeight, theme) {
+    super(world, group, config, surfaceHeight, theme);
 
     const pos = config.position || new THREE.Vector3(0, 0, 0);
     this.posX = pos.x;
@@ -33,7 +33,11 @@ class TimedHazard extends MechanicBase {
     this.halfWidth = width / 2;
     this.halfLength = length / 2;
 
-    const activeColor = config.color || (this.hazardType === 'water' ? 0xff4400 : 0xffaa00);
+    const themeHazardColors = theme?.mechanics?.timedHazard;
+    const defaultColor = this.hazardType === 'water'
+      ? (themeHazardColors?.waterColor || 0xff4400)
+      : (themeHazardColors?.sandColor || 0xffaa00);
+    const activeColor = config.color || defaultColor;
 
     // Visual mesh (shown/hidden based on timer)
     const geometry = new THREE.PlaneGeometry(width, length);
@@ -51,6 +55,12 @@ class TimedHazard extends MechanicBase {
     this.mesh.visible = false;
     group.add(this.mesh);
     this.meshes.push(this.mesh);
+  }
+
+  onDtSpike() {
+    this.timer = 0;
+    this.isActive = false;
+    this.mesh.visible = false;
   }
 
   update(dt, ballBody) {
@@ -81,6 +91,6 @@ class TimedHazard extends MechanicBase {
   }
 }
 
-registerMechanic('timed_hazard', (world, group, config, sh) => new TimedHazard(world, group, config, sh));
+registerMechanic('timed_hazard', (world, group, config, sh, theme) => new TimedHazard(world, group, config, sh, theme));
 
 export { TimedHazard };

@@ -4,7 +4,6 @@ import { DebugErrorOverlay } from './debug/DebugErrorOverlay';
 import { DebugCourseUI } from './debug/DebugCourseUI';
 import { DEBUG_CONFIG, ERROR_LEVELS } from '../config/debugConfig';
 
-// Re-export for backward compatibility
 export { DEBUG_CONFIG, ERROR_LEVELS };
 
 /** Handles debug functionality, visualizations, and logging. */
@@ -29,9 +28,11 @@ export class DebugManager {
       previousCourseType: null,
       courseOverrideActive: false
     };
+    this.forceFieldsVisible = true;
     this.errorOverlay = null;
     this.courseDebugUI = null;
     this.boundHandleMainKey = this.handleMainDebugKey.bind(this);
+    this.boundHandleForceFieldKey = this.handleForceFieldKey.bind(this);
   }
 
   init() {
@@ -51,16 +52,44 @@ export class DebugManager {
   addMainKeyListener() {
     if (process.env.NODE_ENV !== 'production' || DEBUG_CONFIG.enabled) {
       window.addEventListener('keydown', this.boundHandleMainKey);
+      window.addEventListener('keydown', this.boundHandleForceFieldKey);
       debug.log("[DebugManager] Debug mode available - press '" + DEBUG_CONFIG.enableKey + "' to toggle");
     }
   }
 
   removeMainKeyListener() {
     window.removeEventListener('keydown', this.boundHandleMainKey);
+    window.removeEventListener('keydown', this.boundHandleForceFieldKey);
   }
 
   handleMainDebugKey(e) {
     if (e.key === DEBUG_CONFIG.enableKey) {this.toggleDebugMode();}
+  }
+
+  handleForceFieldKey(e) {
+    if (e.key === DEBUG_CONFIG.forceFieldToggleKey) {this.toggleForceFieldVisibility();}
+  }
+
+  toggleForceFieldVisibility() {
+    this.forceFieldsVisible = !this.forceFieldsVisible;
+    debug.log('Force field visibility:', this.forceFieldsVisible ? 'ON' : 'OFF');
+    this.applyForceFieldVisibility();
+    if (this.enabled) {
+      this.game.uiManager?.updateDebugDisplay(this.getDebugInfo());
+    }
+    return this;
+  }
+
+  applyForceFieldVisibility() {
+    const course = this.game?.course;
+    if (!course) {return;}
+    const holeEntity = course.currentHoleEntity;
+    if (!holeEntity?.mechanics) {return;}
+    for (const mechanic of holeEntity.mechanics) {
+      if (mechanic.isForceField) {
+        mechanic.setMeshVisibility(this.forceFieldsVisible);
+      }
+    }
   }
 
   toggleDebugMode() {
@@ -175,7 +204,8 @@ export class DebugManager {
     if (!this.enabled) {return {};}
     const info = {
       FPS: Math.round(1 / this.game.deltaTime),
-      'Debug Mode': 'ON'
+      'Debug Mode': 'ON',
+      'Force Fields': this.forceFieldsVisible ? 'Visible' : 'Hidden'
     };
     const errorStats = this.getErrorStats();
     if (errorStats.totalErrors > 0 || errorStats.totalWarnings > 0) {
@@ -200,15 +230,11 @@ export class DebugManager {
     this.debugObjects = [];
     this.velocityHistory = [];
     this.errorHistory.clear();
+    this.forceFieldsVisible = true;
     this.errorOverlay = null;
     this.courseDebugUI = null;
     debug.log('[DebugManager] Cleanup finished.');
     return this;
-  }
-
-  toggleCourseType() {
-    // Only one course type available (OrbitalDriftCourse)
-    debug.log('[DebugManager] Only OrbitalDriftCourse available');
   }
 
   promptForHoleNumber() {

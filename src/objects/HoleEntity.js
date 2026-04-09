@@ -6,6 +6,7 @@ import { buildGreenSurface } from './GreenSurfaceBuilder';
 import { createHazard } from './hazards/HazardFactory';
 import { createMechanic } from '../mechanics/MechanicRegistry';
 import { createHeroProp } from './HeroPropFactory';
+import { defaultTheme } from '../themes/defaultTheme';
 // Trigger mechanic self-registration
 import '../mechanics/index';
 
@@ -85,6 +86,17 @@ export class HoleEntity extends BaseElement {
           config.holePosition?.y || 0,
           config.holePosition?.z || 0
         );
+
+    // Resolve theme: use config.theme if provided, fall back to defaultTheme
+    this.resolvedTheme = { ...defaultTheme, ...(config.theme || {}) };
+    // Merge nested theme keys so partial overrides work
+    for (const key of Object.keys(defaultTheme)) {
+      if (typeof defaultTheme[key] === 'object' && defaultTheme[key] !== null) {
+        this.resolvedTheme[key] = { ...defaultTheme[key], ...(config.theme?.[key] || {}) };
+      }
+    }
+    // Store resolved theme on config for builders that read config.theme
+    this.config = { ...this.config, theme: this.resolvedTheme };
 
     debug.log(`[HoleEntity] Created for hole index ${config.index + 1}. Group at (0,0,0).`);
     debug.log(
@@ -336,7 +348,9 @@ export class HoleEntity extends BaseElement {
           this.world,
           this.group, // Pass group (at 0,0,0) - Factory might ignore this for positioning now
           factoryConfig,
-          this.visualGreenY // Pass surface height relative to 0
+          this.visualGreenY, // Pass surface height relative to 0
+          undefined, // courseBounds
+          this.resolvedTheme // Pass theme for hazard colors
         );
         this.meshes.push(...meshes); // Track meshes created by factory
         this.bodies.push(...bodies); // Track bodies created by factory
@@ -448,17 +462,21 @@ export class HoleEntity extends BaseElement {
           this.world,
           this.group,
           mechConfig,
-          this.surfaceHeight
+          this.surfaceHeight,
+          this.resolvedTheme
         );
         if (mechanic) {
+          mechanic.audioManager = this.audioManager || null;
           this.mechanics.push(mechanic);
           // Track mechanic's resources for cleanup
           this.meshes.push(...mechanic.getMeshes?.() || mechanic.meshes || []);
           this.bodies.push(...mechanic.getBodies?.() || mechanic.bodies || []);
           debug.log(`[HoleEntity] Created mechanic: ${mechConfig.type}`);
+        } else {
+          console.error(`[HoleEntity] Hole ${this.config.index}: unknown mechanic type "${mechConfig.type}"`);
         }
       } catch (error) {
-        console.error(`[HoleEntity] Failed to create mechanic "${mechConfig.type}":`, error);
+        console.error(`[HoleEntity] Hole ${this.config.index}: failed to create mechanic "${mechConfig.type}":`, error);
       }
     }
   }
@@ -481,15 +499,70 @@ export class HoleEntity extends BaseElement {
 
   /**
    * Update all mechanics each frame.
+   * Failed mechanics are caught, logged, and disabled for the rest of the hole.
    * @param {number} dt - Delta time in seconds
    * @param {CANNON.Body|null} ballBody - The ball's physics body
+   * @param {object} [options] - Optional flags
+   * @param {boolean} [options.dtWasClamped] - True if dt was clamped due to a spike
    */
-  update(dt, ballBody) {
+  update(dt, ballBody, options) {
     if (!this.mechanics) {
       return;
     }
+    const dtWasClamped = options?.dtWasClamped || false;
     for (const mechanic of this.mechanics) {
-      mechanic.update(dt, ballBody);
+      if (mechanic._failed) {
+        continue;
+      }
+      try {
+        if (dtWasClamped && typeof mechanic.onDtSpike === 'function') {
+          mechanic.onDtSpike();
+        }
+        mechanic.update(dt, ballBody);
+      } catch (error) {
+        mechanic._failed = true;
+        const mechanicType = mechanic.config?.type || 'unknown';
+        console.error(
+          `[HoleEntity] Hole ${this.config.index}: mechanic "${mechanicType}" update failed, disabling for this hole`,
+          error
+        );
+        this._showFailedMechanicIndicator(mechanic);
+      }
+    }
+  }
+
+  /**
+   * In debug mode, show a visual indicator for a failed mechanic.
+   * @param {object} mechanic - The failed mechanic instance
+   */
+  _showFailedMechanicIndicator(mechanic) {
+    try {
+      // Determine position from mechanic's first mesh or config
+      const pos = mechanic.meshes?.[0]?.position ||
+        mechanic.config?.position ||
+        mechanic.config?.pivot ||
+        { x: 0, y: this.surfaceHeight + 1, z: 0 };
+
+      const geometry = new THREE.SphereGeometry(0.3, 8, 8);
+      const material = new THREE.MeshBasicMaterial({
+        color: 0xff0000,
+        transparent: true,
+        opacity: 0.7,
+        wireframe: true
+      });
+      const indicator = new THREE.Mesh(geometry, material);
+      indicator.position.set(
+        pos.x || 0,
+        (pos.y || this.surfaceHeight) + 1.5,
+        pos.z || 0
+      );
+      indicator.name = `failed_mechanic_${mechanic.config?.type || 'unknown'}`;
+      indicator._isDebugIndicator = true;
+      this.group.add(indicator);
+      this.meshes.push(indicator);
+      mechanic._failedIndicator = indicator;
+    } catch (_e) {
+      // Don't let indicator creation break anything
     }
   }
 

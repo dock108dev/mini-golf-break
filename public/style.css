@@ -3,12 +3,81 @@ body {
     overflow: hidden;
     background: #000;
     font-family: Arial, sans-serif;
+    overscroll-behavior: none;
 }
 
 #game-container {
     width: 100vw;
     height: 100vh;
     position: relative;
+    touch-action: none;
+}
+
+#game-container canvas {
+    touch-action: none;
+}
+
+/* Loading screen - visible immediately, no JS dependency */
+#loading-screen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #000;
+    z-index: 9999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+#loading-screen.hidden {
+    display: none;
+}
+
+.loading-content {
+    text-align: center;
+    color: white;
+}
+
+.loading-spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(255, 255, 255, 0.2);
+    border-top-color: #61dafb;
+    border-radius: 50%;
+    animation: loading-spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+}
+
+@keyframes loading-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-text {
+    font-size: 1.2em;
+    margin: 0;
+    opacity: 0.8;
+}
+
+.loading-error {
+    color: #ff6b6b;
+    font-size: 1.1em;
+    margin: 0;
+    max-width: 300px;
+}
+
+@media (max-width: 768px) {
+    .loading-spinner {
+        width: 36px;
+        height: 36px;
+    }
+
+    .loading-text {
+        font-size: 1em;
+    }
 }
 
 /* Menu styles */
@@ -219,6 +288,32 @@ body {
     font-size: 1.1em;
 }
 
+.scorecard-table th {
+    padding: 8px 12px;
+    border-bottom: 2px solid #555;
+    text-align: center;
+}
+
+.scorecard-table th:first-child {
+    text-align: left;
+}
+
+.scorecard-table td {
+    text-align: center;
+}
+
+.score-under-par {
+    color: #4caf50;
+}
+
+.score-over-par {
+    color: #f44336;
+}
+
+.score-even-par {
+    color: #aaaaaa;
+}
+
 .scorecard-button {
     background-color: #61dafb; /* Light blue button */
     color: #282c34; /* Dark text */
@@ -238,6 +333,24 @@ body {
 
 .scorecard-button:active {
     transform: translateY(0px);
+}
+
+.scorecard-best-score {
+    margin-bottom: 15px;
+    font-size: 1.1em;
+    color: #aaaaaa;
+}
+
+.new-best-indicator {
+    color: #ffd700;
+    font-weight: bold;
+    font-size: 1.3em;
+}
+
+.menu-best-score {
+    color: #61dafb;
+    font-size: 0.95em;
+    margin-top: 4px;
 }
 
 /* Top-right score container */
@@ -280,6 +393,409 @@ body {
         padding: 5px 10px;
         min-width: 100px;
         font-size: 13px;
+    }
+}
+
+/* Course info section on start screen */
+.course-info {
+    margin-bottom: 15px;
+}
+
+.course-title {
+    margin: 0 0 5px 0;
+    font-size: 2.4em;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+    letter-spacing: 2px;
+}
+
+.course-details {
+    margin: 0;
+    font-size: 1.1em;
+    opacity: 0.9;
+}
+
+/* Course name badge during gameplay */
+.course-name-box {
+    background-color: rgba(0, 0, 0, 0.7);
+    color: #61dafb;
+    padding: 6px 12px;
+    margin-bottom: 3px;
+    border-radius: 5px;
+    font-weight: bold;
+    min-width: 120px;
+    text-align: right;
+    font-size: 14px;
+}
+
+@media (max-width: 768px) {
+    .course-title {
+        font-size: 1.8em;
+    }
+
+    .course-details {
+        font-size: 1em;
+    }
+
+    .course-name-box {
+        padding: 5px 10px;
+        min-width: 100px;
+        font-size: 13px;
+    }
+}
+
+/* Hole transition loading overlay */
+.transition-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+    z-index: 999;
+}
+
+.transition-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.3s ease;
+}
+
+.transition-spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #61dafb;
+    border-radius: 50%;
+    animation: transition-spin 0.8s linear infinite;
+}
+
+@keyframes transition-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Pause overlay */
+.pause-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+    z-index: 1000;
+}
+
+.pause-overlay.visible {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: opacity 0.3s ease;
+}
+
+.pause-content {
+    text-align: center;
+}
+
+.pause-title {
+    color: #ffffff;
+    font-size: 3em;
+    margin: 0 0 30px 0;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.pause-resume-button {
+    background-color: #61dafb;
+    color: #282c34;
+    border: none;
+    padding: 12px 30px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1.2em;
+    font-weight: bold;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.pause-resume-button:hover {
+    background-color: #7ad7f7;
+    transform: translateY(-1px);
+}
+
+.pause-resume-button:active {
+    transform: translateY(0px);
+}
+
+/* Stuck ball reset button */
+.stuck-reset-button {
+    display: none;
+    position: absolute;
+    bottom: calc(80px + env(safe-area-inset-bottom));
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #ff6b6b;
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1.1em;
+    font-weight: bold;
+    z-index: 20;
+    pointer-events: auto;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+.stuck-reset-button.visible {
+    display: block;
+}
+
+.stuck-reset-button:hover {
+    background-color: #ff8787;
+    transform: translateX(-50%) translateY(-1px);
+}
+
+.stuck-reset-button:active {
+    transform: translateX(-50%) translateY(0px);
+}
+
+@media (max-width: 768px) {
+    .stuck-reset-button {
+        bottom: calc(60px + env(safe-area-inset-bottom));
+        padding: 14px 28px;
+        font-size: 1em;
+    }
+}
+
+/* Mobile pause button */
+.pause-button {
+    position: absolute;
+    top: calc(20px + env(safe-area-inset-top));
+    left: calc(20px + env(safe-area-inset-left));
+    width: 44px;
+    height: 44px;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    transition: background-color 0.2s ease;
+}
+
+.pause-button:hover {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+@media (max-width: 768px) {
+    .pause-button {
+        top: calc(10px + env(safe-area-inset-top));
+        left: calc(10px + env(safe-area-inset-left));
+    }
+}
+
+/* Audio mute/unmute toggle button */
+.mute-button {
+    position: absolute;
+    top: calc(20px + env(safe-area-inset-top));
+    left: calc(74px + env(safe-area-inset-left));
+    width: 44px;
+    height: 44px;
+    background-color: rgba(0, 0, 0, 0.5);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 20px;
+    cursor: pointer;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: auto;
+    transition: background-color 0.2s ease;
+}
+
+.mute-button:hover {
+    background-color: rgba(0, 0, 0, 0.7);
+}
+
+.mute-button:focus-visible {
+    outline: 2px solid #61dafb;
+    outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+    .mute-button {
+        top: calc(10px + env(safe-area-inset-top));
+        left: calc(60px + env(safe-area-inset-left));
+    }
+}
+
+/* Controls help overlay */
+.controls-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 2000;
+}
+
+.controls-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.controls-content {
+    background-color: #282c34;
+    color: #ffffff;
+    padding: 30px;
+    border-radius: 10px;
+    text-align: left;
+    width: 85%;
+    max-width: 480px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.controls-title {
+    margin: 0 0 20px 0;
+    font-size: 1.8em;
+    color: #61dafb;
+    text-align: center;
+}
+
+.controls-section {
+    margin-bottom: 16px;
+}
+
+.controls-section h3 {
+    margin: 0 0 8px 0;
+    font-size: 1.1em;
+    color: #61dafb;
+}
+
+.controls-section ul {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.controls-section li {
+    margin-bottom: 4px;
+    line-height: 1.4;
+}
+
+.controls-section kbd {
+    background: rgba(255, 255, 255, 0.15);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: monospace;
+    font-size: 0.95em;
+}
+
+.controls-close-button {
+    display: block;
+    margin: 20px auto 0;
+    background-color: #61dafb;
+    color: #282c34;
+    border: none;
+    padding: 10px 30px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1.1em;
+    font-weight: bold;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.controls-close-button:hover {
+    background-color: #7ad7f7;
+    transform: translateY(-1px);
+}
+
+.controls-close-button:active {
+    transform: translateY(0px);
+}
+
+/* How to Play button on start menu */
+.how-to-play-button {
+    background: transparent;
+    color: #61dafb;
+    border: 1px solid #61dafb;
+    padding: 8px 20px;
+    font-size: 1em;
+    border-radius: 5px;
+    cursor: pointer;
+    margin: 10px auto;
+    display: block;
+    transition: background 0.2s, transform 0.2s;
+}
+
+.how-to-play-button:hover {
+    background: rgba(97, 218, 251, 0.15);
+    transform: scale(1.05);
+}
+
+/* How to Play button in pause menu */
+.pause-how-to-play-button {
+    background: transparent;
+    color: #61dafb;
+    border: 1px solid #61dafb;
+    padding: 8px 24px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    margin-top: 12px;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.pause-how-to-play-button:hover {
+    background: rgba(97, 218, 251, 0.15);
+    transform: translateY(-1px);
+}
+
+.pause-how-to-play-button:active {
+    transform: translateY(0px);
+}
+
+@media (max-width: 768px) {
+    .controls-content {
+        padding: 20px;
+        width: 90%;
+    }
+
+    .controls-title {
+        font-size: 1.5em;
+    }
+
+    .controls-section h3 {
+        font-size: 1em;
     }
 }
 

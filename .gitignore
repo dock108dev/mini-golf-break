@@ -102,3 +102,6 @@ docs/.docusaurus/
 *.swo
 *~
 TASK_LIST.ignore.md
+
+# AIDLC working directory
+.aidlc

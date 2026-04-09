@@ -18,18 +18,20 @@ import { registerMechanic } from './MechanicRegistry';
  * Uses a KINEMATIC body so Cannon-es handles ball collisions automatically.
  */
 class MovingSweeper extends MechanicBase {
-  constructor(world, group, config, surfaceHeight) {
-    super(world, group, config, surfaceHeight);
+  constructor(world, group, config, surfaceHeight, theme) {
+    super(world, group, config, surfaceHeight, theme);
 
     this.pivot = config.pivot || new THREE.Vector3(0, 0, 0);
     this.armLength = config.armLength || 3;
     this.speed = config.speed || 1.5;
-    this.angle = config.phase || 0;
+    this.initialAngle = config.phase || 0;
+    this.elapsedTime = 0;
+    this.angle = this.initialAngle;
 
     const armWidth = config.size?.width || this.armLength;
     const armHeight = config.size?.height || 0.4;
     const armDepth = config.size?.depth || 0.3;
-    const color = config.color || 0xff4444;
+    const color = config.color || theme?.mechanics?.movingSweeper?.color || 0xff4444;
 
     // Visual mesh
     const geometry = new THREE.BoxGeometry(armWidth, armHeight, armDepth);
@@ -59,20 +61,34 @@ class MovingSweeper extends MechanicBase {
     this.body.addShape(new CANNON.Box(halfExtents));
     this.body.position.set(this.pivot.x, armY, this.pivot.z);
     this.body.userData = { type: 'moving_sweeper' };
+    this.body.addEventListener('collide', (event) => {
+      if (this.audioManager) {
+        this.audioManager.playSound('sweeperHit');
+      }
+    });
     world.addBody(this.body);
     this.bodies.push(this.body);
 
     // Pivot post visual (cylinder at pivot point)
     const postGeometry = new THREE.CylinderGeometry(0.15, 0.15, armHeight + 0.2, 8);
-    const postMaterial = new THREE.MeshStandardMaterial({ color: 0x888888, metalness: 0.7 });
+    const postColor = theme?.mechanics?.movingSweeper?.postColor || 0x888888;
+    const postMaterial = new THREE.MeshStandardMaterial({ color: postColor, metalness: 0.7 });
     const post = new THREE.Mesh(postGeometry, postMaterial);
     post.position.set(this.pivot.x, armY, this.pivot.z);
     group.add(post);
     this.meshes.push(post);
   }
 
+  onDtSpike() {
+    // Recalculate elapsedTime from current angle to maintain position continuity.
+    // On the next update(), the angle will be recomputed from elapsedTime,
+    // advancing smoothly from wherever the sweeper currently is.
+    this.elapsedTime = (this.angle - this.initialAngle) / this.speed;
+  }
+
   update(dt, _ballBody) {
-    this.angle += this.speed * dt;
+    this.elapsedTime += dt;
+    this.angle = this.initialAngle + this.speed * this.elapsedTime;
 
     // Calculate arm center position (offset from pivot by half arm length)
     const halfLength = this.armLength / 2;
@@ -92,6 +108,6 @@ class MovingSweeper extends MechanicBase {
   }
 }
 
-registerMechanic('moving_sweeper', (world, group, config, sh) => new MovingSweeper(world, group, config, sh));
+registerMechanic('moving_sweeper', (world, group, config, sh, theme) => new MovingSweeper(world, group, config, sh, theme));
 
 export { MovingSweeper };

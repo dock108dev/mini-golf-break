@@ -64,6 +64,7 @@ describe('UIManager', () => {
       appendChild: jest.fn(),
       querySelector: jest.fn(),
       addEventListener: jest.fn(),
+      setAttribute: jest.fn(),
       style: {},
       remove: jest.fn(),
       removeChild: jest.fn(),
@@ -85,6 +86,12 @@ describe('UIManager', () => {
       debugManager: {
         error: jest.fn(),
         warn: jest.fn()
+      },
+      audioManager: {
+        isMuted: false,
+        toggleMute: jest.fn(),
+        mute: jest.fn(),
+        unmute: jest.fn()
       }
     };
 
@@ -128,6 +135,7 @@ describe('UIManager', () => {
       expect(uiManager.messageTimeout).toBeNull();
       expect(uiManager.messageElement).toBeNull();
       expect(uiManager.powerIndicator).toBeNull();
+      expect(uiManager.transitionOverlay).toBeNull();
       expect(uiManager.eventSubscriptions).toEqual([]);
     });
   });
@@ -413,6 +421,50 @@ describe('UIManager', () => {
     });
   });
 
+  describe('UI_REQUEST_RESTART_GAME handler', () => {
+    let subscribedHandlers;
+
+    beforeEach(() => {
+      subscribedHandlers = {};
+      mockGame.eventManager.subscribe = jest.fn((eventType, handler) => {
+        subscribedHandlers[eventType] = handler;
+        return jest.fn();
+      });
+      uiManager = new UIManager(mockGame);
+      uiManager.init();
+    });
+
+    afterEach(() => {
+      delete window.App;
+    });
+
+    test('should call window.App.returnToMenu when available', () => {
+      const mockReturnToMenu = jest.fn();
+      window.App = { returnToMenu: mockReturnToMenu };
+
+      const restartHandler = subscribedHandlers['UI_REQUEST_RESTART_GAME'];
+      expect(restartHandler).toBeDefined();
+
+      restartHandler();
+
+      expect(mockReturnToMenu).toHaveBeenCalled();
+    });
+
+    test('should fallback to window.location.reload when App is not available', () => {
+      const mockReload = jest.fn();
+      Object.defineProperty(window, 'location', {
+        value: { reload: mockReload },
+        writable: true,
+        configurable: true
+      });
+
+      const restartHandler = subscribedHandlers['UI_REQUEST_RESTART_GAME'];
+      restartHandler();
+
+      expect(mockReload).toHaveBeenCalled();
+    });
+  });
+
   describe('attachRenderer', () => {
     beforeEach(() => {
       uiManager = new UIManager(mockGame);
@@ -420,7 +472,7 @@ describe('UIManager', () => {
 
     test('should store renderer reference when valid', () => {
       const mockRenderer = {
-        domElement: { parentNode: null }
+        domElement: { parentNode: null, setAttribute: jest.fn() }
       };
 
       uiManager.attachRenderer(mockRenderer);
@@ -542,6 +594,61 @@ describe('UIManager', () => {
     });
   });
 
+  describe('transition overlay', () => {
+    beforeEach(() => {
+      uiManager = new UIManager(mockGame);
+      uiManager.createMainContainer();
+    });
+
+    describe('createTransitionOverlay', () => {
+      test('should create and set transitionOverlay property', () => {
+        uiManager.createTransitionOverlay();
+
+        expect(uiManager.transitionOverlay).toBeTruthy();
+        expect(document.createElement).toHaveBeenCalledWith('div');
+        expect(document.body.appendChild).toHaveBeenCalledWith(uiManager.transitionOverlay);
+      });
+    });
+
+    describe('showTransitionOverlay', () => {
+      test('should add visible class to overlay', () => {
+        uiManager.createTransitionOverlay();
+        const addSpy = jest.spyOn(uiManager.transitionOverlay.classList, 'add');
+
+        uiManager.showTransitionOverlay();
+
+        expect(addSpy).toHaveBeenCalledWith('visible');
+      });
+
+      test('should handle missing overlay gracefully', () => {
+        uiManager.transitionOverlay = null;
+
+        expect(() => {
+          uiManager.showTransitionOverlay();
+        }).not.toThrow();
+      });
+    });
+
+    describe('hideTransitionOverlay', () => {
+      test('should remove visible class from overlay', () => {
+        uiManager.createTransitionOverlay();
+        const removeSpy = jest.spyOn(uiManager.transitionOverlay.classList, 'remove');
+
+        uiManager.hideTransitionOverlay();
+
+        expect(removeSpy).toHaveBeenCalledWith('visible');
+      });
+
+      test('should handle missing overlay gracefully', () => {
+        uiManager.transitionOverlay = null;
+
+        expect(() => {
+          uiManager.hideTransitionOverlay();
+        }).not.toThrow();
+      });
+    });
+  });
+
   describe('delegated methods', () => {
     beforeEach(() => {
       uiManager = new UIManager(mockGame);
@@ -607,6 +714,7 @@ describe('UIManager', () => {
       // Check properties are reset
       expect(uiManager.messageElement).toBeNull();
       expect(uiManager.powerIndicator).toBeNull();
+      expect(uiManager.transitionOverlay).toBeNull();
       expect(uiManager.uiContainer).toBeNull();
       expect(uiManager.messageTimeout).toBeNull();
     });
@@ -638,6 +746,197 @@ describe('UIManager', () => {
     });
   });
 
+  describe('pause overlay accessibility', () => {
+    beforeEach(() => {
+      uiManager = new UIManager(mockGame);
+      uiManager.init();
+    });
+
+    test('should set role and aria-label on pause overlay', () => {
+      expect(uiManager.pauseOverlay.setAttribute).toHaveBeenCalledWith('role', 'alertdialog');
+      expect(uiManager.pauseOverlay.setAttribute).toHaveBeenCalledWith(
+        'aria-label',
+        'Game paused'
+      );
+    });
+
+    test('should store resumeButton reference', () => {
+      expect(uiManager.resumeButton).toBeTruthy();
+    });
+
+    test('should focus resume button when showing pause overlay', () => {
+      // Create a mock with focus method
+      uiManager.resumeButton = { focus: jest.fn() };
+
+      uiManager.showPauseOverlay();
+
+      expect(uiManager.resumeButton.focus).toHaveBeenCalled();
+    });
+
+    test('should add keydown listener for focus trapping on pause overlay', () => {
+      expect(uiManager.pauseOverlay.addEventListener).toHaveBeenCalledWith(
+        'keydown',
+        expect.any(Function)
+      );
+    });
+
+    test('should clean up resumeButton on cleanup', () => {
+      uiManager.cleanup();
+
+      expect(uiManager.resumeButton).toBeNull();
+    });
+  });
+
+  describe('_trapFocus', () => {
+    beforeEach(() => {
+      uiManager = new UIManager(mockGame);
+    });
+
+    test('should not prevent default for non-Tab keys', () => {
+      const event = { key: 'Enter', preventDefault: jest.fn() };
+      const container = { querySelectorAll: jest.fn() };
+
+      uiManager._trapFocus(event, container);
+
+      expect(container.querySelectorAll).not.toHaveBeenCalled();
+      expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+
+    test('should handle container with no focusable elements', () => {
+      const event = { key: 'Tab', shiftKey: false, preventDefault: jest.fn() };
+      const container = { querySelectorAll: jest.fn(() => []) };
+
+      uiManager._trapFocus(event, container);
+
+      expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+
+    test('should wrap focus from last to first element on Tab', () => {
+      const btn1 = { focus: jest.fn() };
+      const btn2 = { focus: jest.fn() };
+      const event = { key: 'Tab', shiftKey: false, preventDefault: jest.fn() };
+      const container = { querySelectorAll: jest.fn(() => [btn1, btn2]) };
+
+      // Simulate activeElement being the last focusable
+      Object.defineProperty(document, 'activeElement', { value: btn2, configurable: true });
+
+      uiManager._trapFocus(event, container);
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(btn1.focus).toHaveBeenCalled();
+    });
+
+    test('should wrap focus from first to last element on Shift+Tab', () => {
+      const btn1 = { focus: jest.fn() };
+      const btn2 = { focus: jest.fn() };
+      const event = { key: 'Tab', shiftKey: true, preventDefault: jest.fn() };
+      const container = { querySelectorAll: jest.fn(() => [btn1, btn2]) };
+
+      Object.defineProperty(document, 'activeElement', { value: btn1, configurable: true });
+
+      uiManager._trapFocus(event, container);
+
+      expect(event.preventDefault).toHaveBeenCalled();
+      expect(btn2.focus).toHaveBeenCalled();
+    });
+
+    test('should not interfere when focus is in the middle of elements', () => {
+      const btn1 = { focus: jest.fn() };
+      const btn2 = { focus: jest.fn() };
+      const btn3 = { focus: jest.fn() };
+      const event = { key: 'Tab', shiftKey: false, preventDefault: jest.fn() };
+      const container = { querySelectorAll: jest.fn(() => [btn1, btn2, btn3]) };
+
+      Object.defineProperty(document, 'activeElement', { value: btn2, configurable: true });
+
+      uiManager._trapFocus(event, container);
+
+      expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('pause overlay How to Play button', () => {
+    beforeEach(() => {
+      uiManager = new UIManager(mockGame);
+      uiManager.init();
+    });
+
+    test('should create How to Play button in pause overlay', () => {
+      // The pause overlay content should have appendChild called for the how-to-play button
+      // Verify createElement was called for the button element
+      expect(document.createElement).toHaveBeenCalledWith('button');
+    });
+
+    test('should set aria-label on How to Play button', () => {
+      // During createPauseOverlay, a button with setAttribute('aria-label', 'How to Play') is created
+      // We verify through the mock calls
+      const setAttributeCalls = document.createElement.mock.results
+        .map(r => r.value)
+        .filter(el => el.setAttribute.mock && el.setAttribute.mock.calls.some(
+          call => call[0] === 'aria-label' && call[1] === 'How to Play'
+        ));
+      expect(setAttributeCalls.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('mute button', () => {
+    beforeEach(() => {
+      uiManager = new UIManager(mockGame);
+      uiManager.init();
+    });
+
+    test('should create mute button during init', () => {
+      expect(uiManager.muteButton).toBeTruthy();
+    });
+
+    test('should set aria-label on mute button', () => {
+      expect(uiManager.muteButton.setAttribute).toHaveBeenCalledWith('aria-label', 'Toggle audio');
+    });
+
+    test('should show speaker icon when audio is not muted', () => {
+      expect(uiManager.muteButton.textContent).toBe('\uD83D\uDD0A');
+    });
+
+    test('should show muted icon when audio is muted', () => {
+      mockGame.audioManager.isMuted = true;
+
+      // Re-create to pick up muted state
+      uiManager.cleanup();
+      uiManager = new UIManager(mockGame);
+      uiManager.init();
+
+      expect(uiManager.muteButton.textContent).toBe('\uD83D\uDD07');
+    });
+
+    test('should toggle audio on click via _handleMuteToggle', () => {
+      uiManager._handleMuteToggle();
+
+      expect(mockGame.audioManager.toggleMute).toHaveBeenCalled();
+    });
+
+    test('should handle missing audioManager gracefully', () => {
+      mockGame.audioManager = null;
+
+      expect(() => {
+        uiManager._handleMuteToggle();
+      }).not.toThrow();
+    });
+
+    test('should update icon after toggle', () => {
+      mockGame.audioManager.isMuted = true;
+
+      uiManager.updateMuteButtonIcon();
+
+      expect(uiManager.muteButton.textContent).toBe('\uD83D\uDD07');
+    });
+
+    test('should clean up muteButton on cleanup', () => {
+      uiManager.cleanup();
+
+      expect(uiManager.muteButton).toBeNull();
+    });
+  });
+
   describe('integration scenarios', () => {
     beforeEach(() => {
       uiManager = new UIManager(mockGame);
@@ -663,7 +962,7 @@ describe('UIManager', () => {
       uiManager.init();
 
       const mockRenderer = {
-        domElement: { parentNode: null }
+        domElement: { parentNode: null, setAttribute: jest.fn() }
       };
 
       uiManager.attachRenderer(mockRenderer);

@@ -40,6 +40,9 @@ export class CameraController {
     this._userAdjustedCamera = false; // Flag to track if user manually adjusted camera
     this._lastManualControlTime = 0; // Track when user last manually adjusted camera
 
+    // Menu orbit state — gentle camera rotation before game starts
+    this._menuOrbitActive = true;
+    this._menuOrbitAngle = 0;
   }
 
   /**
@@ -263,6 +266,20 @@ export class CameraController {
    * @param {number} deltaTime - Time since last update in seconds
    */
   update(deltaTime) {
+    // Menu orbit: gentle rotation before game starts
+    if (this._menuOrbitActive) {
+      this._menuOrbitAngle += deltaTime * 0.15; // slow orbit
+      const radius = 25;
+      const height = 18;
+      this.camera.position.set(
+        Math.sin(this._menuOrbitAngle) * radius,
+        height + Math.sin(this._menuOrbitAngle * 0.5) * 3,
+        Math.cos(this._menuOrbitAngle) * radius
+      );
+      this.camera.lookAt(0, 0, 0);
+      return;
+    }
+
     // Update controls if they exist
     if (this.controls) {
       this.controls.update();
@@ -273,9 +290,19 @@ export class CameraController {
   }
 
   /**
-   * Position camera to view the current hole
+   * Stop menu orbit and switch to gameplay camera mode.
    */
-  positionCameraForHole() {
+  stopMenuOrbit() {
+    this._menuOrbitActive = false;
+  }
+
+  /**
+   * Position camera to view the current hole
+   * @param {Object} [cameraHint] - Optional camera hint with offset and lookAt vectors
+   * @param {THREE.Vector3} [cameraHint.offset] - Camera position offset from hole center
+   * @param {THREE.Vector3} [cameraHint.lookAt] - Camera look-at target position
+   */
+  positionCameraForHole(cameraHint) {
     if (!this.course) {
       console.warn('Cannot position camera: Course not available');
       return this;
@@ -298,15 +325,8 @@ export class CameraController {
         `World Start: ${worldStartPosition.toArray().join(',')}, World Hole: ${worldHolePosition.toArray().join(',')}`
     );
 
-    // Calculate midpoint between WORLD tee and hole
-    const midpoint = new THREE.Vector3()
-      .addVectors(worldStartPosition, worldHolePosition)
-      .multiplyScalar(0.5);
-
-    // --- Calculate course dimensions (using WORLD coordinates) ---
-    const width = Math.abs(worldStartPosition.x - worldHolePosition.x);
-    const length = Math.abs(worldStartPosition.z - worldHolePosition.z);
-    const diagonal = Math.sqrt(width * width + length * length);
+    // If no hint passed explicitly, check the course for one
+    const hint = cameraHint || (this.course.getCameraHint ? this.course.getCameraHint() : null);
 
     // Temporarily adjust controls to allow more flexible camera placement
     let originalMaxPolarAngle = Math.PI / 2;
@@ -315,39 +335,59 @@ export class CameraController {
       this.controls.maxPolarAngle = Math.PI; // Allow full rotation for initial positioning
     }
 
-    // --- Calculate viewing parameters (using WORLD coordinates) ---
-    const minHeight = 12.0;
-    const baseHeight = Math.max(diagonal * 1.0, minHeight);
-    const courseDirection = new THREE.Vector3()
-      .subVectors(worldHolePosition, worldStartPosition)
-      .normalize();
-    const cameraOffset = new THREE.Vector3(
-      -courseDirection.z * 0.6,
-      baseHeight,
-      courseDirection.x * 0.6
-    )
-      .normalize()
-      .multiplyScalar(diagonal * 1.2);
-    const weightToStart = 0.65;
-    const weightedMidpoint = new THREE.Vector3().lerpVectors(
-      midpoint,
-      worldStartPosition,
-      weightToStart
-    );
-    const behindBallDirection = new THREE.Vector3()
-      .subVectors(worldStartPosition, worldHolePosition)
-      .normalize();
-    const behindBallOffset = behindBallDirection.multiplyScalar(diagonal * 0.2);
-    const adjustedMidpoint = weightedMidpoint.clone().add(behindBallOffset);
-    const cameraPosition = adjustedMidpoint.clone().add(cameraOffset);
+    let cameraPosition;
+    let lookAtPoint;
+
+    if (hint && hint.offset && hint.lookAt) {
+      // Use camera hint values directly
+      cameraPosition = hint.offset.clone ? hint.offset.clone() : new THREE.Vector3(hint.offset.x, hint.offset.y, hint.offset.z);
+      lookAtPoint = hint.lookAt.clone ? hint.lookAt.clone() : new THREE.Vector3(hint.lookAt.x, hint.lookAt.y, hint.lookAt.z);
+      debug.log(`Using camera hint: offset=${cameraPosition.x},${cameraPosition.y},${cameraPosition.z} lookAt=${lookAtPoint.x},${lookAtPoint.y},${lookAtPoint.z}`);
+    } else {
+      // Default positioning: calculate from hole geometry
+      // Calculate midpoint between WORLD tee and hole
+      const midpoint = new THREE.Vector3()
+        .addVectors(worldStartPosition, worldHolePosition)
+        .multiplyScalar(0.5);
+
+      // --- Calculate course dimensions (using WORLD coordinates) ---
+      const width = Math.abs(worldStartPosition.x - worldHolePosition.x);
+      const length = Math.abs(worldStartPosition.z - worldHolePosition.z);
+      const diagonal = Math.sqrt(width * width + length * length);
+
+      // --- Calculate viewing parameters (using WORLD coordinates) ---
+      const minHeight = 12.0;
+      const baseHeight = Math.max(diagonal * 1.0, minHeight);
+      const courseDirection = new THREE.Vector3()
+        .subVectors(worldHolePosition, worldStartPosition)
+        .normalize();
+      const cameraOffset = new THREE.Vector3(
+        -courseDirection.z * 0.6,
+        baseHeight,
+        courseDirection.x * 0.6
+      )
+        .normalize()
+        .multiplyScalar(diagonal * 1.2);
+      const weightToStart = 0.65;
+      const weightedMidpoint = new THREE.Vector3().lerpVectors(
+        midpoint,
+        worldStartPosition,
+        weightToStart
+      );
+      const behindBallDirection = new THREE.Vector3()
+        .subVectors(worldStartPosition, worldHolePosition)
+        .normalize();
+      const behindBallOffset = behindBallDirection.multiplyScalar(diagonal * 0.2);
+      const adjustedMidpoint = weightedMidpoint.clone().add(behindBallOffset);
+      cameraPosition = adjustedMidpoint.clone().add(cameraOffset);
+
+      // Look at a point that ensures we can see the entire hole (WORLD coordinates)
+      lookAtPoint = new THREE.Vector3().lerpVectors(midpoint, worldStartPosition, 0.2);
+      lookAtPoint.y -= 1.5; // Lower the look-at point
+    }
 
     // Set camera position
     this.camera.position.copy(cameraPosition);
-
-    // Look at a point that ensures we can see the entire hole (WORLD coordinates)
-    const lookAtPoint = new THREE.Vector3().lerpVectors(midpoint, worldStartPosition, 0.2);
-    lookAtPoint.y -= 1.5; // Lower the look-at point
-
     this.camera.lookAt(lookAtPoint);
 
     // Update orbit controls target
@@ -358,6 +398,16 @@ export class CameraController {
     }
 
     return this;
+  }
+
+  /**
+   * Update camera positioning for the current hole.
+   * Reads camera hint from the course and applies it.
+   * Called by HoleTransitionManager during hole transitions.
+   */
+  updateCameraForHole() {
+    this._userAdjustedCamera = false;
+    this.positionCameraForHole();
   }
 
   /**

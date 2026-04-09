@@ -332,7 +332,8 @@ describe('Game - Mobile Optimizations', () => {
         camera: {},
         setRenderer: jest.fn(),
         setCourse: jest.fn(),
-        positionCameraForHole: jest.fn()
+        positionCameraForHole: jest.fn(),
+        stopMenuOrbit: jest.fn()
       }))
     }));
 

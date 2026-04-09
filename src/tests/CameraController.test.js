@@ -428,9 +428,31 @@ describe('CameraController', () => {
     const deltaTime = 0.016; // 60fps
 
     cameraController.init();
+    // Stop menu orbit so update reaches controls.update()
+    cameraController.stopMenuOrbit();
     cameraController.update(deltaTime);
 
     expect(cameraController.controls.update).toHaveBeenCalled();
+  });
+
+  test('should orbit camera during menu mode', () => {
+    const deltaTime = 0.016;
+
+    cameraController.init();
+    const initialAngle = cameraController._menuOrbitAngle;
+    cameraController.update(deltaTime);
+
+    expect(cameraController._menuOrbitAngle).toBeGreaterThan(initialAngle);
+    // Controls should NOT be updated during menu orbit
+    expect(cameraController.controls.update).not.toHaveBeenCalled();
+  });
+
+  test('should stop menu orbit when stopMenuOrbit is called', () => {
+    cameraController.init();
+    expect(cameraController._menuOrbitActive).toBe(true);
+
+    cameraController.stopMenuOrbit();
+    expect(cameraController._menuOrbitActive).toBe(false);
   });
 
   test('should cleanup resources properly', () => {
@@ -442,6 +464,96 @@ describe('CameraController', () => {
     expect(disposeSpy).toHaveBeenCalled();
     expect(cameraController.controls).toBeNull();
     expect(cameraController.isInitialized).toBe(false);
+  });
+
+  test('should apply camera hint values when provided to positionCameraForHole', () => {
+    const mockCourse = {
+      getHolePosition: jest.fn(() => ({ x: 10, y: 0, z: 10, toArray: () => [10, 0, 10] })),
+      getHoleStartPosition: jest.fn(() => ({ x: 0, y: 0, z: 0, toArray: () => [0, 0, 0] })),
+      getCameraHint: jest.fn(() => null)
+    };
+
+    cameraController.setCourse(mockCourse);
+    cameraController.init();
+
+    const cameraHint = {
+      offset: { x: 5, y: 20, z: 15, clone: jest.fn(() => ({ x: 5, y: 20, z: 15 })) },
+      lookAt: { x: 0, y: 0, z: -2, clone: jest.fn(() => ({ x: 0, y: 0, z: -2 })) }
+    };
+
+    cameraController.positionCameraForHole(cameraHint);
+
+    // Camera position should be set to the hint offset
+    expect(cameraController.camera.position.copy).toHaveBeenCalledWith(
+      expect.objectContaining({ x: 5, y: 20, z: 15 })
+    );
+    // Camera should look at the hint lookAt point
+    expect(cameraController.camera.lookAt).toHaveBeenCalledWith(
+      expect.objectContaining({ x: 0, y: 0, z: -2 })
+    );
+  });
+
+  test('should fall back to default positioning when no camera hint is provided', () => {
+    const mockCourse = {
+      getHolePosition: jest.fn(() => ({ x: 10, y: 0, z: 10, toArray: () => [10, 0, 10] })),
+      getHoleStartPosition: jest.fn(() => ({ x: 0, y: 0, z: 0, toArray: () => [0, 0, 0] })),
+      getCameraHint: jest.fn(() => null)
+    };
+
+    cameraController.setCourse(mockCourse);
+    cameraController.init();
+
+    const result = cameraController.positionCameraForHole();
+
+    // Should still position camera (default calculation)
+    expect(cameraController.camera.position.copy).toHaveBeenCalled();
+    expect(cameraController.camera.lookAt).toHaveBeenCalled();
+    expect(result).toBe(cameraController);
+  });
+
+  test('should read camera hint from course when no explicit hint passed', () => {
+    const courseHint = {
+      offset: { x: 3, y: 18, z: 10, clone: jest.fn(() => ({ x: 3, y: 18, z: 10 })) },
+      lookAt: { x: 1, y: 0, z: -3, clone: jest.fn(() => ({ x: 1, y: 0, z: -3 })) }
+    };
+
+    const mockCourse = {
+      getHolePosition: jest.fn(() => ({ x: 10, y: 0, z: 10, toArray: () => [10, 0, 10] })),
+      getHoleStartPosition: jest.fn(() => ({ x: 0, y: 0, z: 0, toArray: () => [0, 0, 0] })),
+      getCameraHint: jest.fn(() => courseHint)
+    };
+
+    cameraController.setCourse(mockCourse);
+    cameraController.init();
+
+    cameraController.positionCameraForHole();
+
+    expect(mockCourse.getCameraHint).toHaveBeenCalled();
+    expect(cameraController.camera.position.copy).toHaveBeenCalledWith(
+      expect.objectContaining({ x: 3, y: 18, z: 10 })
+    );
+    expect(cameraController.camera.lookAt).toHaveBeenCalledWith(
+      expect.objectContaining({ x: 1, y: 0, z: -3 })
+    );
+  });
+
+  test('should provide updateCameraForHole method for hole transitions', () => {
+    const mockCourse = {
+      getHolePosition: jest.fn(() => ({ x: 10, y: 0, z: 10, toArray: () => [10, 0, 10] })),
+      getHoleStartPosition: jest.fn(() => ({ x: 0, y: 0, z: 0, toArray: () => [0, 0, 0] })),
+      getCameraHint: jest.fn(() => null)
+    };
+
+    cameraController.setCourse(mockCourse);
+    cameraController.init();
+    cameraController._userAdjustedCamera = true;
+
+    cameraController.updateCameraForHole();
+
+    // Should reset user adjustment flag
+    expect(cameraController._userAdjustedCamera).toBe(false);
+    // Should call through to positionCameraForHole
+    expect(cameraController.camera.position.copy).toHaveBeenCalled();
   });
 
   test('should handle window resize listener', () => {

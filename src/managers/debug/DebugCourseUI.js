@@ -83,7 +83,6 @@ export class DebugCourseUI {
     keyInfo.style.marginTop = '8px';
     keyInfo.style.fontSize = '12px';
     keyInfo.innerHTML = `
-            Toggle Type: [${DEBUG_CONFIG.courseDebug.toggleCourseTypeKey}] <br>
             Load Hole #: [${DEBUG_CONFIG.courseDebug.loadSpecificHoleKey}] <br>
             Quick Load: [1-9]
         `;
@@ -128,13 +127,6 @@ export class DebugCourseUI {
 
     const courseDebugConfig = DEBUG_CONFIG.courseDebug;
 
-    // Toggle course type (c key)
-    if (e.key === courseDebugConfig.toggleCourseTypeKey) {
-      debug.log('[DebugCourseUI] Toggle Course Type key pressed.');
-      this.debugManager.toggleCourseType(); // Delegate to parent manager
-      e.preventDefault(); // Prevent potential browser shortcuts
-    }
-
     // Load specific hole (h key)
     if (e.key === courseDebugConfig.loadSpecificHoleKey) {
       debug.log('[DebugCourseUI] Load Specific Hole key pressed.');
@@ -166,7 +158,7 @@ export class DebugCourseUI {
       const holeElement = this.courseDebugUI.querySelector('#course-debug-hole');
 
       if (typeElement) {
-        typeElement.textContent = `Course Type: ${state.courseType}`;
+        typeElement.textContent = 'Course: Orbital Drift';
       }
       if (holeElement) {
         holeElement.textContent = `Current Hole: ${state.currentHole}`;

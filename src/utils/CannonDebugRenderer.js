@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
+import { debug } from './debug';
 
 export class CannonDebugRenderer {
   constructor(scene, world, options = {}) {
@@ -68,7 +69,7 @@ export class CannonDebugRenderer {
       // Optionally dispose geometry/material if not reused, but basic removal is key
     });
     this._meshes.length = 0; // Clear the tracking array
-    console.log('[CannonDebugRenderer] Cleared tracked meshes.');
+    debug.log('[CannonDebugRenderer] Cleared tracked meshes.');
   }
 
   _createMesh(shape) {

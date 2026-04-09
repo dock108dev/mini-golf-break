@@ -153,14 +153,26 @@ global.THREE = {
     };
     return mesh;
   }),
-  Group: jest.fn(() => ({
-    add: jest.fn(),
-    remove: jest.fn(),
-    position: { x: 0, y: 0, z: 0, copy: jest.fn() },
-    name: '',
-    userData: {},
-    children: []
-  })),
+  Group: jest.fn(() => {
+    const group = {
+      add: jest.fn(),
+      remove: jest.fn(),
+      position: { x: 0, y: 0, z: 0, copy: jest.fn() },
+      name: '',
+      userData: {},
+      children: [],
+      traverse: jest.fn(function (callback) {
+        callback(group);
+        (group.children || []).forEach(child => {
+          callback(child);
+          if (child.traverse) {
+            child.children?.forEach(grandchild => callback(grandchild));
+          }
+        });
+      })
+    };
+    return group;
+  }),
   SphereGeometry: jest.fn(),
   CircleGeometry: jest.fn(),
   CylinderGeometry: jest.fn(),
@@ -170,7 +182,12 @@ global.THREE = {
   MeshStandardMaterial: jest.fn(() => ({
     color: 0xffffff,
     roughness: 0.3,
-    metalness: 0.2
+    metalness: 0.2,
+    emissive: 0x000000,
+    emissiveIntensity: 1.0,
+    transparent: false,
+    opacity: 1.0,
+    dispose: jest.fn()
   })),
   MeshBasicMaterial: jest.fn(() => ({
     color: 0xffffff
@@ -310,14 +327,37 @@ global.CANNON = {
           body.velocity.z += force.z || 0;
         }
       }),
-      linearDamping: 0.01
+      applyForce: jest.fn(function (force, worldPoint) {
+        // Simple force application for tests
+        if (force && body.velocity) {
+          body.velocity.x += force.x || 0;
+          body.velocity.y += force.y || 0;
+          body.velocity.z += force.z || 0;
+        }
+      }),
+      linearDamping: 0.01,
+      isTrigger: false
     };
     return body;
   }),
   Material: jest.fn(),
   ContactMaterial: jest.fn(),
   Vec3: jest.fn(function (x = 0, y = 0, z = 0) {
-    return { x, y, z };
+    return {
+      x, y, z,
+      distanceTo: jest.fn(function (other) {
+        const dx = this.x - (other?.x || 0);
+        const dy = this.y - (other?.y || 0);
+        const dz = this.z - (other?.z || 0);
+        return Math.sqrt(dx * dx + dy * dy + dz * dz);
+      }),
+      set: jest.fn(function (nx, ny, nz) {
+        this.x = nx;
+        this.y = ny;
+        this.z = nz;
+        return this;
+      })
+    };
   }),
   Sphere: jest.fn(),
   Box: jest.fn(),

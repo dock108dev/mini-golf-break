@@ -36,6 +36,17 @@ export class InputController {
     this.touchStartTime = 0;
     this.touchVelocity = new THREE.Vector2();
     this.lastTouchPosition = new THREE.Vector2();
+
+    // Keyboard aiming state
+    this.isKeyboardAiming = false;
+    this.keyboardAimAngle = 0; // radians, 0 = +Z direction
+    this.isKeyboardCharging = false;
+    this.keyboardPower = 0;
+    this.keyboardChargeRate = 0.8; // power per second (full charge in ~1.25s)
+    this.keyboardAimSpeed = 2.5; // radians per second
+    this.keysPressed = {};
+    this.keyboardAnimationId = null;
+    this.lastKeyboardUpdateTime = 0;
   }
 
   init() {
@@ -67,13 +78,17 @@ export class InputController {
       this.onTouchStart = this.onTouchStart.bind(this);
       this.onTouchMove = this.onTouchMove.bind(this);
       this.onTouchEnd = this.onTouchEnd.bind(this);
+      this.onKeyDown = this.onKeyDown.bind(this);
+      this.onKeyUp = this.onKeyUp.bind(this);
 
       domElement.addEventListener('mousedown', this.onMouseDown);
       window.addEventListener('mousemove', this.onMouseMove);
       window.addEventListener('mouseup', this.onMouseUp);
-      domElement.addEventListener('touchstart', this.onTouchStart);
-      window.addEventListener('touchmove', this.onTouchMove);
-      window.addEventListener('touchend', this.onTouchEnd);
+      domElement.addEventListener('touchstart', this.onTouchStart, { passive: false });
+      window.addEventListener('touchmove', this.onTouchMove, { passive: false });
+      window.addEventListener('touchend', this.onTouchEnd, { passive: false });
+      window.addEventListener('keydown', this.onKeyDown);
+      window.addEventListener('keyup', this.onKeyUp);
 
       this.game.debugManager?.log('InputController DOM event listeners initialized');
     } catch (error) {
@@ -238,7 +253,7 @@ export class InputController {
         this.disableInput();
       }
     } else {
-      this.removeAimLine();
+      this.removeDirectionLine();
     }
 
     this.isDragging = false;
@@ -289,6 +304,176 @@ export class InputController {
     }
   }
 
+  // --- Keyboard aiming ---
+
+  onKeyDown(event) {
+    const key = event.key;
+
+    // Ignore if input disabled, ball moving, or mouse/touch is active
+    if (!this.isInputEnabled) return;
+    if (this.isPointerDown) return;
+    const ball = this.game.ballManager?.ball;
+    if (!ball || !ball.isStopped()) return;
+    if (this.game.stateManager?.isBallInMotion()) return;
+
+    // Arrow keys for aiming direction
+    if (key === 'ArrowLeft' || key === 'ArrowRight') {
+      event.preventDefault();
+      this.keysPressed[key] = true;
+      if (!this.isKeyboardAiming) {
+        this.startKeyboardAiming();
+      }
+      this.startKeyboardUpdateLoop();
+      return;
+    }
+
+    // Space or Enter for power charge
+    if (key === ' ' || key === 'Enter') {
+      event.preventDefault();
+      if (this.isKeyboardCharging) return; // already charging
+      if (!this.isKeyboardAiming) {
+        this.startKeyboardAiming();
+      }
+      this.isKeyboardCharging = true;
+      this.keyboardPower = 0;
+      if (this.powerIndicator) {
+        this.powerIndicator.style.display = 'block';
+        this.updatePowerIndicator(0);
+      }
+      this.startKeyboardUpdateLoop();
+      return;
+    }
+  }
+
+  onKeyUp(event) {
+    const key = event.key;
+
+    if (key === 'ArrowLeft' || key === 'ArrowRight') {
+      delete this.keysPressed[key];
+      return;
+    }
+
+    // Release space/enter fires the shot
+    if ((key === ' ' || key === 'Enter') && this.isKeyboardCharging) {
+      event.preventDefault();
+      this.fireKeyboardShot();
+      return;
+    }
+
+    // Escape cancels keyboard aiming
+    if (key === 'Escape' && this.isKeyboardAiming) {
+      this.cancelKeyboardAiming();
+      return;
+    }
+  }
+
+  startKeyboardAiming() {
+    this.isKeyboardAiming = true;
+    // Initialize aim angle from camera forward direction so aiming feels natural
+    const cameraDir = new THREE.Vector3();
+    this.camera.getWorldDirection(cameraDir);
+    cameraDir.y = 0;
+    cameraDir.normalize();
+    this.keyboardAimAngle = Math.atan2(cameraDir.x, cameraDir.z);
+    this.keyboardPower = 0;
+    this.updateKeyboardAimVisual();
+  }
+
+  startKeyboardUpdateLoop() {
+    if (this.keyboardAnimationId !== null) return;
+    this.lastKeyboardUpdateTime = performance.now();
+    const loop = () => {
+      const now = performance.now();
+      const dt = (now - this.lastKeyboardUpdateTime) / 1000;
+      this.lastKeyboardUpdateTime = now;
+      this.updateKeyboardAiming(dt);
+      if (this.isKeyboardAiming) {
+        this.keyboardAnimationId = requestAnimationFrame(loop);
+      }
+    };
+    this.keyboardAnimationId = requestAnimationFrame(loop);
+  }
+
+  stopKeyboardUpdateLoop() {
+    if (this.keyboardAnimationId !== null) {
+      cancelAnimationFrame(this.keyboardAnimationId);
+      this.keyboardAnimationId = null;
+    }
+  }
+
+  updateKeyboardAiming(dt) {
+    // Rotate aim angle
+    if (this.keysPressed['ArrowLeft']) {
+      this.keyboardAimAngle += this.keyboardAimSpeed * dt;
+    }
+    if (this.keysPressed['ArrowRight']) {
+      this.keyboardAimAngle -= this.keyboardAimSpeed * dt;
+    }
+
+    // Charge power
+    if (this.isKeyboardCharging) {
+      this.keyboardPower = Math.min(this.keyboardPower + this.keyboardChargeRate * dt, 1.0);
+      this.updatePowerIndicator(this.keyboardPower);
+    }
+
+    this.updateKeyboardAimVisual();
+  }
+
+  updateKeyboardAimVisual() {
+    const ball = this.game.ballManager?.ball;
+    if (!ball?.mesh) return;
+
+    const ballPosition = ball.mesh.position.clone();
+    const direction = new THREE.Vector3(
+      Math.sin(this.keyboardAimAngle),
+      0,
+      Math.cos(this.keyboardAimAngle)
+    );
+
+    // Show aim line with a preview power when not charging, actual power when charging
+    const displayPower = this.isKeyboardCharging ? this.keyboardPower : 0.3;
+    this.updateAimLine(ballPosition, direction, displayPower);
+  }
+
+  fireKeyboardShot() {
+    if (this.keyboardPower < 0.05) {
+      // Too little power, cancel
+      this.cancelKeyboardAiming();
+      return;
+    }
+
+    const direction = new THREE.Vector3(
+      Math.sin(this.keyboardAimAngle),
+      0,
+      Math.cos(this.keyboardAimAngle)
+    );
+
+    this.removeDirectionLine();
+    if (this.powerIndicator) this.powerIndicator.style.display = 'none';
+
+    if (this.game.ballManager) {
+      this.game.ballManager.hitBall(direction, this.keyboardPower);
+      this.disableInput();
+    }
+
+    this.resetKeyboardState();
+  }
+
+  cancelKeyboardAiming() {
+    this.removeDirectionLine();
+    if (this.powerIndicator) this.powerIndicator.style.display = 'none';
+    this.resetPowerIndicator();
+    this.resetKeyboardState();
+  }
+
+  resetKeyboardState() {
+    this.isKeyboardAiming = false;
+    this.isKeyboardCharging = false;
+    this.keyboardPower = 0;
+    this.keysPressed = {};
+    this.stopKeyboardUpdateLoop();
+  }
+
   /** Remove and dispose the direction/aim line */
   removeDirectionLine() {
     if (!this.directionLine) {return;}
@@ -298,10 +483,6 @@ export class InputController {
     this.directionLine = null;
   }
 
-  /** Alias for backward compatibility */
-  removeAimLine() {
-    this.removeDirectionLine();
-  }
 
   updatePowerIndicator(power) {
     if (this.powerIndicator) {
@@ -327,6 +508,7 @@ export class InputController {
       this.isInputEnabled = false;
       this.isPointerDown = false;
       this.isDragging = false;
+      this.resetKeyboardState();
       this.removeDirectionLine();
       this.resetPowerIndicator();
       this.game.debugManager.log('Input disabled');
@@ -367,6 +549,8 @@ export class InputController {
       domElement.removeEventListener('touchstart', this.onTouchStart);
       window.removeEventListener('touchmove', this.onTouchMove);
       window.removeEventListener('touchend', this.onTouchEnd);
+      window.removeEventListener('keydown', this.onKeyDown);
+      window.removeEventListener('keyup', this.onKeyUp);
     } catch (error) {
       this.game.debugManager?.warn('InputController.cleanup', 'Error removing DOM listeners', error);
     }
@@ -374,6 +558,7 @@ export class InputController {
       this.eventSubscriptions.forEach(fn => fn());
       this.eventSubscriptions = [];
     }
+    this.resetKeyboardState();
     this.removeDirectionLine();
     this.resetPowerIndicator();
     this.raycaster = null;

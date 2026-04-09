@@ -18,11 +18,11 @@ import { registerMechanic } from './MechanicRegistry';
  *   color: number (optional) - Bumper color (default 0xff6600)
  */
 class RicochetBumpers extends MechanicBase {
-  constructor(world, group, config, surfaceHeight) {
-    super(world, group, config, surfaceHeight);
+  constructor(world, group, config, surfaceHeight, theme) {
+    super(world, group, config, surfaceHeight, theme);
 
     const bumpers = config.bumpers || [];
-    const defaultColor = config.color || 0xff6600;
+    const defaultColor = config.color || theme?.mechanics?.ricochetBumpers?.color || 0xff6600;
 
     for (const b of bumpers) {
       const pos = b.position || new THREE.Vector3(0, 0, 0);
@@ -76,6 +76,6 @@ class RicochetBumpers extends MechanicBase {
   }
 }
 
-registerMechanic('ricochet_bumpers', (world, group, config, sh) => new RicochetBumpers(world, group, config, sh));
+registerMechanic('ricochet_bumpers', (world, group, config, sh, theme) => new RicochetBumpers(world, group, config, sh, theme));
 
 export { RicochetBumpers };

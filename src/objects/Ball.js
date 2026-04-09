@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
-import { calculateImpactAngle, isLipOut } from '../physics/utils';
 import { debug } from '../utils/debug';
 import { EventTypes } from '../events/EventTypes';
 import { resetBodyVelocity, checkBunkerOverlap, checkWaterOverlap } from './BallPhysicsHelper';
@@ -138,7 +137,7 @@ export class Ball {
     }
   }
 
-  update(dt) {
+  update(_dt) {
     if (!this.body || !this.mesh) {return;}
 
     this.mesh.position.copy(this.body.position);

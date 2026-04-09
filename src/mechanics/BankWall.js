@@ -15,13 +15,13 @@ import { registerMechanic } from './MechanicRegistry';
  *   color: number (optional) - Wall color (default 0x6666aa)
  */
 class BankWall extends MechanicBase {
-  constructor(world, group, config, surfaceHeight) {
-    super(world, group, config, surfaceHeight);
+  constructor(world, group, config, surfaceHeight, theme) {
+    super(world, group, config, surfaceHeight, theme);
 
     const segments = config.segments || [];
     const wallHeight = config.height || 0.6;
     const thickness = config.thickness || 0.15;
-    const color = config.color || 0x6666aa;
+    const color = config.color || theme?.mechanics?.bankWall?.color || 0x6666aa;
 
     const material = new THREE.MeshStandardMaterial({
       color,
@@ -71,6 +71,6 @@ class BankWall extends MechanicBase {
   }
 }
 
-registerMechanic('bank_wall', (world, group, config, sh) => new BankWall(world, group, config, sh));
+registerMechanic('bank_wall', (world, group, config, sh, theme) => new BankWall(world, group, config, sh, theme));
 
 export { BankWall };

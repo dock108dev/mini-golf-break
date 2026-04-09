@@ -61,6 +61,11 @@ export class HoleTransitionManager {
       `[HoleTransitionManager] Starting transition to hole ${targetHoleNumber} of ${totalHoles}`
     );
 
+    // Show loading overlay during transition
+    if (this.game.uiManager) {
+      this.game.uiManager.showTransitionOverlay();
+    }
+
     try {
       // First clean up the current hole completely
       await this.unloadCurrentHole();
@@ -153,9 +158,18 @@ export class HoleTransitionManager {
         this.game.stateManager.state.debugMode = debugMode;
       }
 
+      // Hide loading overlay now that the new hole is ready
+      if (this.game.uiManager) {
+        this.game.uiManager.hideTransitionOverlay();
+      }
+
       return true;
     } catch (error) {
       console.error('[HoleTransitionManager] Error during hole transition:', error);
+      // Hide loading overlay on error as well
+      if (this.game.uiManager) {
+        this.game.uiManager.hideTransitionOverlay();
+      }
       return false;
     }
   }

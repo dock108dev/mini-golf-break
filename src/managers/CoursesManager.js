@@ -24,6 +24,7 @@ export class CoursesManager {
     this.holes = [];
     this.courseObjects = [];
     this.physicsBodies = [];
+    this.currentHoleEntity = null;
 
     // Create course if autoCreate is true
     if (options.autoCreate !== false) {
@@ -138,6 +139,14 @@ export class CoursesManager {
   }
 
   /**
+   * Get camera hint for the current hole
+   * @returns {Object|null} Camera hint with offset and lookAt, or null for default positioning
+   */
+  getCameraHint() {
+    return null;
+  }
+
+  /**
    * Check if there is a next hole available
    * @returns {boolean} True if there is a next hole, false otherwise
    */
@@ -207,11 +216,16 @@ export class CoursesManager {
   }
 
   /**
-   * Update loop for the course
+   * Update loop for the course.
+   * Retrieves the ball's physics body and passes it to the current hole entity.
    * @param {number} dt - Delta time in seconds
    */
   update(dt) {
-    // Any per-frame updates for the course can go here
+    if (this.currentHoleEntity?.update) {
+      const ballBody = this.game?.ballManager?.ball?.body || null;
+      const dtWasClamped = this.game?.gameLoopManager?.dtWasClamped || false;
+      this.currentHoleEntity.update(dt, ballBody, { dtWasClamped });
+    }
   }
 
   /**

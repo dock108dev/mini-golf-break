@@ -22,6 +22,13 @@ export const EventTypes = {
   // Hazard events
   HAZARD_DETECTED: 'hazard:detected',
 
+  // Stuck ball events
+  BALL_STUCK: 'ball:stuck',
+
+  // Pause events
+  GAME_PAUSED: 'game:paused',
+  GAME_RESUMED: 'game:resumed',
+
   // UI events
   UI_REQUEST_RESTART_GAME: 'ui:request_restart_game',
 

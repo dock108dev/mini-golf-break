@@ -14,8 +14,8 @@ import { registerMechanic } from './MechanicRegistry';
  *   color: number (optional) - Portal color (default 0x8800ff)
  */
 class PortalGate extends MechanicBase {
-  constructor(world, group, config, surfaceHeight) {
-    super(world, group, config, surfaceHeight);
+  constructor(world, group, config, surfaceHeight, theme) {
+    super(world, group, config, surfaceHeight, theme);
 
     const entryPos = config.entryPosition || new THREE.Vector3(-3, 0, 2);
     const exitPos = config.exitPosition || new THREE.Vector3(3, 0, -5);
@@ -26,7 +26,7 @@ class PortalGate extends MechanicBase {
     this.exitY = surfaceHeight + 0.3; // Slight elevation for clean exit
     this.radius = config.radius || 0.6;
     this.cooldown = 0; // Prevent immediate re-trigger
-    const color = config.color || 0x8800ff;
+    const color = config.color || theme?.mechanics?.portalGate?.color || 0x8800ff;
 
     // Entry portal ring
     this._createPortalRing(entryPos, color, 'entry', surfaceHeight, group);
@@ -67,6 +67,10 @@ class PortalGate extends MechanicBase {
     this.meshes.push(disc);
   }
 
+  onDtSpike() {
+    this.cooldown = 0;
+  }
+
   update(dt, ballBody) {
     if (!ballBody) {
       return;
@@ -87,12 +91,16 @@ class PortalGate extends MechanicBase {
       ballBody.position.set(this.exitX, this.exitY, this.exitZ);
       ballBody.wakeUp();
 
+      if (this.audioManager) {
+        this.audioManager.playSound('teleport');
+      }
+
       // Set cooldown to prevent immediate re-entry
       this.cooldown = 1.0;
     }
   }
 }
 
-registerMechanic('portal_gate', (world, group, config, sh) => new PortalGate(world, group, config, sh));
+registerMechanic('portal_gate', (world, group, config, sh, theme) => new PortalGate(world, group, config, sh, theme));
 
 export { PortalGate };

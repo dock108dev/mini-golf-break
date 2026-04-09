@@ -13,15 +13,16 @@ import { registerMechanic } from './MechanicRegistry';
  *   color: number (optional) - Visual color (default 0x6600cc)
  */
 class SuctionZone extends MechanicBase {
-  constructor(world, group, config, surfaceHeight) {
-    super(world, group, config, surfaceHeight);
+  constructor(world, group, config, surfaceHeight, theme) {
+    super(world, group, config, surfaceHeight, theme);
+    this.isForceField = true;
 
     const pos = config.position || new THREE.Vector3(0, 0, 0);
     this.centerX = pos.x;
     this.centerZ = pos.z;
     this.radius = config.radius || 3;
     this.force = config.force || 6;
-    const color = config.color || 0x6600cc;
+    const color = config.color || theme?.mechanics?.suctionZone?.color || 0x6600cc;
 
     // Visual: semi-transparent disc
     const geometry = new THREE.CircleGeometry(this.radius, 32);
@@ -41,7 +42,7 @@ class SuctionZone extends MechanicBase {
   }
 
   update(_dt, ballBody) {
-    if (!ballBody || ballBody.sleepState === CANNON.Body.SLEEPING) {
+    if (!ballBody) {
       return;
     }
 
@@ -51,6 +52,11 @@ class SuctionZone extends MechanicBase {
 
     if (distSq > this.radius * this.radius || distSq < 0.01) {
       return;
+    }
+
+    // Wake sleeping balls — suction should pull a resting ball toward center
+    if (ballBody.sleepState === CANNON.Body.SLEEPING) {
+      ballBody.wakeUp();
     }
 
     // Force increases as ball gets closer (inverse distance)
@@ -63,6 +69,6 @@ class SuctionZone extends MechanicBase {
   }
 }
 
-registerMechanic('suction_zone', (world, group, config, sh) => new SuctionZone(world, group, config, sh));
+registerMechanic('suction_zone', (world, group, config, sh, theme) => new SuctionZone(world, group, config, sh, theme));
 
 export { SuctionZone };

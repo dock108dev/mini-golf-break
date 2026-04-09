@@ -8,7 +8,7 @@
 ## Setup
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/highlyprofitable108/mini-golf-break.git
 cd mini-golf-break
 npm install
 npm start
@@ -22,8 +22,8 @@ The only environment variable used is `NODE_ENV`:
 
 | Value | Effect |
 |-------|--------|
-| `development` (default) | Debug logging enabled via `debug.log()` |
-| `production` | Debug logging suppressed. Console.log stripped by Terser |
+| `development` (default) | Debug logging enabled via `debug.log()`. Course config validation runs on startup. |
+| `production` | Debug logging suppressed. `console.log`/`console.debug` stripped by Terser. Config validation skipped. |
 | `test` | Set automatically by Jest |
 
 No `.env` file is needed.
@@ -33,13 +33,13 @@ No `.env` file is needed.
 ### Unit & Integration Tests (Jest)
 
 ```bash
-npm test                    # All tests
+npm test                    # All tests (unit + integration)
 npm run test:unit           # Unit tests only
 npm run test:integration    # Integration tests only
 npm run test:coverage       # With coverage report
 ```
 
-Tests live in `src/tests/`. Jest is configured with three projects: `unit`, `integration`, and coverage thresholds at 60%.
+Unit tests live in `src/tests/`. Integration tests live in `src/tests/integration/`. Jest is configured with two projects (`unit` and `integration`) and coverage thresholds at 60%.
 
 Test setup files mock Three.js, Cannon-es, and DOM APIs. See `src/tests/setup.js` for the mock layer.
 
@@ -59,11 +59,10 @@ Device coverage: Desktop Chrome, Desktop Safari, iPhone 12, Pixel 5, iPad Pro.
 
 Husky runs on every commit (`.husky/pre-commit`):
 
-1. **lint-staged** — ESLint fix + Prettier on staged `.js` files
-2. **Security audit** — Blocks commit on high/critical npm vulnerabilities
-3. **Production build** — Ensures `npm run build` succeeds
-
-Unit tests are currently skipped in pre-commit to unblock development velocity.
+1. **lint-staged** -- ESLint fix + Prettier on staged `.js` files
+2. **Security audit** -- Blocks commit on high/critical npm vulnerabilities
+3. **Unit tests** -- Runs `npm run test:unit`
+4. **Production build** -- Ensures `npm run build` succeeds
 
 ## Code Quality
 
@@ -78,11 +77,13 @@ npm run quality:full        # Above + coverage + build
 ### ESLint Rules
 
 Key rules enforced (see `.eslintrc.json`):
-- `no-console`: warn (allow `console.warn` and `console.error`)
+- `no-console`: warn (allows `console.warn` and `console.error`)
 - `complexity`: max 20
 - `max-depth`: 5
 - `max-params`: 6
 - `max-statements`: 40
+- `eqeqeq`: always
+- `prefer-const`, `no-var`
 - Test files have relaxed rules (no-console off, max-statements off)
 
 ### Debug Logging
@@ -96,13 +97,11 @@ debug.log('message');  // Only outputs when NODE_ENV !== 'production'
 
 ## Debug Mode
 
-Press `d` during gameplay to toggle debug mode:
+Press `d` during gameplay to toggle debug mode (only works in development):
 - Axes helper and grid overlay
 - Physics wireframe visualization (Cannon debug renderer)
 - Ball position/velocity in debug HUD
 - Press number keys `1-9` to jump to specific holes
-- Press `c` to toggle between BasicCourse and NineHoleCourse
-- Press `h` to load a specific hole by number
 
 ## Build
 
@@ -116,6 +115,7 @@ Production build features:
 - Code splitting: Three.js, Cannon-es, vendors, and app code in separate chunks
 - Content-hashed filenames for cache busting
 - CSS minification
+- No source maps in production
 
 ## Deployment
 
@@ -126,11 +126,13 @@ npm run build
 # dist/ is ready to deploy
 ```
 
-The `vercel.json` configures static build output and long-lived cache headers for assets.
+The `vercel.json` configures:
+- Static build output from `dist/`
+- Security headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy)
+- Long-lived cache headers for hashed asset filenames
 
 ## Known Limitations
 
-- No CI/CD pipeline (GitHub Actions were removed)
-- Capacitor dependencies exist in package.json but are unused (no native app)
+- No CI/CD pipeline (GitHub Actions not configured)
+- Capacitor dependencies exist in package.json but are unused (no native app build)
 - UAT tests require WebGL support; may need `--use-gl=swiftshader` on headless CI
-- Pre-commit hook skips unit tests (temporary)

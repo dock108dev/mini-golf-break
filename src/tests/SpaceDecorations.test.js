@@ -123,6 +123,34 @@ describe('SpaceDecorations', () => {
     expect(mockDecoration.rotation.y).toBeCloseTo(0.0016);
   });
 
+  test('should animate shooting stars during update', () => {
+    const shootingStar = {
+      userData: { type: 'shootingStar' },
+      visible: true,
+      position: { x: 0, y: 30, z: -50, set: jest.fn() }
+    };
+    spaceDecorations.decorations.push(shootingStar);
+
+    spaceDecorations.update(0.016);
+
+    // Shooting star should move right and down
+    expect(shootingStar.position.x).toBeCloseTo(0.64, 1);
+    expect(shootingStar.position.y).toBeCloseTo(29.84, 1);
+  });
+
+  test('should hide shooting star when it moves off screen', () => {
+    const shootingStar = {
+      userData: { type: 'shootingStar' },
+      visible: true,
+      position: { x: 79, y: 30, z: -50, set: jest.fn() }
+    };
+    spaceDecorations.decorations.push(shootingStar);
+
+    spaceDecorations.update(0.1); // enough to push past 80
+
+    expect(shootingStar.visible).toBe(false);
+  });
+
   test('should cleanup all decorations', () => {
     spaceDecorations.init();
 

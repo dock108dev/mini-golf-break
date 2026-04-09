@@ -85,6 +85,7 @@ jest.mock('three', () => {
     };
     this.parent = null;
     this.add = jest.fn();
+    this.remove = jest.fn();
   });
 
   return {
@@ -132,7 +133,13 @@ jest.mock('three', () => {
       dispose: jest.fn(),
       rotateX: jest.fn(),
       translate: jest.fn()
-    }))
+    })),
+    SphereGeometry: jest.fn(() => ({
+      dispose: jest.fn()
+    })),
+    MeshBasicMaterial: jest.fn(function () {
+      this.dispose = jest.fn();
+    })
   };
 });
 
@@ -194,6 +201,20 @@ jest.mock('../../objects/hazards/HazardFactory', () => ({
     body: { position: { set: jest.fn() } },
     destroy: jest.fn()
   }))
+}));
+
+// Mock MechanicRegistry
+const mockCreateMechanic = jest.fn();
+jest.mock('../../mechanics/MechanicRegistry', () => ({
+  createMechanic: (...args) => mockCreateMechanic(...args)
+}));
+
+// Mock mechanics barrel import (self-registration)
+jest.mock('../../mechanics/index', () => ({}));
+
+// Mock HeroPropFactory
+jest.mock('../../objects/HeroPropFactory', () => ({
+  createHeroProp: jest.fn(() => [])
 }));
 
 describe('HoleEntity', () => {
@@ -483,6 +504,578 @@ describe('HoleEntity', () => {
 
       expect(console.log).toHaveBeenCalledWith('[DEBUG]', expect.stringContaining('Created for hole index 1'));
       expect(console.log).toHaveBeenCalledWith('[DEBUG]', expect.stringContaining('World Start:'));
+    });
+  });
+
+  describe('mechanics lifecycle', () => {
+    let mockMechanic;
+
+    beforeEach(() => {
+      mockMechanic = {
+        update: jest.fn(),
+        destroy: jest.fn(),
+        getMeshes: jest.fn(() => []),
+        getBodies: jest.fn(() => []),
+        meshes: [],
+        bodies: []
+      };
+      mockCreateMechanic.mockReset();
+    });
+
+    test('init() with mechanics[] config calls createMechanic for each entry', async () => {
+      mockCreateMechanic.mockReturnValue(mockMechanic);
+
+      const configWithMechanics = {
+        ...mockConfig,
+        mechanics: [
+          { type: 'moving_sweeper', speed: 1 },
+          { type: 'boost_strip', force: 5 }
+        ]
+      };
+
+      const holeEntity = new HoleEntity(mockWorld, configWithMechanics, mockScene);
+      await holeEntity.init();
+
+      expect(mockCreateMechanic).toHaveBeenCalledTimes(2);
+      expect(mockCreateMechanic).toHaveBeenCalledWith(
+        'moving_sweeper',
+        mockWorld,
+        expect.anything(),
+        expect.objectContaining({ type: 'moving_sweeper', speed: 1 }),
+        expect.any(Number),
+        expect.any(Object)
+      );
+      expect(mockCreateMechanic).toHaveBeenCalledWith(
+        'boost_strip',
+        mockWorld,
+        expect.anything(),
+        expect.objectContaining({ type: 'boost_strip', force: 5 }),
+        expect.any(Number),
+        expect.any(Object)
+      );
+      expect(holeEntity.mechanics).toHaveLength(2);
+    });
+
+    test('update(dt, ballBody) calls update() on each mechanic', async () => {
+      const mockMechanic2 = {
+        update: jest.fn(),
+        destroy: jest.fn(),
+        getMeshes: jest.fn(() => []),
+        getBodies: jest.fn(() => [])
+      };
+      mockCreateMechanic
+        .mockReturnValueOnce(mockMechanic)
+        .mockReturnValueOnce(mockMechanic2);
+
+      const configWithMechanics = {
+        ...mockConfig,
+        mechanics: [
+          { type: 'moving_sweeper' },
+          { type: 'boost_strip' }
+        ]
+      };
+
+      const holeEntity = new HoleEntity(mockWorld, configWithMechanics, mockScene);
+      await holeEntity.init();
+
+      const mockBallBody = { position: { x: 0, y: 0, z: 0 } };
+      holeEntity.update(0.016, mockBallBody);
+
+      expect(mockMechanic.update).toHaveBeenCalledWith(0.016, mockBallBody);
+      expect(mockMechanic2.update).toHaveBeenCalledWith(0.016, mockBallBody);
+    });
+
+    test('destroy() calls destroy() on each mechanic', async () => {
+      const mockMechanic2 = {
+        update: jest.fn(),
+        destroy: jest.fn(),
+        getMeshes: jest.fn(() => []),
+        getBodies: jest.fn(() => [])
+      };
+      mockCreateMechanic
+        .mockReturnValueOnce(mockMechanic)
+        .mockReturnValueOnce(mockMechanic2);
+
+      const configWithMechanics = {
+        ...mockConfig,
+        mechanics: [
+          { type: 'moving_sweeper' },
+          { type: 'boost_strip' }
+        ]
+      };
+
+      const holeEntity = new HoleEntity(mockWorld, configWithMechanics, mockScene);
+      await holeEntity.init();
+
+      holeEntity.destroy();
+
+      expect(mockMechanic.destroy).toHaveBeenCalled();
+      expect(mockMechanic2.destroy).toHaveBeenCalled();
+      expect(holeEntity.mechanics).toEqual([]);
+    });
+
+    test('works without errors when mechanics[] is empty', async () => {
+      const configEmpty = {
+        ...mockConfig,
+        mechanics: []
+      };
+
+      const holeEntity = new HoleEntity(mockWorld, configEmpty, mockScene);
+      await holeEntity.init();
+
+      expect(mockCreateMechanic).not.toHaveBeenCalled();
+      expect(holeEntity.mechanics).toEqual([]);
+
+      // update and destroy should not throw
+      expect(() => holeEntity.update(0.016, {})).not.toThrow();
+      expect(() => holeEntity.destroy()).not.toThrow();
+    });
+
+    test('works without errors when mechanics config is missing', async () => {
+      const holeEntity = new HoleEntity(mockWorld, mockConfig, mockScene);
+      await holeEntity.init();
+
+      expect(mockCreateMechanic).not.toHaveBeenCalled();
+      expect(holeEntity.mechanics).toEqual([]);
+
+      expect(() => holeEntity.update(0.016, {})).not.toThrow();
+      expect(() => holeEntity.destroy()).not.toThrow();
+    });
+
+    test('logs error with hole index and type when createMechanic returns null (unknown type)', async () => {
+      mockCreateMechanic.mockReturnValue(null);
+
+      const configWithInvalid = {
+        ...mockConfig,
+        mechanics: [{ type: 'nonexistent_type' }]
+      };
+
+      const holeEntity = new HoleEntity(mockWorld, configWithInvalid, mockScene);
+      await holeEntity.init();
+
+      expect(mockCreateMechanic).toHaveBeenCalledWith(
+        'nonexistent_type',
+        expect.anything(),
+        expect.anything(),
+        expect.objectContaining({ type: 'nonexistent_type' }),
+        expect.any(Number),
+        expect.any(Object)
+      );
+      // null return means mechanic not added
+      expect(holeEntity.mechanics).toEqual([]);
+      // Error message should contain both hole index and mechanic type in the same call
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringMatching(/Hole 0.*nonexistent_type/)
+      );
+    });
+
+    test('logs error with hole index and type when createMechanic throws', async () => {
+      mockCreateMechanic
+        .mockImplementationOnce(() => { throw new Error('Bad mechanic'); })
+        .mockReturnValueOnce(mockMechanic);
+
+      const configWithBadAndGood = {
+        ...mockConfig,
+        mechanics: [
+          { type: 'broken_type' },
+          { type: 'working_type' }
+        ]
+      };
+
+      const holeEntity = new HoleEntity(mockWorld, configWithBadAndGood, mockScene);
+      await holeEntity.init();
+
+      // Error log must include both hole index and mechanic type
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringMatching(/Hole 0.*broken_type/),
+        expect.any(Error)
+      );
+      // The working mechanic should still be created (graceful degradation)
+      expect(holeEntity.mechanics).toHaveLength(1);
+    });
+
+    test('remaining mechanics still initialize when one fails in the middle', async () => {
+      const mockMechanic2 = {
+        update: jest.fn(),
+        destroy: jest.fn(),
+        getMeshes: jest.fn(() => []),
+        getBodies: jest.fn(() => []),
+        meshes: [],
+        bodies: []
+      };
+
+      mockCreateMechanic
+        .mockReturnValueOnce(mockMechanic)           // first: succeeds
+        .mockImplementationOnce(() => { throw new Error('Kaboom'); }) // second: throws
+        .mockReturnValueOnce(null)                    // third: unknown type (null)
+        .mockReturnValueOnce(mockMechanic2);          // fourth: succeeds
+
+      const config = {
+        ...mockConfig,
+        mechanics: [
+          { type: 'good_a' },
+          { type: 'throws_type' },
+          { type: 'unknown_type' },
+          { type: 'good_b' }
+        ]
+      };
+
+      const holeEntity = new HoleEntity(mockWorld, config, mockScene);
+      await holeEntity.init();
+
+      // Both successful mechanics should be tracked
+      expect(holeEntity.mechanics).toHaveLength(2);
+      expect(holeEntity.mechanics[0]).toBe(mockMechanic);
+      expect(holeEntity.mechanics[1]).toBe(mockMechanic2);
+
+      // Errors logged for both failures
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringMatching(/Hole 0.*throws_type/),
+        expect.any(Error)
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringMatching(/Hole 0.*unknown_type/)
+      );
+
+      // All four mechanics were attempted
+      expect(mockCreateMechanic).toHaveBeenCalledTimes(4);
+    });
+
+    test('error log includes correct hole index for non-zero holes', async () => {
+      mockCreateMechanic.mockReturnValue(null);
+
+      const configHole5 = {
+        ...mockConfig,
+        index: 5,
+        mechanics: [{ type: 'bad_type' }]
+      };
+
+      const holeEntity = new HoleEntity(mockWorld, configHole5, mockScene);
+      await holeEntity.init();
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringMatching(/Hole 5.*bad_type/)
+      );
+    });
+
+    test('tracks mechanic meshes and bodies for cleanup', async () => {
+      const mechMesh = { geometry: { dispose: jest.fn() }, material: { dispose: jest.fn() }, parent: null };
+      const mechBody = { position: { x: 0, y: 0, z: 0 } };
+      mockMechanic.getMeshes.mockReturnValue([mechMesh]);
+      mockMechanic.getBodies.mockReturnValue([mechBody]);
+      mockCreateMechanic.mockReturnValue(mockMechanic);
+
+      const configWithMechanics = {
+        ...mockConfig,
+        mechanics: [{ type: 'moving_sweeper' }]
+      };
+
+      const holeEntity = new HoleEntity(mockWorld, configWithMechanics, mockScene);
+      await holeEntity.init();
+
+      expect(holeEntity.meshes).toContain(mechMesh);
+      expect(holeEntity.bodies).toContain(mechBody);
+    });
+
+    test('update() is safe when mechanics is undefined', () => {
+      const holeEntity = new HoleEntity(mockWorld, mockConfig, mockScene);
+      // Don't call init - mechanics will be undefined
+      holeEntity.mechanics = undefined;
+
+      expect(() => holeEntity.update(0.016, {})).not.toThrow();
+    });
+
+    test('update() catches mechanic.update() errors and disables failed mechanic', async () => {
+      const failingMechanic = {
+        update: jest.fn(() => { throw new Error('Runtime crash'); }),
+        destroy: jest.fn(),
+        getMeshes: jest.fn(() => []),
+        getBodies: jest.fn(() => []),
+        meshes: [],
+        bodies: [],
+        config: { type: 'broken_sweeper' }
+      };
+      mockCreateMechanic.mockReturnValue(failingMechanic);
+
+      const config = {
+        ...mockConfig,
+        mechanics: [{ type: 'broken_sweeper' }]
+      };
+      const holeEntity = new HoleEntity(mockWorld, config, mockScene);
+      await holeEntity.init();
+
+      const mockBallBody = { position: { x: 0, y: 0, z: 0 } };
+
+      // First update: should catch the error, not throw
+      expect(() => holeEntity.update(0.016, mockBallBody)).not.toThrow();
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringMatching(/Hole 0.*broken_sweeper.*disabling/),
+        expect.any(Error)
+      );
+      expect(failingMechanic._failed).toBe(true);
+
+      // Second update: failed mechanic should be skipped entirely
+      failingMechanic.update.mockClear();
+      console.error.mockClear();
+      holeEntity.update(0.016, mockBallBody);
+      expect(failingMechanic.update).not.toHaveBeenCalled();
+      expect(console.error).not.toHaveBeenCalled();
+    });
+
+    test('other mechanics continue when one fails during update', async () => {
+      const failingMechanic = {
+        update: jest.fn(() => { throw new Error('Boom'); }),
+        destroy: jest.fn(),
+        getMeshes: jest.fn(() => []),
+        getBodies: jest.fn(() => []),
+        meshes: [],
+        bodies: [],
+        config: { type: 'bad_mech' }
+      };
+      const workingMechanic = {
+        update: jest.fn(),
+        destroy: jest.fn(),
+        getMeshes: jest.fn(() => []),
+        getBodies: jest.fn(() => []),
+        meshes: [],
+        bodies: [],
+        config: { type: 'good_mech' }
+      };
+      mockCreateMechanic
+        .mockReturnValueOnce(failingMechanic)
+        .mockReturnValueOnce(workingMechanic);
+
+      const config = {
+        ...mockConfig,
+        mechanics: [
+          { type: 'bad_mech' },
+          { type: 'good_mech' }
+        ]
+      };
+      const holeEntity = new HoleEntity(mockWorld, config, mockScene);
+      await holeEntity.init();
+
+      const mockBallBody = { position: { x: 0, y: 0, z: 0 } };
+      holeEntity.update(0.016, mockBallBody);
+
+      // Failing mechanic threw but was caught
+      expect(failingMechanic._failed).toBe(true);
+      // Working mechanic still got called
+      expect(workingMechanic.update).toHaveBeenCalledWith(0.016, mockBallBody);
+    });
+
+    test('game loop does not crash when multiple mechanics fail', async () => {
+      const failMech1 = {
+        update: jest.fn(() => { throw new Error('Fail 1'); }),
+        destroy: jest.fn(),
+        getMeshes: jest.fn(() => []),
+        getBodies: jest.fn(() => []),
+        meshes: [],
+        bodies: [],
+        config: { type: 'fail_a' }
+      };
+      const failMech2 = {
+        update: jest.fn(() => { throw new Error('Fail 2'); }),
+        destroy: jest.fn(),
+        getMeshes: jest.fn(() => []),
+        getBodies: jest.fn(() => []),
+        meshes: [],
+        bodies: [],
+        config: { type: 'fail_b' }
+      };
+      mockCreateMechanic
+        .mockReturnValueOnce(failMech1)
+        .mockReturnValueOnce(failMech2);
+
+      const config = {
+        ...mockConfig,
+        mechanics: [{ type: 'fail_a' }, { type: 'fail_b' }]
+      };
+      const holeEntity = new HoleEntity(mockWorld, config, mockScene);
+      await holeEntity.init();
+
+      const mockBallBody = { position: { x: 0, y: 0, z: 0 } };
+
+      // Both fail on first update but game loop doesn't crash
+      expect(() => holeEntity.update(0.016, mockBallBody)).not.toThrow();
+      expect(failMech1._failed).toBe(true);
+      expect(failMech2._failed).toBe(true);
+
+      // Subsequent updates skip both
+      failMech1.update.mockClear();
+      failMech2.update.mockClear();
+      expect(() => holeEntity.update(0.016, mockBallBody)).not.toThrow();
+      expect(failMech1.update).not.toHaveBeenCalled();
+      expect(failMech2.update).not.toHaveBeenCalled();
+    });
+
+    test('error log includes mechanic type and hole index', async () => {
+      const failingMechanic = {
+        update: jest.fn(() => { throw new Error('Oops'); }),
+        destroy: jest.fn(),
+        getMeshes: jest.fn(() => []),
+        getBodies: jest.fn(() => []),
+        meshes: [],
+        bodies: [],
+        config: { type: 'portal_gate' }
+      };
+      mockCreateMechanic.mockReturnValue(failingMechanic);
+
+      const config = {
+        ...mockConfig,
+        index: 7,
+        mechanics: [{ type: 'portal_gate' }]
+      };
+      const holeEntity = new HoleEntity(mockWorld, config, mockScene);
+      await holeEntity.init();
+
+      holeEntity.update(0.016, { position: { x: 0, y: 0, z: 0 } });
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Hole 7'),
+        expect.any(Error)
+      );
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('portal_gate'),
+        expect.any(Error)
+      );
+    });
+
+    test('failed mechanic gets a debug visual indicator', async () => {
+      const failingMechanic = {
+        update: jest.fn(() => { throw new Error('Crash'); }),
+        destroy: jest.fn(),
+        getMeshes: jest.fn(() => []),
+        getBodies: jest.fn(() => []),
+        meshes: [],
+        bodies: [],
+        config: { type: 'timed_gate', position: { x: 1, y: 0, z: 2 } }
+      };
+      mockCreateMechanic.mockReturnValue(failingMechanic);
+
+      const config = {
+        ...mockConfig,
+        mechanics: [{ type: 'timed_gate' }]
+      };
+      const holeEntity = new HoleEntity(mockWorld, config, mockScene);
+      await holeEntity.init();
+
+      const meshCountBefore = holeEntity.meshes.length;
+      holeEntity.update(0.016, { position: { x: 0, y: 0, z: 0 } });
+
+      // An indicator mesh should have been added
+      expect(holeEntity.meshes.length).toBeGreaterThan(meshCountBefore);
+      expect(failingMechanic._failedIndicator).toBeDefined();
+      expect(failingMechanic._failedIndicator._isDebugIndicator).toBe(true);
+    });
+  });
+
+  describe('hero props lifecycle', () => {
+    test('should call createHeroProp for each entry in config.heroProps[]', () => {
+      const { createHeroProp } = require('../../objects/HeroPropFactory');
+      createHeroProp.mockReturnValue([{ geometry: {}, material: {} }]);
+
+      const configWithProps = {
+        ...mockConfig,
+        heroProps: [
+          { type: 'rocket_stand', position: { x: 1, y: 0, z: 2 }, scale: 1.5 },
+          { type: 'moon_rover', position: { x: -1, y: 0, z: 3 } }
+        ]
+      };
+
+      const holeEntity = new HoleEntity(mockWorld, configWithProps, mockScene);
+      holeEntity.init();
+
+      expect(createHeroProp).toHaveBeenCalledTimes(2);
+      expect(createHeroProp).toHaveBeenCalledWith(
+        holeEntity.group,
+        configWithProps.heroProps[0]
+      );
+      expect(createHeroProp).toHaveBeenCalledWith(
+        holeEntity.group,
+        configWithProps.heroProps[1]
+      );
+    });
+
+    test('should track hero prop meshes for cleanup', () => {
+      const { createHeroProp } = require('../../objects/HeroPropFactory');
+      const mockMesh1 = { geometry: { dispose: jest.fn() }, material: { dispose: jest.fn() } };
+      const mockMesh2 = { geometry: { dispose: jest.fn() }, material: { dispose: jest.fn() } };
+      createHeroProp.mockReturnValue([mockMesh1, mockMesh2]);
+
+      const configWithProps = {
+        ...mockConfig,
+        heroProps: [{ type: 'rocket_stand', position: { x: 0, y: 0, z: 0 } }]
+      };
+
+      const holeEntity = new HoleEntity(mockWorld, configWithProps, mockScene);
+      holeEntity.init();
+
+      expect(holeEntity.meshes).toContain(mockMesh1);
+      expect(holeEntity.meshes).toContain(mockMesh2);
+    });
+
+    test('should not error when heroProps is missing from config', () => {
+      const holeEntity = new HoleEntity(mockWorld, mockConfig, mockScene);
+      expect(() => holeEntity.init()).not.toThrow();
+    });
+
+    test('should not error when heroProps is empty array', () => {
+      const configWithEmptyProps = { ...mockConfig, heroProps: [] };
+      const holeEntity = new HoleEntity(mockWorld, configWithEmptyProps, mockScene);
+      expect(() => holeEntity.init()).not.toThrow();
+    });
+
+    test('should catch and log error for failing hero prop, continue with others', () => {
+      const { createHeroProp } = require('../../objects/HeroPropFactory');
+      createHeroProp
+        .mockImplementationOnce(() => { throw new Error('Bad prop'); })
+        .mockReturnValueOnce([{ geometry: {}, material: {} }]);
+
+      const configWithProps = {
+        ...mockConfig,
+        heroProps: [
+          { type: 'bad_prop', position: { x: 0, y: 0, z: 0 } },
+          { type: 'rocket_stand', position: { x: 1, y: 0, z: 1 } }
+        ]
+      };
+
+      const holeEntity = new HoleEntity(mockWorld, configWithProps, mockScene);
+      expect(() => holeEntity.init()).not.toThrow();
+
+      expect(console.error).toHaveBeenCalledWith(
+        expect.stringContaining('Failed to create hero prop'),
+        expect.any(Error)
+      );
+      // Second prop should still be created
+      expect(createHeroProp).toHaveBeenCalledTimes(2);
+    });
+
+    test('should clean up hero prop meshes on destroy', () => {
+      const { createHeroProp } = require('../../objects/HeroPropFactory');
+      const mockMesh = {
+        parent: null,
+        geometry: { dispose: jest.fn() },
+        material: { dispose: jest.fn() }
+      };
+      createHeroProp.mockReturnValue([mockMesh]);
+
+      const configWithProps = {
+        ...mockConfig,
+        heroProps: [{ type: 'rocket_stand', position: { x: 0, y: 0, z: 0 } }]
+      };
+
+      const holeEntity = new HoleEntity(mockWorld, configWithProps, mockScene);
+      holeEntity.init();
+
+      // Set the mesh parent to the group so destroy can find it
+      mockMesh.parent = holeEntity.group;
+
+      holeEntity.destroy();
+
+      expect(mockMesh.geometry.dispose).toHaveBeenCalled();
+      expect(mockMesh.material.dispose).toHaveBeenCalled();
+      expect(holeEntity.meshes).toHaveLength(0);
     });
   });
 

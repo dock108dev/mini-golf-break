@@ -8,6 +8,8 @@ import { EventTypes } from '../events/EventTypes';
 import { GameState } from '../states/GameState';
 import { CannonDebugRenderer } from '../utils/CannonDebugRenderer';
 import { debug } from '../utils/debug';
+import { validateCourse } from '../utils/holeValidator';
+import { getRegisteredTypes } from '../mechanics/MechanicRegistry';
 
 // Import managers
 import { StateManager } from '../managers/StateManager';
@@ -24,13 +26,19 @@ import { HoleCompletionManager } from '../managers/HoleCompletionManager';
 import { GameLoopManager } from '../managers/GameLoopManager';
 import { EventManager } from '../managers/EventManager';
 import { PerformanceManager } from '../managers/PerformanceManager';
+import { WebGLContextManager } from '../managers/WebGLContextManager';
+import { StuckBallManager } from '../managers/StuckBallManager';
 
 /**
  * Game - Main class that orchestrates the mini-golf game
  * Uses a component-based architecture with dedicated managers for different concerns
  */
 export class Game {
-  constructor() {
+  constructor(options = {}) {
+    // Course class to use (defaults to OrbitalDriftCourse)
+    this.CourseClass = options.courseClass || OrbitalDriftCourse;
+    this.courseName = options.courseName || 'Orbital Drift';
+
     // Core Three.js components
     this.scene = new THREE.Scene();
     this.renderer = null; // Will be initialized in init()
@@ -50,6 +58,8 @@ export class Game {
     this.holeTransitionManager = new HoleTransitionManager(this);
     this.holeCompletionManager = new HoleCompletionManager(this);
     this.gameLoopManager = new GameLoopManager(this);
+    this.stuckBallManager = new StuckBallManager(this);
+    this.webGLContextManager = new WebGLContextManager(this);
 
     this.cannonDebugRenderer = null;
 
@@ -63,6 +73,10 @@ export class Game {
     // Game objects (these aren't managers but specific game elements)
     this.course = null;
     this.spaceDecorations = null;
+
+    // Pause state
+    this.prePauseState = null;
+    this.boundHandlePauseKey = null;
 
     // Lighting
     this.lights = {
@@ -79,9 +93,10 @@ export class Game {
   }
 
   /**
-   * Initialize the game
+   * Initialize visual systems only (renderer, scene, lights, starfield, decorations).
+   * Called on page load so the welcome screen has a visual backdrop.
    */
-  async init() {
+  async initVisuals() {
     try {
       // Setup renderer first
       this.renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -90,7 +105,8 @@ export class Game {
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
       this.renderer.setClearColor(0x000000); // Black background for space
 
-      // Initialize managers in appropriate order with proper dependency management
+      // Initialize WebGL context loss handling
+      this.webGLContextManager.init();
 
       // First tier - Core systems that don't depend on others
       this.debugManager.init();
@@ -114,7 +130,43 @@ export class Game {
       this.cameraController.setRenderer(this.renderer);
       this.cameraController.init();
 
-      // Third tier - Game systems that may depend on UI and rendering
+      // Setup lights
+      this.setupLights();
+
+      // Add space decorations
+      this.spaceDecorations = new SpaceDecorations(this.scene);
+      this.spaceDecorations.init();
+
+      // Add window resize listener
+      try {
+        this.boundHandleResize = this.handleResize.bind(this);
+        window.addEventListener('resize', this.boundHandleResize);
+      } catch (error) {
+        this.debugManager.warn('Game.init', 'Failed to add resize event listener', error);
+      }
+
+      // Start the render loop so the backdrop is visible behind the menu
+      this.gameLoopManager.init();
+      this.gameLoopManager.startLoop();
+
+      debug.log('[Game.initVisuals] Visual systems initialized.');
+    } catch (error) {
+      this.debugManager.error('Game.initVisuals', 'Failed to initialize visuals', error, true);
+      console.error('CRITICAL: Failed to initialize visuals:', error);
+      throw error; // Propagate so App.initVisuals() can show error UI
+    }
+  }
+
+  /**
+   * Initialize gameplay systems (physics, course, ball, input) and start the game.
+   * Called when the player clicks Play/Start.
+   */
+  async startGame() {
+    try {
+      // Stop the menu backdrop camera orbit
+      this.cameraController.stopMenuOrbit();
+
+      // Initialize game systems that depend on UI and rendering
       this.visualEffectsManager.init();
       this.physicsManager.init();
       this.audioManager.init();
@@ -125,24 +177,20 @@ export class Game {
         this.physicsManager.cannonWorld
       );
 
-      // Fourth tier - Game object managers that depend on physics and scene
+      // Game object managers that depend on physics and scene
       this.holeCompletionManager.init();
       this.hazardManager.init();
       this.visualEffectsManager.init();
 
-      // Add space decorations
-      this.spaceDecorations = new SpaceDecorations(this.scene);
-      this.spaceDecorations.init();
-
-      debug.log('[Game.init] Awaiting createCourse...');
+      debug.log('[Game.startGame] Awaiting createCourse...');
       await this.createCourse();
-      debug.log('[Game.init] createCourse finished.');
+      debug.log('[Game.startGame] createCourse finished.');
 
       // Initialize the ball manager after the course is created
       this.ballManager.init();
 
-      // Setup lights
-      this.setupLights();
+      // Initialize stuck ball detection
+      this.stuckBallManager.init();
 
       // Create input controller - depends on camera and ball
       this.inputController = new InputController(this);
@@ -152,18 +200,6 @@ export class Game {
       this.uiManager.updateHoleInfo();
       this.uiManager.updateScore();
       this.uiManager.updateStrokes();
-
-      // Add window resize listener
-      try {
-        this.boundHandleResize = this.handleResize.bind(this); // Store bound function
-        window.addEventListener('resize', this.boundHandleResize);
-      } catch (error) {
-        this.debugManager.warn('Game.init', 'Failed to add resize event listener', error);
-      }
-
-      // Start the game loop last, after everything is initialized
-      this.gameLoopManager.init();
-      this.gameLoopManager.startLoop();
 
       // Publish game started event
       this.eventManager.publish(EventTypes.GAME_STARTED, { timestamp: Date.now() }, this);
@@ -180,9 +216,17 @@ export class Game {
       // Publish game initialized event
       this.eventManager.publish(EventTypes.GAME_INITIALIZED, { timestamp: Date.now() }, this);
     } catch (error) {
-      this.debugManager.error('Game.init', 'Failed to initialize game', error, true);
-      console.error('CRITICAL: Failed to initialize game:', error);
+      this.debugManager.error('Game.startGame', 'Failed to start game', error, true);
+      console.error('CRITICAL: Failed to start game:', error);
     }
+  }
+
+  /**
+   * Initialize the game (convenience method that runs both phases).
+   */
+  async init() {
+    await this.initVisuals();
+    await this.startGame();
   }
 
   /**
@@ -191,6 +235,82 @@ export class Game {
   enableGameInput() {
     if (this.inputController) {
       this.inputController.enableInput();
+    }
+  }
+
+  /**
+   * Pause the game. Stops the game loop and shows the pause overlay.
+   */
+  pauseGame() {
+    const currentState = this.stateManager.getGameState();
+    if (currentState !== GameState.PLAYING && currentState !== GameState.AIMING) {
+      return;
+    }
+
+    this.prePauseState = currentState;
+    this.stateManager.setGameState(GameState.PAUSED);
+    this.gameLoopManager.pause();
+
+    if (this.inputController) {
+      this.inputController.disableInput();
+    }
+
+    if (this.uiManager) {
+      this.uiManager.showPauseOverlay();
+    }
+
+    this.eventManager.publish(EventTypes.GAME_PAUSED, { timestamp: Date.now() }, this);
+    debug.log('[Game] Game paused');
+  }
+
+  /**
+   * Resume the game from a paused state.
+   */
+  resumeGame() {
+    if (!this.stateManager.isInState(GameState.PAUSED)) {
+      return;
+    }
+
+    const resumeState = this.prePauseState || GameState.PLAYING;
+    this.prePauseState = null;
+    this.stateManager.setGameState(resumeState);
+    this.gameLoopManager.resume();
+
+    if (this.inputController) {
+      this.inputController.enableInput();
+    }
+
+    if (this.uiManager) {
+      this.uiManager.hidePauseOverlay();
+    }
+
+    this.eventManager.publish(EventTypes.GAME_RESUMED, { timestamp: Date.now() }, this);
+    debug.log('[Game] Game resumed');
+  }
+
+  /**
+   * Handle Escape key for pause/resume toggle
+   */
+  handlePauseKey(event) {
+    if (event.key !== 'Escape') {
+      return;
+    }
+
+    // If paused, always resume
+    if (this.stateManager.isInState(GameState.PAUSED)) {
+      this.resumeGame();
+      return;
+    }
+
+    // Don't pause if input controller is in keyboard aiming mode (Escape cancels aiming there)
+    if (this.inputController?.isKeyboardAiming) {
+      return;
+    }
+
+    // Pause if in a pauseable state
+    const currentState = this.stateManager.getGameState();
+    if (currentState === GameState.PLAYING || currentState === GameState.AIMING) {
+      this.pauseGame();
     }
   }
 
@@ -262,10 +382,17 @@ export class Game {
         throw new Error('PhysicsManager must be initialized before creating the course.');
       }
 
-      this.course = await OrbitalDriftCourse.create(this);
+      this.course = await this.CourseClass.create(this);
 
       if (!this.course || !this.course.currentHoleEntity) {
         throw new Error('Course or initial HoleEntity failed to initialize.');
+      }
+
+      // Dev-mode: validate all mechanic types in configs are registered
+      if (process.env.NODE_ENV !== 'production' && this.course.holeConfigs) {
+        validateCourse(this.course.holeConfigs, this.courseName || 'Course', {
+          registeredTypes: getRegisteredTypes(),
+        });
       }
 
       // Set course ref in CameraController
@@ -289,6 +416,7 @@ export class Game {
     } catch (error) {
       this.debugManager.error('Game.createCourse', 'Failed to create course', error, true);
       console.error('CRITICAL: Failed to create course:', error);
+      throw error; // Propagate so startGame() caller can show error UI
     }
   }
 
@@ -339,15 +467,23 @@ export class Game {
         this.cleanupManager(this.gameLoopManager);
       }
 
+      // Clean up WebGL context manager
+      this.cleanupManager(this.webGLContextManager);
+
       // Remove event listeners
       if (this.boundHandleResize) {
         window.removeEventListener('resize', this.boundHandleResize);
         this.boundHandleResize = null;
       }
+      if (this.boundHandlePauseKey) {
+        window.removeEventListener('keydown', this.boundHandlePauseKey);
+        this.boundHandlePauseKey = null;
+      }
 
       // Clean up managers in reverse order of initialization
       const managers = [
         'inputController',
+        'stuckBallManager',
         'ballManager',
         'holeCompletionManager',
         'holeTransitionManager',
@@ -404,6 +540,8 @@ export class Game {
    * Set up event listeners (resize is handled in init via boundHandleResize)
    */
   setupEventListeners() {
-    // Additional event subscriptions can be added here
+    // Pause/resume via Escape key
+    this.boundHandlePauseKey = this.handlePauseKey.bind(this);
+    window.addEventListener('keydown', this.boundHandlePauseKey);
   }
 }

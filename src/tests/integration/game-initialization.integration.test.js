@@ -65,8 +65,8 @@ jest.mock('../../objects/OrbitalDriftCourse', () => ({
       },
       holeNumber: 1,
       totalHoles: 9,
-      getHoleStartPosition: jest.fn(() => ({ x: 0, y: 0.1, z: 0 })),
-      getHolePosition: jest.fn(() => ({ x: 0, y: 0, z: -5 }))
+      getHoleStartPosition: jest.fn(() => ({ x: 0, y: 0.1, z: 0, toArray: () => [0, 0.1, 0] })),
+      getHolePosition: jest.fn(() => ({ x: 0, y: 0, z: -5, toArray: () => [0, 0, -5] }))
     }))
   }
 }));
@@ -88,6 +88,33 @@ jest.mock('../../managers/GameLoopManager', () => ({
   GameLoopManager: jest.fn(() => ({
     init: jest.fn(),
     startLoop: jest.fn(),
+    stopLoop: jest.fn(),
+    cleanup: jest.fn()
+  }))
+}));
+
+jest.mock('../../controls/CameraController', () => ({
+  CameraController: jest.fn(() => ({
+    camera: {
+      position: { set: jest.fn(), x: 0, y: 10, z: 10 },
+      lookAt: jest.fn(),
+      aspect: 1,
+      updateProjectionMatrix: jest.fn(),
+      add: jest.fn()
+    },
+    setRenderer: jest.fn(),
+    init: jest.fn(),
+    setCourse: jest.fn(),
+    positionCameraForHole: jest.fn(),
+    stopMenuOrbit: jest.fn(),
+    update: jest.fn(),
+    cleanup: jest.fn()
+  }))
+}));
+
+jest.mock('../../managers/WebGLContextManager', () => ({
+  WebGLContextManager: jest.fn(() => ({
+    init: jest.fn(),
     cleanup: jest.fn()
   }))
 }));
@@ -101,6 +128,12 @@ jest.mock('../../managers/BallManager', () => ({
       this.ball = {
         mesh: { position: { x: 0, y: 0, z: 0 } },
         body: { position: { x: 0, y: 0, z: 0 } }
+      };
+    });
+    this.createBall = jest.fn((startPosition) => {
+      this.ball = {
+        mesh: { position: { x: startPosition.x, y: startPosition.y, z: startPosition.z } },
+        body: { position: { x: startPosition.x, y: startPosition.y, z: startPosition.z } }
       };
     });
     this.cleanup = jest.fn();
@@ -182,7 +215,7 @@ describe('Game Initialization Integration', () => {
 
     // Verify error was logged
     expect(consoleError).toHaveBeenCalledWith(
-      expect.stringContaining('CRITICAL: Failed to initialize game:'),
+      expect.stringContaining('CRITICAL: Failed to initialize visuals:'),
       expect.any(Error)
     );
 

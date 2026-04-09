@@ -20,14 +20,17 @@ export class MechanicBase {
    * @param {THREE.Group} group - The hole's Three.js group to add meshes to
    * @param {object} config - Mechanic-specific configuration from hole config
    * @param {number} surfaceHeight - Y height of the green surface
+   * @param {object} [theme] - Optional theme object for visual customization
    */
-  constructor(world, group, config, surfaceHeight) {
+  constructor(world, group, config, surfaceHeight, theme) {
     this.world = world;
     this.group = group;
     this.config = config;
     this.surfaceHeight = surfaceHeight;
+    this.theme = theme || null;
     this.meshes = [];
     this.bodies = [];
+    this.isForceField = false;
   }
 
   /**
@@ -36,6 +39,15 @@ export class MechanicBase {
    * @param {CANNON.Body|null} ballBody - The ball's physics body (null if no ball)
    */
   update(_dt, _ballBody) {
+    // Override in subclass
+  }
+
+  /**
+   * Called when a dt spike is detected (raw dt exceeded the clamp threshold).
+   * Mechanics should reset internal timers/cooldowns to prevent jarring state
+   * changes after a tab refocus or long pause.
+   */
+  onDtSpike() {
     // Override in subclass
   }
 
@@ -66,6 +78,32 @@ export class MechanicBase {
       }
     }
     this.bodies = [];
+  }
+
+  /**
+   * Get all meshes created by this mechanic.
+   * @returns {THREE.Mesh[]}
+   */
+  getMeshes() {
+    return this.meshes;
+  }
+
+  /**
+   * Get all physics bodies created by this mechanic.
+   * @returns {CANNON.Body[]}
+   */
+  getBodies() {
+    return this.bodies;
+  }
+
+  /**
+   * Set visibility of all meshes owned by this mechanic.
+   * @param {boolean} visible
+   */
+  setMeshVisibility(visible) {
+    for (const mesh of this.meshes) {
+      mesh.visible = visible;
+    }
   }
 
   /**

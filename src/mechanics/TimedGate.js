@@ -16,8 +16,8 @@ import { registerMechanic } from './MechanicRegistry';
  *   color: number (optional) - Gate color (default 0x4488cc)
  */
 class TimedGate extends MechanicBase {
-  constructor(world, group, config, surfaceHeight) {
-    super(world, group, config, surfaceHeight);
+  constructor(world, group, config, surfaceHeight, theme) {
+    super(world, group, config, surfaceHeight, theme);
 
     const pos = config.position || new THREE.Vector3(0, 0, 0);
     this.openDuration = config.openDuration || 2;
@@ -28,7 +28,7 @@ class TimedGate extends MechanicBase {
     const width = config.size?.width || 2;
     const height = config.size?.height || 1;
     const depth = config.size?.depth || 0.2;
-    const color = config.color || 0x4488cc;
+    const color = config.color || theme?.mechanics?.timedGate?.color || 0x4488cc;
 
     this.closedY = surfaceHeight + height / 2;
     this.openY = surfaceHeight - height; // Below surface when open
@@ -62,6 +62,14 @@ class TimedGate extends MechanicBase {
     this.bodies.push(this.body);
   }
 
+  onDtSpike() {
+    this.timer = 0;
+    this.isOpen = false;
+    // Snap gate to closed position immediately (no lerp)
+    this.mesh.position.y = this.closedY;
+    this.body.position.y = this.closedY;
+  }
+
   update(dt, _ballBody) {
     this.timer += dt;
     const cycleDuration = this.openDuration + this.closedDuration;
@@ -71,6 +79,9 @@ class TimedGate extends MechanicBase {
 
     if (shouldBeOpen !== this.isOpen) {
       this.isOpen = shouldBeOpen;
+      if (this.audioManager) {
+        this.audioManager.playSound(this.isOpen ? 'gateOpen' : 'gateClose');
+      }
     }
 
     // Smoothly interpolate gate position
@@ -84,6 +95,6 @@ class TimedGate extends MechanicBase {
   }
 }
 
-registerMechanic('timed_gate', (world, group, config, sh) => new TimedGate(world, group, config, sh));
+registerMechanic('timed_gate', (world, group, config, sh, theme) => new TimedGate(world, group, config, sh, theme));
 
 export { TimedGate };

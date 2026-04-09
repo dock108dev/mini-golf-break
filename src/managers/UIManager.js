@@ -32,6 +32,21 @@ export class UIManager {
     // Power Indicator (still managed here)
     this.powerIndicator = null;
 
+    // Transition overlay
+    this.transitionOverlay = null;
+
+    // Pause overlay
+    this.pauseOverlay = null;
+
+    // Resume button (within pause overlay)
+    this.resumeButton = null;
+
+    // Mobile pause button
+    this.pauseButton = null;
+
+    // Mute toggle button
+    this.muteButton = null;
+
     // Event subscriptions list
     this.eventSubscriptions = [];
   }
@@ -53,9 +68,13 @@ export class UIManager {
       this.debugOverlay.init();
       debug.log('[UIManager.init] Submodules initialized.');
 
-      debug.log('[UIManager.init] Creating remaining UI elements (Message, Power)...');
+      debug.log('[UIManager.init] Creating remaining UI elements (Message, Power, Transition, Pause)...');
       this.createMessageUI();
       this.createPowerIndicatorUI();
+      this.createTransitionOverlay();
+      this.createPauseOverlay();
+      this.createPauseButton();
+      this.createMuteButton();
       debug.log('[UIManager.init] Remaining UI elements created.');
 
       debug.log('[UIManager.init] Setting up event listeners...');
@@ -123,6 +142,176 @@ export class UIManager {
   }
 
   /**
+   * Create the transition overlay element (shown during hole transitions).
+   */
+  createTransitionOverlay() {
+    this.transitionOverlay = document.createElement('div');
+    this.transitionOverlay.classList.add('transition-overlay');
+    const spinner = document.createElement('div');
+    spinner.classList.add('transition-spinner');
+    this.transitionOverlay.appendChild(spinner);
+    document.body.appendChild(this.transitionOverlay);
+  }
+
+  /**
+   * Create the pause overlay element.
+   */
+  createPauseOverlay() {
+    this.pauseOverlay = document.createElement('div');
+    this.pauseOverlay.classList.add('pause-overlay');
+    this.pauseOverlay.setAttribute('role', 'alertdialog');
+    this.pauseOverlay.setAttribute('aria-label', 'Game paused');
+
+    const content = document.createElement('div');
+    content.classList.add('pause-content');
+
+    const title = document.createElement('h2');
+    title.classList.add('pause-title');
+    title.textContent = 'Paused';
+    content.appendChild(title);
+
+    this.resumeButton = document.createElement('button');
+    this.resumeButton.classList.add('pause-resume-button');
+    this.resumeButton.textContent = 'Resume';
+    this.resumeButton.addEventListener('click', () => {
+      if (this.game.resumeGame) {
+        this.game.resumeGame();
+      }
+    });
+    content.appendChild(this.resumeButton);
+
+    const howToPlayButton = document.createElement('button');
+    howToPlayButton.classList.add('pause-how-to-play-button');
+    howToPlayButton.textContent = 'How to Play';
+    howToPlayButton.setAttribute('aria-label', 'How to Play');
+    howToPlayButton.addEventListener('click', () => {
+      if (window.App && typeof window.App.showControlsOverlay === 'function') {
+        window.App.showControlsOverlay();
+      }
+    });
+    content.appendChild(howToPlayButton);
+
+    // Trap focus within pause overlay
+    this.pauseOverlay.addEventListener('keydown', (e) => {
+      this._trapFocus(e, this.pauseOverlay);
+    });
+
+    this.pauseOverlay.appendChild(content);
+    document.body.appendChild(this.pauseOverlay);
+  }
+
+  /**
+   * Create the mobile pause button.
+   */
+  createPauseButton() {
+    this.pauseButton = document.createElement('button');
+    this.pauseButton.classList.add('pause-button');
+    this.pauseButton.textContent = '⏸';
+    this.pauseButton.setAttribute('aria-label', 'Pause game');
+    this.pauseButton.addEventListener('click', () => {
+      if (this.game.pauseGame) {
+        this.game.pauseGame();
+      }
+    });
+    this.uiContainer.appendChild(this.pauseButton);
+  }
+
+  /**
+   * Create the audio mute/unmute toggle button.
+   */
+  createMuteButton() {
+    this.muteButton = document.createElement('button');
+    this.muteButton.classList.add('mute-button');
+    this.muteButton.setAttribute('aria-label', 'Toggle audio');
+
+    // Set initial icon based on AudioManager mute state
+    const isMuted = this.game.audioManager?.isMuted ?? false;
+    this.muteButton.textContent = isMuted ? '🔇' : '🔊';
+    if (isMuted) {
+      this.muteButton.setAttribute('aria-label', 'Unmute audio');
+    }
+
+    this.muteButton.addEventListener('click', () => {
+      this._handleMuteToggle();
+    });
+
+    this.uiContainer.appendChild(this.muteButton);
+  }
+
+  /**
+   * Handle mute button click - toggle audio and update icon.
+   */
+  _handleMuteToggle() {
+    if (!this.game.audioManager) {
+      return;
+    }
+    this.game.audioManager.toggleMute();
+    this.updateMuteButtonIcon();
+  }
+
+  /**
+   * Update the mute button icon to reflect current audio state.
+   */
+  updateMuteButtonIcon() {
+    if (!this.muteButton || !this.game.audioManager) {
+      return;
+    }
+    const isMuted = this.game.audioManager.isMuted;
+    this.muteButton.textContent = isMuted ? '🔇' : '🔊';
+    this.muteButton.setAttribute('aria-label', isMuted ? 'Unmute audio' : 'Toggle audio');
+  }
+
+  /**
+   * Show the pause overlay.
+   */
+  showPauseOverlay() {
+    if (!this.pauseOverlay) {
+      return;
+    }
+    this.pauseOverlay.classList.add('visible');
+    if (this.pauseButton) {
+      this.pauseButton.style.display = 'none';
+    }
+    // Focus the resume button for keyboard accessibility
+    if (this.resumeButton && typeof this.resumeButton.focus === 'function') {
+      this.resumeButton.focus();
+    }
+  }
+
+  /**
+   * Hide the pause overlay.
+   */
+  hidePauseOverlay() {
+    if (!this.pauseOverlay) {
+      return;
+    }
+    this.pauseOverlay.classList.remove('visible');
+    if (this.pauseButton) {
+      this.pauseButton.style.display = '';
+    }
+  }
+
+  /**
+   * Show the transition loading overlay.
+   */
+  showTransitionOverlay() {
+    if (!this.transitionOverlay) {
+      return;
+    }
+    this.transitionOverlay.classList.add('visible');
+  }
+
+  /**
+   * Hide the transition loading overlay.
+   */
+  hideTransitionOverlay() {
+    if (!this.transitionOverlay) {
+      return;
+    }
+    this.transitionOverlay.classList.remove('visible');
+  }
+
+  /**
    * Set up event listeners - Delegates some updates to submodules.
    */
   setupEventListeners() {
@@ -159,8 +348,12 @@ export class UIManager {
       subscribe(EventTypes.HAZARD_DETECTED, this.handleHazardDetected);
 
       subscribe(EventTypes.UI_REQUEST_RESTART_GAME, () => {
-        debug.log('[UIManager] Received UI_REQUEST_RESTART_GAME');
-        window.location.reload();
+        debug.log('[UIManager] Received UI_REQUEST_RESTART_GAME. Returning to start screen.');
+        if (window.App && typeof window.App.returnToMenu === 'function') {
+          window.App.returnToMenu();
+        } else {
+          window.location.reload();
+        }
       });
 
       debug.log('[UIManager.setupEventListeners] Finished.');
@@ -309,6 +502,10 @@ export class UIManager {
       renderer.domElement.parentNode.removeChild(renderer.domElement);
     }
 
+    // Add accessibility attributes to the canvas element
+    renderer.domElement.setAttribute('role', 'img');
+    renderer.domElement.setAttribute('aria-label', 'Mini Golf Break game');
+
     // Append if not already a child
     if (renderer.domElement.parentNode !== container) {
       container.appendChild(renderer.domElement);
@@ -399,6 +596,38 @@ export class UIManager {
   }
 
   /**
+   * Trap focus within a container element.
+   * Prevents Tab from escaping to hidden game elements behind overlays.
+   * @param {KeyboardEvent} e - The keydown event
+   * @param {HTMLElement} container - The container to trap focus within
+   */
+  _trapFocus(e, container) {
+    if (e.key !== 'Tab') {
+      return;
+    }
+    const focusableElements = container.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusableElements.length === 0) {
+      return;
+    }
+    const firstFocusable = focusableElements[0];
+    const lastFocusable = focusableElements[focusableElements.length - 1];
+
+    if (e.shiftKey) {
+      if (document.activeElement === firstFocusable) {
+        e.preventDefault();
+        lastFocusable.focus();
+      }
+    } else {
+      if (document.activeElement === lastFocusable) {
+        e.preventDefault();
+        firstFocusable.focus();
+      }
+    }
+  }
+
+  /**
    * Cleanup UI elements and unsubscribe from events.
    */
   cleanup() {
@@ -410,10 +639,19 @@ export class UIManager {
     // Cleanup elements managed directly by UIManager
     this.messageElement?.remove();
     this.powerIndicator?.remove();
+    this.transitionOverlay?.remove();
+    this.pauseOverlay?.remove();
+    this.pauseButton?.remove();
+    this.muteButton?.remove();
     this.uiContainer?.remove(); // Remove the main container
 
     this.messageElement = null;
     this.powerIndicator = null;
+    this.transitionOverlay = null;
+    this.pauseOverlay = null;
+    this.pauseButton = null;
+    this.resumeButton = null;
+    this.muteButton = null;
     this.scoreOverlay = null;
     this.debugOverlay = null;
     this.uiContainer = null;

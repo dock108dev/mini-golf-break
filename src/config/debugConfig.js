@@ -2,7 +2,7 @@
  * Configuration for debug functionality
  */
 export const DEBUG_CONFIG = {
-  enabled: false, // Set to true to enable debugging in production
+  enabled: false, // Debug mode toggle — do NOT enable in production builds
   enableKey: 'd', // Key to toggle debug mode
   showHelpers: true, // Show axis and grid helpers
   showLightHelpers: true, // Show light helpers
@@ -14,9 +14,9 @@ export const DEBUG_CONFIG = {
     suppressRepeated: true, // Suppress repeated identical errors
     maxRepeats: 3 // Number of times an identical error is logged before suppression
   },
+  forceFieldToggleKey: 'f', // Key to toggle force field visibility independently
   courseDebug: {
     enabled: true, // Enable course debugging features
-    toggleCourseTypeKey: 'c', // Key to reload course
     loadSpecificHoleKey: 'h', // Key to trigger load specific hole prompt
     quickLoadKeys: {
       // Number keys 1-9 to quickly load specific holes

@@ -1,3 +1,6 @@
+/** Maximum delta time in seconds — frames exceeding this are clamped. */
+export const MAX_DELTA_TIME = 1 / 30; // ~33ms
+
 /**
  * GameLoopManager - Orchestrates the main game update loop
  * Centralized control of the update sequence to improve modularity
@@ -14,9 +17,31 @@ export class GameLoopManager {
     this.lastFrameTime = performance.now();
     this.deltaTime = 0;
 
-    // Track if the loop is running (support both property names for backward compatibility)
-    this.isLoopRunning = false;
     this.isRunning = false;
+
+    // Pause state
+    this.isPaused = false;
+
+    // True when the current frame's raw dt exceeded MAX_DELTA_TIME (dt spike)
+    this.dtWasClamped = false;
+
+    // Visibility change handler — pause loop when tab is hidden to prevent
+    // large dt accumulation, resume when tab becomes visible again.
+    this._onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        if (this.isRunning && !this.isPaused) {
+          this._pausedByVisibility = true;
+          this.pause();
+        }
+      } else if (document.visibilityState === 'visible') {
+        if (this._pausedByVisibility) {
+          this._pausedByVisibility = false;
+          this.resume();
+        }
+      }
+    };
+    this._pausedByVisibility = false;
+    document.addEventListener('visibilitychange', this._onVisibilityChange);
   }
 
   /**
@@ -31,11 +56,10 @@ export class GameLoopManager {
    * Start the animation loop
    */
   startLoop() {
-    if (this.isLoopRunning) {
+    if (this.isRunning) {
       return;
     }
 
-    this.isLoopRunning = true;
     this.isRunning = true;
     this.lastFrameTime = performance.now();
     this.animate();
@@ -52,8 +76,31 @@ export class GameLoopManager {
       this.animationFrameId = null;
     }
 
-    this.isLoopRunning = false;
     this.isRunning = false;
+    return this;
+  }
+
+  /**
+   * Pause the game loop (stops updates but maintains state for resume)
+   */
+  pause() {
+    if (!this.isRunning || this.isPaused) {
+      return this;
+    }
+    this.isPaused = true;
+    this.stopLoop();
+    return this;
+  }
+
+  /**
+   * Resume the game loop after a pause
+   */
+  resume() {
+    if (!this.isPaused) {
+      return this;
+    }
+    this.isPaused = false;
+    this.startLoop();
     return this;
   }
 
@@ -70,6 +117,12 @@ export class GameLoopManager {
     this.deltaTime = (now - this.lastFrameTime) / 1000; // Convert to seconds
     this.lastFrameTime = now;
 
+    // Clamp dt to prevent physics explosions after tab switches or long pauses
+    this.dtWasClamped = this.deltaTime > MAX_DELTA_TIME;
+    if (this.dtWasClamped) {
+      this.deltaTime = MAX_DELTA_TIME;
+    }
+
     // Update game deltaTime if using clock
     if (this.game.clock && typeof this.game.clock.getDelta === 'function') {
       this.game.deltaTime = this.game.clock.getDelta();
@@ -78,12 +131,7 @@ export class GameLoopManager {
     // Run the update logic with error handling
     try {
       if (this.game.performanceManager) {
-        // Support both beginFrame/endFrame and startFrame/endFrame
-        if (typeof this.game.performanceManager.startFrame === 'function') {
-          this.game.performanceManager.startFrame();
-        } else if (typeof this.game.performanceManager.beginFrame === 'function') {
-          this.game.performanceManager.beginFrame();
-        }
+        this.game.performanceManager.beginFrame();
 
         this.update();
 
@@ -141,6 +189,11 @@ export class GameLoopManager {
       this.game.hazardManager.update();
     }
 
+    // 1.2.6 Update stuck ball detection
+    if (this.game.stuckBallManager) {
+      this.game.stuckBallManager.update(this.deltaTime);
+    }
+
     // 1.3 Check for hole completion - depends on ball position
     if (this.game.holeManager) {
       this.game.holeManager.checkBallInHole();
@@ -187,6 +240,11 @@ export class GameLoopManager {
       this.game.manageMemoryUsage();
     }
 
+    // 1.9 Update space decorations (planet rotation, shooting stars)
+    if (this.game.spaceDecorations) {
+      this.game.spaceDecorations.update(this.deltaTime);
+    }
+
     // 2. Render the scene with updated positions
     if (this.game.performanceManager) {
       this.game.performanceManager.startTimer('render');
@@ -216,5 +274,6 @@ export class GameLoopManager {
    */
   cleanup() {
     this.stopLoop();
+    document.removeEventListener('visibilitychange', this._onVisibilityChange);
   }
 }

@@ -52,8 +52,8 @@ export class UIDebugOverlay {
       debug.log('[UIDebugOverlay] Showing debug overlay.');
     }
 
-    // Format the debug information
-    let debugText = '';
+    // Format the debug information using safe DOM construction
+    this.debugElement.textContent = '';
     for (const key in debugInfo) {
       let value = debugInfo[key];
       // Format vectors/objects nicely
@@ -69,10 +69,13 @@ export class UIDebugOverlay {
       if (typeof value === 'number') {
         value = value.toFixed(2);
       }
-      debugText += `<div><strong>${key}:</strong> ${value}</div>`;
+      const row = document.createElement('div');
+      const label = document.createElement('strong');
+      label.textContent = `${key}: `;
+      row.appendChild(label);
+      row.appendChild(document.createTextNode(value));
+      this.debugElement.appendChild(row);
     }
-
-    this.debugElement.innerHTML = debugText;
   }
 
   /**
