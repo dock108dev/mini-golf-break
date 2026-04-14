@@ -30,13 +30,8 @@ describe('Webpack Performance Budget', () => {
     expect(filter('background.jpg')).toBe(false);
   });
 
-  test('development build sets performance hints to warning', () => {
+  test('development build disables performance hints (unminified bundle triggers false alarms)', () => {
     const config = webpackConfigFactory({}, { mode: 'development' });
-    expect(config.performance.hints).toBe('warning');
-  });
-
-  test('development build sets maxEntrypointSize to 409600 (400KB)', () => {
-    const config = webpackConfigFactory({}, { mode: 'development' });
-    expect(config.performance.maxEntrypointSize).toBe(409600);
+    expect(config.performance.hints).toBe(false);
   });
 });

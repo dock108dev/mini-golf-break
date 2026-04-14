@@ -211,11 +211,10 @@ module.exports = (env, argv) => {
     config.optimization.providedExports = true;
   }
 
+  // Dev bundles are large (unminified + HMR + single chunk); production still enforces budgets below.
   if (!isProduction) {
     config.performance = {
-      hints: 'warning',
-      maxAssetSize: 800000,
-      maxEntrypointSize: 409600
+      hints: false
     };
   }
 
