@@ -287,7 +287,7 @@ export class HoleCompletionManager {
    * Update loop for the hole completion manager
    * @param {number} dt - Delta time in seconds
    */
-  update(dt) {
+  update(_dt) {
     // REMOVE commented-out, redundant ball-in-hole check
   }
 }

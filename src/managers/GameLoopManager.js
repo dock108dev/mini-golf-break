@@ -150,19 +150,7 @@ export class GameLoopManager {
     }
   }
 
-  /**
-   * Update game state for a single frame
-   * This is the central orchestrator of the update sequence
-   */
-  update() {
-    // Skip update if core components aren't initialized
-    if (!this.game.renderer || !this.game.scene || !this.game.camera) {
-      return;
-    }
-
-    // 1. Update managers in sequence
-
-    // 1.1 Update physics - must come first to update physical world
+  _updatePhysicsBallAndHazards() {
     if (this.game.physicsManager) {
       if (this.game.performanceManager) {
         this.game.performanceManager.startTimer('physics');
@@ -173,7 +161,6 @@ export class GameLoopManager {
       }
     }
 
-    // 1.2 Update ball - depends on physics, must come after physics
     if (this.game.ballManager) {
       if (this.game.performanceManager) {
         this.game.performanceManager.startTimer('ballUpdate');
@@ -184,22 +171,20 @@ export class GameLoopManager {
       }
     }
 
-    // 1.2.5 Update hazards if present (for test compatibility)
     if (this.game.hazardManager) {
       this.game.hazardManager.update();
     }
 
-    // 1.2.6 Update stuck ball detection
     if (this.game.stuckBallManager) {
       this.game.stuckBallManager.update(this.deltaTime);
     }
+  }
 
-    // 1.3 Check for hole completion - depends on ball position
+  _updateHoleCameraEffectsAndDecorations() {
     if (this.game.holeManager) {
       this.game.holeManager.checkBallInHole();
     }
 
-    // 1.4 Update camera - depends on ball position
     if (this.game.cameraController) {
       if (this.game.performanceManager) {
         this.game.performanceManager.startTimer('camera');
@@ -210,7 +195,6 @@ export class GameLoopManager {
       }
     }
 
-    // 1.5 Update visual effects - depends on ball state
     if (this.game.visualEffectsManager) {
       if (this.game.performanceManager) {
         this.game.performanceManager.startTimer('effects');
@@ -223,29 +207,24 @@ export class GameLoopManager {
       }
     }
 
-    // 1.6 Update CannonDebugRenderer - must be after physics update
-    // Only update if the main debug mode AND the cannon renderer exist
     if (this.game.debugManager?.enabled && this.game.cannonDebugRenderer) {
-      // Optional: Add performance tracking if needed
       this.game.cannonDebugRenderer.update();
     }
 
-    // 1.8 Mobile performance monitoring (every few seconds)
     if (this.game.adaptiveFrameRate) {
       this.game.adaptiveFrameRate();
     }
 
-    // Memory management check (run every 5 seconds)
     if (this.game.manageMemoryUsage && this.lastFrameTime % 5000 < this.deltaTime * 1000) {
       this.game.manageMemoryUsage();
     }
 
-    // 1.9 Update space decorations (planet rotation, shooting stars)
     if (this.game.spaceDecorations) {
       this.game.spaceDecorations.update(this.deltaTime);
     }
+  }
 
-    // 2. Render the scene with updated positions
+  _renderScene() {
     if (this.game.performanceManager) {
       this.game.performanceManager.startTimer('render');
     }
@@ -253,20 +232,34 @@ export class GameLoopManager {
     if (this.game.performanceManager) {
       this.game.performanceManager.endTimer('render');
     }
+  }
 
-    // 3. Update debug display if enabled - should be last to show final state
-    if (this.game.debugManager && this.game.debugManager.enabled) {
-      if (this.game.uiManager) {
-        // Include performance metrics in debug display if available
-        if (this.game.performanceManager) {
-          const debugInfo = this.game.debugManager.getDebugInfo();
-          debugInfo.performance = this.game.performanceManager.getDebugString();
-          this.game.uiManager.updateDebugDisplay(debugInfo);
-        } else {
-          this.game.uiManager.updateDebugDisplay(this.game.debugManager.getDebugInfo());
-        }
-      }
+  _updateDebugUI() {
+    if (!this.game.debugManager || !this.game.debugManager.enabled || !this.game.uiManager) {
+      return;
     }
+    if (this.game.performanceManager) {
+      const debugInfo = this.game.debugManager.getDebugInfo();
+      debugInfo.performance = this.game.performanceManager.getDebugString();
+      this.game.uiManager.updateDebugDisplay(debugInfo);
+    } else {
+      this.game.uiManager.updateDebugDisplay(this.game.debugManager.getDebugInfo());
+    }
+  }
+
+  /**
+   * Update game state for a single frame
+   * This is the central orchestrator of the update sequence
+   */
+  update() {
+    if (!this.game.renderer || !this.game.scene || !this.game.camera) {
+      return;
+    }
+
+    this._updatePhysicsBallAndHazards();
+    this._updateHoleCameraEffectsAndDecorations();
+    this._renderScene();
+    this._updateDebugUI();
   }
 
   /**

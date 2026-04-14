@@ -274,6 +274,7 @@ export class DebugManager {
 
   promptForHoleNumber() {
     const maxHole = 9;
+    /* eslint-disable no-alert -- debug-only course UI; browser prompts are intentional */
     const holeNumber = prompt(
       `Enter hole number to load (1-${maxHole}):`,
       this.courseDebugState.currentHole
@@ -286,6 +287,7 @@ export class DebugManager {
       alert(`Please enter a valid hole number between 1 and ${maxHole}.`);
       return;
     }
+    /* eslint-enable no-alert */
     this.loadSpecificHole(holeNum);
   }
 

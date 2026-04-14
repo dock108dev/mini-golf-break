@@ -1,6 +1,4 @@
 import { debug } from '../utils/debug';
-import * as THREE from 'three';
-import * as CANNON from 'cannon-es';
 
 /**
  * CoursesManager - Base class for managing multiple holes in a mini golf course
@@ -8,8 +6,8 @@ import * as CANNON from 'cannon-es';
 export class CoursesManager {
   /**
    * Create a new CoursesManager instance
-   * @param {THREE.Scene} scene - The Three.js scene
-   * @param {CANNON.World} physicsWorld - The physics world
+   * @param {import('three').Scene} scene - The Three.js scene
+   * @param {import('cannon-es').World} physicsWorld - The physics world
    * @param {Object} options - Additional options
    */
   constructor(scene, physicsWorld, options = {}) {
@@ -260,7 +258,7 @@ export class CoursesManager {
    * Create a hazard on the course
    * @param {Object} hazardConfig - Configuration for the hazard
    */
-  createHazard(hazardConfig) {
+  createHazard(_hazardConfig) {
     // Base implementation - to be overridden by specific courses
     console.warn('createHazard not implemented in this course');
   }

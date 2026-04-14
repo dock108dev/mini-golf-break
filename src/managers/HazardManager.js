@@ -128,7 +128,7 @@ export class HazardManager {
    * Handle ball moved event
    * @param {GameEvent} event - Ball moved event
    */
-  handleBallMoved(event) {
+  handleBallMoved(_event) {
     // Check if the ball is in a hazard
     this.checkHazards();
   }
