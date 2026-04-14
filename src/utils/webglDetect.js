@@ -47,7 +47,8 @@ export function showWebGLFallback() {
   const message = document.createElement('p');
   message.textContent =
     'Mini Golf Break requires WebGL to run. Your browser or device does not appear to support it.';
-  message.style.cssText = 'margin:0 0 24px;font-size:1.1em;max-width:500px;line-height:1.5;opacity:0.9;';
+  message.style.cssText =
+    'margin:0 0 24px;font-size:1.1em;max-width:500px;line-height:1.5;opacity:0.9;';
 
   const suggestions = document.createElement('ul');
   suggestions.style.cssText =
@@ -56,9 +57,9 @@ export function showWebGLFallback() {
     'Enable hardware acceleration in your browser settings',
     'Update your browser to the latest version',
     'Try a different browser (Chrome, Firefox, or Edge)',
-    'Make sure your graphics drivers are up to date',
+    'Make sure your graphics drivers are up to date'
   ];
-  tips.forEach((tip) => {
+  tips.forEach(tip => {
     const li = document.createElement('li');
     li.textContent = `\u2022 ${tip}`;
     suggestions.appendChild(li);

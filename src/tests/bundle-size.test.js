@@ -36,7 +36,10 @@ describe('Production Bundle Size', () => {
 
   beforeAll(() => {
     // Build if dist doesn't exist or is stale
-    if (!fs.existsSync(DIST_DIR) || fs.readdirSync(DIST_DIR).filter(f => f.endsWith('.js')).length === 0) {
+    if (
+      !fs.existsSync(DIST_DIR) ||
+      fs.readdirSync(DIST_DIR).filter(f => f.endsWith('.js')).length === 0
+    ) {
       execSync('npm run build', { cwd: path.resolve(__dirname, '../..'), stdio: 'pipe' });
     }
     jsFiles = fs.readdirSync(DIST_DIR).filter(f => f.endsWith('.js'));
@@ -48,7 +51,9 @@ describe('Production Bundle Size', () => {
       return match ? match[1] : f;
     });
 
-    expect(chunkNames).toEqual(expect.arrayContaining(['runtime', 'three', 'cannon', 'vendors', 'main']));
+    expect(chunkNames).toEqual(
+      expect.arrayContaining(['runtime', 'three', 'cannon', 'vendors', 'main'])
+    );
   });
 
   test('no individual chunk exceeds 500KB gzipped', () => {
@@ -67,15 +72,24 @@ describe('Production Bundle Size', () => {
 
   test('mechanics code is in main chunk, not vendor chunks', () => {
     const mechanicClasses = [
-      'MechanicBase', 'MechanicRegistry', 'MovingSweeper',
-      'BoostStrip', 'SuctionZone', 'PortalGate',
-      'TimedHazard', 'TimedGate', 'BankWall',
-      'ElevatedGreen', 'BowlContour', 'LowGravityZone',
-      'RicochetBumper', 'SplitRoute'
+      'MechanicBase',
+      'MechanicRegistry',
+      'MovingSweeper',
+      'BoostStrip',
+      'SuctionZone',
+      'PortalGate',
+      'TimedHazard',
+      'TimedGate',
+      'BankWall',
+      'ElevatedGreen',
+      'BowlContour',
+      'LowGravityZone',
+      'RicochetBumper',
+      'SplitRoute'
     ];
 
-    const vendorFiles = jsFiles.filter(f =>
-      f.startsWith('three.') || f.startsWith('cannon.') || f.startsWith('vendors.')
+    const vendorFiles = jsFiles.filter(
+      f => f.startsWith('three.') || f.startsWith('cannon.') || f.startsWith('vendors.')
     );
 
     for (const file of vendorFiles) {
@@ -87,6 +101,16 @@ describe('Production Bundle Size', () => {
         expect(hasClassDef).toBe(false);
       }
     }
+  });
+
+  test('main chunk raw size is logged for budget tracking', () => {
+    const mainFile = jsFiles.find(f => f.startsWith('main.'));
+    expect(mainFile).toBeDefined();
+    const mainSize = fs.statSync(path.join(DIST_DIR, mainFile)).size;
+    const mainKB = (mainSize / 1024).toFixed(1);
+    // eslint-disable-next-line no-console
+    console.log(`  Main chunk: ${mainKB} KB (budget: 400 KB)`);
+    expect(mainSize).toBeGreaterThan(0);
   });
 
   test('total gzipped bundle is under 500KB', () => {

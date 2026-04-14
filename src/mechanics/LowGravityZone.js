@@ -63,6 +63,9 @@ class LowGravityZone extends MechanicBase {
   }
 }
 
-registerMechanic('low_gravity_zone', (world, group, config, sh, theme) => new LowGravityZone(world, group, config, sh, theme));
+registerMechanic(
+  'low_gravity_zone',
+  (world, group, config, sh, theme) => new LowGravityZone(world, group, config, sh, theme)
+);
 
 export { LowGravityZone };

@@ -25,7 +25,7 @@ beforeAll(() => {
     x,
     y,
     z,
-    scale: s => ({ x: x * s, y: y * s, z: z * s }),
+    scale: s => ({ x: x * s, y: y * s, z: z * s })
   }));
 
   CANNON.Body.mockImplementation(() => ({
@@ -37,7 +37,7 @@ beforeAll(() => {
         this.x = x;
         this.y = y;
         this.z = z;
-      }),
+      })
     },
     velocity: {
       x: 0,
@@ -47,7 +47,7 @@ beforeAll(() => {
         this.x = x;
         this.y = y;
         this.z = z;
-      }),
+      })
     },
     quaternion: {
       x: 0,
@@ -56,11 +56,11 @@ beforeAll(() => {
       w: 1,
       set: jest.fn(),
       setFromAxisAngle: jest.fn(),
-      copy: jest.fn(),
+      copy: jest.fn()
     },
     addShape: jest.fn(),
     addEventListener: jest.fn(),
-    userData: {},
+    userData: {}
   }));
 
   CANNON.Body.SLEEPING = 2;
@@ -69,7 +69,9 @@ beforeAll(() => {
 
   THREE.MeshStandardMaterial.mockImplementation(opts => {
     const mat = { color: 0xffffff, roughness: 0.3, metalness: 0.2, dispose: jest.fn() };
-    if (opts) Object.assign(mat, opts);
+    if (opts) {
+      Object.assign(mat, opts);
+    }
     return mat;
   });
 
@@ -103,7 +105,7 @@ function makeMockWorld() {
     addBody: jest.fn(),
     removeBody: jest.fn(),
     step: jest.fn(),
-    bumperMaterial: { name: 'bumper' },
+    bumperMaterial: { name: 'bumper' }
   };
 }
 
@@ -113,9 +115,11 @@ function makeMockGroup() {
     add: jest.fn(child => children.push(child)),
     remove: jest.fn(child => {
       const idx = children.indexOf(child);
-      if (idx !== -1) children.splice(idx, 1);
+      if (idx !== -1) {
+        children.splice(idx, 1);
+      }
     }),
-    children,
+    children
   };
 }
 
@@ -129,13 +133,13 @@ function makeMockBall(x = 0, z = 0, mass = 0.45) {
         this.x = nx;
         this.y = ny;
         this.z = nz;
-      }),
+      })
     },
     velocity: { x: 0, y: 0, z: 0 },
     mass,
     sleepState: 0, // AWAKE
     applyForce: jest.fn(),
-    wakeUp: jest.fn(),
+    wakeUp: jest.fn()
   };
 }
 
@@ -156,7 +160,7 @@ describe('BoostStrip physics integration', () => {
       position: new THREE.Vector3(0, 0, 0),
       direction: new THREE.Vector3(1, 0, 0),
       force: 12,
-      size: { width: 3, length: 3 },
+      size: { width: 3, length: 3 }
     };
     const strip = new BoostStrip(world, group, config, SURFACE_HEIGHT);
 
@@ -176,7 +180,7 @@ describe('BoostStrip physics integration', () => {
       position: new THREE.Vector3(0, 0, 0),
       direction: new THREE.Vector3(0, 0, -1),
       force: 8,
-      size: { width: 2, length: 4 },
+      size: { width: 2, length: 4 }
     };
     const strip = new BoostStrip(world, group, config, SURFACE_HEIGHT);
     const ball = makeMockBall(strip.triggerBody.position.x, strip.triggerBody.position.z);
@@ -198,7 +202,7 @@ describe('BoostStrip physics integration', () => {
       position: new THREE.Vector3(0, 0, 0),
       direction: new THREE.Vector3(1, 0, 0),
       force: 10,
-      size: { width: 1, length: 1 },
+      size: { width: 1, length: 1 }
     };
     const strip = new BoostStrip(world, group, config, SURFACE_HEIGHT);
     const ball = makeMockBall(50, 50); // far away
@@ -225,7 +229,7 @@ describe('SuctionZone physics integration', () => {
     const config = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      force: 10,
+      force: 10
     };
     const zone = new SuctionZone(world, group, config, SURFACE_HEIGHT);
 
@@ -246,7 +250,7 @@ describe('SuctionZone physics integration', () => {
     const config = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 10,
-      force: 20,
+      force: 20
     };
     const zone = new SuctionZone(world, group, config, SURFACE_HEIGHT);
 
@@ -270,7 +274,7 @@ describe('SuctionZone physics integration', () => {
     const config = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 3,
-      force: 10,
+      force: 10
     };
     const zone = new SuctionZone(world, group, config, SURFACE_HEIGHT);
     const ball = makeMockBall(10, 10);
@@ -284,7 +288,7 @@ describe('SuctionZone physics integration', () => {
     const config = {
       position: new THREE.Vector3(5, 0, 5),
       radius: 10,
-      force: 8,
+      force: 8
     };
     const zone = new SuctionZone(world, group, config, SURFACE_HEIGHT);
 
@@ -317,7 +321,7 @@ describe('MovingSweeper physics integration', () => {
       pivot: new THREE.Vector3(0, 0, 0),
       armLength: 4,
       speed: 2.0,
-      size: { width: 4, height: 0.4, depth: 0.3 },
+      size: { width: 4, height: 0.4, depth: 0.3 }
     };
     const sweeper = new MovingSweeper(world, group, config, SURFACE_HEIGHT);
 
@@ -332,7 +336,7 @@ describe('MovingSweeper physics integration', () => {
     const newZ = sweeper.body.position.z;
 
     // At least one coordinate should have changed
-    const moved = (newX !== initialX) || (newZ !== initialZ);
+    const moved = newX !== initialX || newZ !== initialZ;
     expect(moved).toBe(true);
   });
 
@@ -341,7 +345,7 @@ describe('MovingSweeper physics integration', () => {
       pivot: new THREE.Vector3(0, 0, 0),
       armLength: 4,
       speed: Math.PI, // half revolution per second
-      size: { width: 4, height: 0.4, depth: 0.3 },
+      size: { width: 4, height: 0.4, depth: 0.3 }
     };
     const sweeper = new MovingSweeper(world, group, config, SURFACE_HEIGHT);
 
@@ -350,7 +354,7 @@ describe('MovingSweeper physics integration', () => {
       sweeper.update(0.25, null); // quarter-second steps
       positions.push({
         x: sweeper.body.position.x,
-        z: sweeper.body.position.z,
+        z: sweeper.body.position.z
       });
     }
 
@@ -358,7 +362,7 @@ describe('MovingSweeper physics integration', () => {
     for (let i = 1; i < positions.length; i++) {
       const prev = positions[i - 1];
       const curr = positions[i];
-      const same = (Math.abs(curr.x - prev.x) < 0.001) && (Math.abs(curr.z - prev.z) < 0.001);
+      const same = Math.abs(curr.x - prev.x) < 0.001 && Math.abs(curr.z - prev.z) < 0.001;
       expect(same).toBe(false);
     }
   });
@@ -371,7 +375,7 @@ describe('MovingSweeper physics integration', () => {
       pivot: new THREE.Vector3(pivotX, 0, pivotZ),
       armLength,
       speed: 1.5,
-      size: { width: 5, height: 0.4, depth: 0.3 },
+      size: { width: 5, height: 0.4, depth: 0.3 }
     };
     const sweeper = new MovingSweeper(world, group, config, SURFACE_HEIGHT);
 
@@ -391,7 +395,7 @@ describe('MovingSweeper physics integration', () => {
       pivot: new THREE.Vector3(0, 0, 0),
       armLength: 3,
       speed: 2.0,
-      size: { width: 3, height: 0.4, depth: 0.3 },
+      size: { width: 3, height: 0.4, depth: 0.3 }
     };
     const sweeper = new MovingSweeper(world, group, config, SURFACE_HEIGHT);
 
@@ -426,7 +430,7 @@ describe('PortalGate physics integration', () => {
     const config = {
       entryPosition: new THREE.Vector3(0, 0, 0),
       exitPosition: new THREE.Vector3(10, 0, -8),
-      radius: 1.0,
+      radius: 1.0
     };
     const portal = new PortalGate(world, group, config, SURFACE_HEIGHT);
 
@@ -443,7 +447,7 @@ describe('PortalGate physics integration', () => {
     const config = {
       entryPosition: new THREE.Vector3(0, 0, 0),
       exitPosition: new THREE.Vector3(5, 0, 5),
-      radius: 1.0,
+      radius: 1.0
     };
     const portal = new PortalGate(world, group, config, SURFACE_HEIGHT);
 
@@ -462,7 +466,7 @@ describe('PortalGate physics integration', () => {
     const config = {
       entryPosition: new THREE.Vector3(0, 0, 0),
       exitPosition: new THREE.Vector3(5, 0, 5),
-      radius: 1.0,
+      radius: 1.0
     };
     const portal = new PortalGate(world, group, config, SURFACE_HEIGHT);
 
@@ -477,7 +481,7 @@ describe('PortalGate physics integration', () => {
     const config = {
       entryPosition: new THREE.Vector3(0, 0, 0),
       exitPosition: new THREE.Vector3(10, 0, 10),
-      radius: 0.5,
+      radius: 0.5
     };
     const portal = new PortalGate(world, group, config, SURFACE_HEIGHT);
 
@@ -493,7 +497,7 @@ describe('PortalGate physics integration', () => {
     const config = {
       entryPosition: new THREE.Vector3(0, 0, 0),
       exitPosition: new THREE.Vector3(5, 0, 5),
-      radius: 1.0,
+      radius: 1.0
     };
     const portal = new PortalGate(world, group, config, SURFACE_HEIGHT);
 
@@ -516,7 +520,7 @@ describe('PortalGate physics integration', () => {
     const config = {
       entryPosition: new THREE.Vector3(0, 0, 0),
       exitPosition: new THREE.Vector3(5, 0, 5),
-      radius: 1.0,
+      radius: 1.0
     };
     const portal = new PortalGate(world, group, config, SURFACE_HEIGHT);
 
@@ -557,7 +561,7 @@ describe('LowGravityZone physics integration', () => {
     const config = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      gravityMultiplier: 0.3, // 30% gravity remains → 70% counter
+      gravityMultiplier: 0.3 // 30% gravity remains → 70% counter
     };
     const zone = new LowGravityZone(world, group, config, SURFACE_HEIGHT);
 
@@ -583,7 +587,7 @@ describe('LowGravityZone physics integration', () => {
     const config = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      gravityMultiplier: 0.5,
+      gravityMultiplier: 0.5
     };
     const zone = new LowGravityZone(world, group, config, SURFACE_HEIGHT);
 
@@ -606,7 +610,7 @@ describe('LowGravityZone physics integration', () => {
     const config = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 2,
-      gravityMultiplier: 0.3,
+      gravityMultiplier: 0.3
     };
     const zone = new LowGravityZone(world, group, config, SURFACE_HEIGHT);
 
@@ -620,7 +624,7 @@ describe('LowGravityZone physics integration', () => {
     const config = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      gravityMultiplier: 0.3,
+      gravityMultiplier: 0.3
     };
     const zone = new LowGravityZone(world, group, config, SURFACE_HEIGHT);
 
@@ -649,7 +653,7 @@ describe('BowlContour physics integration', () => {
     const config = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      force: 6,
+      force: 6
     };
     const bowl = new BowlContour(world, group, config, SURFACE_HEIGHT);
 
@@ -668,7 +672,7 @@ describe('BowlContour physics integration', () => {
     const config = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 10,
-      force: 10,
+      force: 10
     };
     const bowl = new BowlContour(world, group, config, SURFACE_HEIGHT);
 
@@ -692,7 +696,7 @@ describe('BowlContour physics integration', () => {
     const config = {
       position: new THREE.Vector3(5, 0, 5),
       radius: 10,
-      force: 8,
+      force: 8
     };
     const bowl = new BowlContour(world, group, config, SURFACE_HEIGHT);
 
@@ -709,7 +713,7 @@ describe('BowlContour physics integration', () => {
     const config = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 3,
-      force: 10,
+      force: 10
     };
     const bowl = new BowlContour(world, group, config, SURFACE_HEIGHT);
     const ball = makeMockBall(20, 20);
@@ -723,7 +727,7 @@ describe('BowlContour physics integration', () => {
     const config = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      force: 10,
+      force: 10
     };
     const bowl = new BowlContour(world, group, config, SURFACE_HEIGHT);
 
@@ -749,30 +753,50 @@ describe('Multiple mechanics affecting ball trajectory', () => {
   });
 
   it('ball receives forces from all active mechanics in a single frame', () => {
-    const boost = new BoostStrip(world, group, {
-      position: new THREE.Vector3(0, 0, 0),
-      direction: new THREE.Vector3(1, 0, 0),
-      force: 10,
-      size: { width: 6, length: 6 },
-    }, SURFACE_HEIGHT);
+    const boost = new BoostStrip(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(0, 0, 0),
+        direction: new THREE.Vector3(1, 0, 0),
+        force: 10,
+        size: { width: 6, length: 6 }
+      },
+      SURFACE_HEIGHT
+    );
 
-    const suction = new SuctionZone(world, group, {
-      position: new THREE.Vector3(0, 0, 0),
-      radius: 5,
-      force: 5,
-    }, SURFACE_HEIGHT);
+    const suction = new SuctionZone(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(0, 0, 0),
+        radius: 5,
+        force: 5
+      },
+      SURFACE_HEIGHT
+    );
 
-    const lowGrav = new LowGravityZone(world, group, {
-      position: new THREE.Vector3(0, 0, 0),
-      radius: 5,
-      gravityMultiplier: 0.4,
-    }, SURFACE_HEIGHT);
+    const lowGrav = new LowGravityZone(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(0, 0, 0),
+        radius: 5,
+        gravityMultiplier: 0.4
+      },
+      SURFACE_HEIGHT
+    );
 
-    const bowl = new BowlContour(world, group, {
-      position: new THREE.Vector3(0, 0, 0),
-      radius: 5,
-      force: 3,
-    }, SURFACE_HEIGHT);
+    const bowl = new BowlContour(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(0, 0, 0),
+        radius: 5,
+        force: 3
+      },
+      SURFACE_HEIGHT
+    );
 
     // Place ball at (2, 0) — inside all zones
     const ball = makeMockBall(2, 0);

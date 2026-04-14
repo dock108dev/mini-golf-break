@@ -250,7 +250,8 @@ jest.mock(
         metalness: 0.2
       })),
       MeshBasicMaterial: jest.fn(() => ({
-        color: 0xffffff
+        color: 0xffffff,
+        dispose: jest.fn()
       })),
       // Mesh class
       Mesh: jest.fn(function (geometry, material) {

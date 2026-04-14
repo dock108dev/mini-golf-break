@@ -7,7 +7,7 @@ import { MechanicBase } from '../../mechanics/MechanicBase';
 import {
   registerMechanic,
   createMechanic,
-  getRegisteredTypes,
+  getRegisteredTypes
 } from '../../mechanics/MechanicRegistry';
 
 // ---------------------------------------------------------------------------
@@ -18,7 +18,7 @@ function makeMockWorld() {
   return {
     addBody: jest.fn(),
     removeBody: jest.fn(),
-    step: jest.fn(),
+    step: jest.fn()
   };
 }
 
@@ -28,9 +28,11 @@ function makeMockGroup() {
     add: jest.fn(child => children.push(child)),
     remove: jest.fn(child => {
       const idx = children.indexOf(child);
-      if (idx !== -1) children.splice(idx, 1);
+      if (idx !== -1) {
+        children.splice(idx, 1);
+      }
     }),
-    children,
+    children
   };
 }
 
@@ -38,7 +40,7 @@ function makeMockBody(x = 0, z = 0) {
   return {
     position: { x, y: 0, z },
     velocity: { x: 0, y: 0, z: 0 },
-    quaternion: { x: 0, y: 0, z: 0, w: 1 },
+    quaternion: { x: 0, y: 0, z: 0, w: 1 }
   };
 }
 
@@ -46,9 +48,7 @@ function makeMockMesh(hasParent = true) {
   const mesh = {
     geometry: { dispose: jest.fn() },
     material: { dispose: jest.fn() },
-    parent: hasParent
-      ? { remove: jest.fn() }
-      : null,
+    parent: hasParent ? { remove: jest.fn() } : null
   };
   return mesh;
 }
@@ -134,7 +134,7 @@ describe('MechanicBase', () => {
       const mesh = {
         geometry: { dispose: jest.fn() },
         material: [mat1, mat2],
-        parent: { remove: jest.fn() },
+        parent: { remove: jest.fn() }
       };
       base.meshes.push(mesh);
 
@@ -244,16 +244,14 @@ describe('MechanicRegistry', () => {
     });
 
     it('overwrites existing registration with a warning', () => {
-      const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+      const warnSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
       const factory1 = jest.fn(() => 'first');
       const factory2 = jest.fn(() => 'second');
 
       registerMechanic('__test_reg_overwrite', factory1);
       registerMechanic('__test_reg_overwrite', factory2);
 
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Overwriting')
-      );
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Overwriting'));
 
       const result = createMechanic('__test_reg_overwrite', null, null, null, 0);
       expect(result).toBe('second');
@@ -282,9 +280,7 @@ describe('MechanicRegistry', () => {
       const result = createMechanic('__nonexistent_type', {}, {}, {}, 0);
 
       expect(result).toBeNull();
-      expect(warnSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Unknown mechanic type')
-      );
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Unknown mechanic type'));
 
       warnSpy.mockRestore();
     });

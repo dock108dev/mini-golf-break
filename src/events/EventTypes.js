@@ -14,10 +14,15 @@ export const EventTypes = {
   // Game state events
   HOLE_COMPLETED: 'hole:completed',
   HOLE_STARTED: 'hole:started',
+  HOLE_STATE_UPDATED: 'hole:state_updated',
   GAME_COMPLETED: 'game:completed',
   GAME_STARTED: 'game:started',
   GAME_INITIALIZED: 'game:initialized',
   STATE_CHANGED: 'state:changed',
+
+  // Scoring events
+  STROKE_LIMIT_WARNING: 'scoring:stroke_limit_warning',
+  STROKE_LIMIT_REACHED: 'scoring:stroke_limit_reached',
 
   // Hazard events
   HAZARD_DETECTED: 'hazard:detected',

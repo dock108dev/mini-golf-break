@@ -2,6 +2,7 @@ import { debug } from '../../utils/debug';
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { CSG } from 'three-csg-ts';
+import { MATERIAL_PALETTE } from '../../themes/palette';
 
 /**
  * Creates a hazard (visuals and physics trigger) based on configuration.
@@ -35,10 +36,13 @@ function createSandHazard(world, group, config, visualGreenY, courseBounds, them
   const allBodies = [];
 
   const sandTheme = theme?.sand || {};
+  const sandPalette = MATERIAL_PALETTE.hazard.sand;
   const sandMaterial = new THREE.MeshStandardMaterial({
-    color: sandTheme.color || 0xe6c388,
-    roughness: sandTheme.roughness ?? 0.9,
-    metalness: sandTheme.metalness ?? 0.1
+    color: sandTheme.color || sandPalette.color,
+    roughness: sandTheme.roughness ?? sandPalette.roughness,
+    metalness: sandTheme.metalness ?? sandPalette.metalness,
+    emissive: sandTheme.emissive || sandPalette.emissive,
+    emissiveIntensity: sandTheme.emissiveIntensity ?? sandPalette.emissiveIntensity
   });
 
   const hazardDepth = config.depth || 0.2; // Default depth if not specified
@@ -243,14 +247,16 @@ function createWaterHazard(world, group, config, visualGreenY, courseBounds, the
   const allMeshes = [];
   const allBodies = [];
 
-  // Define water material
   const waterTheme = theme?.water || {};
+  const waterPalette = MATERIAL_PALETTE.hazard.water;
   const waterMaterial = new THREE.MeshStandardMaterial({
-    color: waterTheme.color || 0x3399ff,
+    color: waterTheme.color || waterPalette.color,
     transparent: true,
-    opacity: waterTheme.opacity ?? 0.7,
-    roughness: waterTheme.roughness ?? 0.2,
-    metalness: 0.1
+    opacity: waterTheme.opacity ?? waterPalette.opacity,
+    roughness: waterTheme.roughness ?? waterPalette.roughness,
+    metalness: waterPalette.metalness,
+    emissive: waterTheme.emissive || waterPalette.emissive,
+    emissiveIntensity: waterTheme.emissiveIntensity ?? waterPalette.emissiveIntensity
   });
 
   const hazardDepth = config.depth || 0.15; // Default depth for trigger height

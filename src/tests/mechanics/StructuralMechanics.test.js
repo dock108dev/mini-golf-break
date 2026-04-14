@@ -29,7 +29,7 @@ beforeAll(() => {
         this.y = y;
         this.z = z;
       }),
-      copy: jest.fn(),
+      copy: jest.fn()
     },
     velocity: { x: 0, y: 0, z: 0, set: jest.fn() },
     quaternion: {
@@ -39,12 +39,12 @@ beforeAll(() => {
       w: 1,
       set: jest.fn(),
       copy: jest.fn(),
-      setFromAxisAngle: jest.fn(),
+      setFromAxisAngle: jest.fn()
     },
     mass: 0,
     type: CANNON.Body.STATIC,
     addShape: jest.fn(),
-    userData: {},
+    userData: {}
   }));
 
   // Mesh position.set needs to update x/y/z for position assertions
@@ -60,7 +60,7 @@ beforeAll(() => {
         this.y = y;
         this.z = z;
       }),
-      copy: jest.fn(),
+      copy: jest.fn()
     };
     this.rotation = { x: 0, y: 0, z: 0, set: jest.fn() };
     this.scale = { x: 1, y: 1, z: 1, set: jest.fn() };
@@ -83,7 +83,9 @@ beforeAll(() => {
   // MeshStandardMaterial needs dispose()
   THREE.MeshStandardMaterial.mockImplementation(opts => {
     const mat = { color: 0xffffff, roughness: 0.3, metalness: 0.2, dispose: jest.fn() };
-    if (opts) Object.assign(mat, opts);
+    if (opts) {
+      Object.assign(mat, opts);
+    }
     mat.clone = jest.fn(() => ({ ...mat, clone: mat.clone }));
     return mat;
   });
@@ -97,7 +99,7 @@ function makeMockWorld() {
   return {
     addBody: jest.fn(),
     removeBody: jest.fn(),
-    bumperMaterial: { id: 'bumper' },
+    bumperMaterial: { id: 'bumper' }
   };
 }
 
@@ -107,9 +109,11 @@ function makeMockGroup() {
     add: jest.fn(child => children.push(child)),
     remove: jest.fn(child => {
       const idx = children.indexOf(child);
-      if (idx !== -1) children.splice(idx, 1);
+      if (idx !== -1) {
+        children.splice(idx, 1);
+      }
     }),
-    children,
+    children
   };
 }
 
@@ -131,13 +135,13 @@ describe('BankWall', () => {
     segments: [
       {
         start: new THREE.Vector3(-2, 0, 0),
-        end: new THREE.Vector3(2, 0, 0),
-      },
+        end: new THREE.Vector3(2, 0, 0)
+      }
     ],
     height: 0.6,
     thickness: 0.15,
     restitution: 0.8,
-    color: 0x6666aa,
+    color: 0x6666aa
   };
 
   describe('constructor', () => {
@@ -154,8 +158,8 @@ describe('BankWall', () => {
         segments: [
           { start: new THREE.Vector3(-2, 0, 0), end: new THREE.Vector3(2, 0, 0) },
           { start: new THREE.Vector3(0, 0, -3), end: new THREE.Vector3(0, 0, 3) },
-          { start: new THREE.Vector3(-1, 0, -1), end: new THREE.Vector3(1, 0, 1) },
-        ],
+          { start: new THREE.Vector3(-1, 0, -1), end: new THREE.Vector3(1, 0, 1) }
+        ]
       };
       const wall = new BankWall(world, group, config, SURFACE_HEIGHT);
       expect(wall.meshes).toHaveLength(3);
@@ -164,9 +168,7 @@ describe('BankWall', () => {
 
     it('skips segments with zero length', () => {
       const config = {
-        segments: [
-          { start: new THREE.Vector3(0, 0, 0), end: new THREE.Vector3(0, 0, 0) },
-        ],
+        segments: [{ start: new THREE.Vector3(0, 0, 0), end: new THREE.Vector3(0, 0, 0) }]
       };
       const wall = new BankWall(world, group, config, SURFACE_HEIGHT);
       expect(wall.meshes).toHaveLength(0);
@@ -181,9 +183,7 @@ describe('BankWall', () => {
 
     it('calculates rotation from segment angle', () => {
       const config = {
-        segments: [
-          { start: new THREE.Vector3(0, 0, 0), end: new THREE.Vector3(0, 0, 4) },
-        ],
+        segments: [{ start: new THREE.Vector3(0, 0, 0), end: new THREE.Vector3(0, 0, 4) }]
       };
       const wall = new BankWall(world, group, config, SURFACE_HEIGHT);
       // atan2(4, 0) = PI/2
@@ -192,9 +192,7 @@ describe('BankWall', () => {
 
     it('positions at midpoint of segment', () => {
       const config = {
-        segments: [
-          { start: new THREE.Vector3(-3, 0, 2), end: new THREE.Vector3(5, 0, 2) },
-        ],
+        segments: [{ start: new THREE.Vector3(-3, 0, 2), end: new THREE.Vector3(5, 0, 2) }]
       };
       const wall = new BankWall(world, group, config, SURFACE_HEIGHT);
       expect(wall.meshes[0].position.x).toBeCloseTo(1); // (-3+5)/2
@@ -218,9 +216,7 @@ describe('BankWall', () => {
 
     it('uses default values when config is minimal', () => {
       const config = {
-        segments: [
-          { start: new THREE.Vector3(0, 0, 0), end: new THREE.Vector3(1, 0, 0) },
-        ],
+        segments: [{ start: new THREE.Vector3(0, 0, 0), end: new THREE.Vector3(1, 0, 0) }]
       };
       const wall = new BankWall(world, group, config, SURFACE_HEIGHT);
       expect(wall.meshes).toHaveLength(1);
@@ -245,8 +241,8 @@ describe('BankWall', () => {
       const config = {
         segments: [
           { start: new THREE.Vector3(-2, 0, 0), end: new THREE.Vector3(2, 0, 0) },
-          { start: new THREE.Vector3(0, 0, -2), end: new THREE.Vector3(0, 0, 2) },
-        ],
+          { start: new THREE.Vector3(0, 0, -2), end: new THREE.Vector3(0, 0, 2) }
+        ]
       };
       const wall = new BankWall(world, group, config, SURFACE_HEIGHT);
       expect(wall.meshes).toHaveLength(2);
@@ -277,12 +273,12 @@ describe('SplitRoute', () => {
     walls: [
       {
         start: new THREE.Vector3(0, 0, -3),
-        end: new THREE.Vector3(0, 0, 3),
-      },
+        end: new THREE.Vector3(0, 0, 3)
+      }
     ],
     height: 0.8,
     thickness: 0.15,
-    color: 0x8888aa,
+    color: 0x8888aa
   };
 
   describe('constructor', () => {
@@ -298,8 +294,8 @@ describe('SplitRoute', () => {
       const config = {
         walls: [
           { start: new THREE.Vector3(0, 0, -3), end: new THREE.Vector3(0, 0, 3) },
-          { start: new THREE.Vector3(-2, 0, 0), end: new THREE.Vector3(2, 0, 0) },
-        ],
+          { start: new THREE.Vector3(-2, 0, 0), end: new THREE.Vector3(2, 0, 0) }
+        ]
       };
       const route = new SplitRoute(world, group, config, SURFACE_HEIGHT);
       expect(route.meshes).toHaveLength(2);
@@ -308,9 +304,7 @@ describe('SplitRoute', () => {
 
     it('skips walls with zero length', () => {
       const config = {
-        walls: [
-          { start: new THREE.Vector3(1, 0, 1), end: new THREE.Vector3(1, 0, 1) },
-        ],
+        walls: [{ start: new THREE.Vector3(1, 0, 1), end: new THREE.Vector3(1, 0, 1) }]
       };
       const route = new SplitRoute(world, group, config, SURFACE_HEIGHT);
       expect(route.meshes).toHaveLength(0);
@@ -349,9 +343,7 @@ describe('SplitRoute', () => {
 
     it('positions at midpoint of wall endpoints', () => {
       const config = {
-        walls: [
-          { start: new THREE.Vector3(-4, 0, 2), end: new THREE.Vector3(6, 0, 2) },
-        ],
+        walls: [{ start: new THREE.Vector3(-4, 0, 2), end: new THREE.Vector3(6, 0, 2) }]
       };
       const route = new SplitRoute(world, group, config, SURFACE_HEIGHT);
       expect(route.meshes[0].position.x).toBeCloseTo(1); // (-4+6)/2
@@ -364,8 +356,8 @@ describe('SplitRoute', () => {
       const config = {
         walls: [
           { start: new THREE.Vector3(0, 0, -3), end: new THREE.Vector3(0, 0, 3) },
-          { start: new THREE.Vector3(-2, 0, 0), end: new THREE.Vector3(2, 0, 0) },
-        ],
+          { start: new THREE.Vector3(-2, 0, 0), end: new THREE.Vector3(2, 0, 0) }
+        ]
       };
       const route = new SplitRoute(world, group, config, SURFACE_HEIGHT);
       expect(route.meshes).toHaveLength(2);
@@ -394,7 +386,7 @@ describe('RicochetBumpers', () => {
   describe('constructor', () => {
     it('creates a cylinder bumper by default', () => {
       const config = {
-        bumpers: [{ position: new THREE.Vector3(0, 0, 0), radius: 0.4 }],
+        bumpers: [{ position: new THREE.Vector3(0, 0, 0), radius: 0.4 }]
       };
       const rb = new RicochetBumpers(world, group, config, SURFACE_HEIGHT);
       expect(rb.meshes).toHaveLength(1);
@@ -405,9 +397,7 @@ describe('RicochetBumpers', () => {
 
     it('creates a sphere bumper when geometry is sphere', () => {
       const config = {
-        bumpers: [
-          { position: new THREE.Vector3(0, 0, 0), geometry: 'sphere', radius: 0.5 },
-        ],
+        bumpers: [{ position: new THREE.Vector3(0, 0, 0), geometry: 'sphere', radius: 0.5 }]
       };
       const rb = new RicochetBumpers(world, group, config, SURFACE_HEIGHT);
       expect(rb.meshes).toHaveLength(1);
@@ -422,9 +412,9 @@ describe('RicochetBumpers', () => {
           {
             position: new THREE.Vector3(0, 0, 0),
             geometry: 'box',
-            size: new THREE.Vector3(1, 0.6, 1),
-          },
-        ],
+            size: new THREE.Vector3(1, 0.6, 1)
+          }
+        ]
       };
       const rb = new RicochetBumpers(world, group, config, SURFACE_HEIGHT);
       expect(rb.meshes).toHaveLength(1);
@@ -436,8 +426,12 @@ describe('RicochetBumpers', () => {
         bumpers: [
           { position: new THREE.Vector3(-2, 0, 0), geometry: 'cylinder', radius: 0.3 },
           { position: new THREE.Vector3(0, 0, 0), geometry: 'sphere', radius: 0.4 },
-          { position: new THREE.Vector3(2, 0, 0), geometry: 'box', size: new THREE.Vector3(0.5, 0.5, 0.5) },
-        ],
+          {
+            position: new THREE.Vector3(2, 0, 0),
+            geometry: 'box',
+            size: new THREE.Vector3(0.5, 0.5, 0.5)
+          }
+        ]
       };
       const rb = new RicochetBumpers(world, group, config, SURFACE_HEIGHT);
       expect(rb.meshes).toHaveLength(3);
@@ -448,7 +442,7 @@ describe('RicochetBumpers', () => {
 
     it('uses STATIC body type', () => {
       const config = {
-        bumpers: [{ position: new THREE.Vector3(0, 0, 0) }],
+        bumpers: [{ position: new THREE.Vector3(0, 0, 0) }]
       };
       const rb = new RicochetBumpers(world, group, config, SURFACE_HEIGHT);
       expect(rb.bodies[0].type).toBe(CANNON.Body.STATIC);
@@ -456,7 +450,7 @@ describe('RicochetBumpers', () => {
 
     it('sets userData type to ricochet_bumper', () => {
       const config = {
-        bumpers: [{ position: new THREE.Vector3(0, 0, 0) }],
+        bumpers: [{ position: new THREE.Vector3(0, 0, 0) }]
       };
       const rb = new RicochetBumpers(world, group, config, SURFACE_HEIGHT);
       expect(rb.bodies[0].userData.type).toBe('ricochet_bumper');
@@ -464,7 +458,7 @@ describe('RicochetBumpers', () => {
 
     it('sets shadow casting on meshes', () => {
       const config = {
-        bumpers: [{ position: new THREE.Vector3(0, 0, 0) }],
+        bumpers: [{ position: new THREE.Vector3(0, 0, 0) }]
       };
       const rb = new RicochetBumpers(world, group, config, SURFACE_HEIGHT);
       expect(rb.meshes[0].castShadow).toBe(true);
@@ -484,7 +478,7 @@ describe('RicochetBumpers', () => {
 
     it('uses default position when not provided', () => {
       const config = {
-        bumpers: [{ geometry: 'cylinder', radius: 0.3 }],
+        bumpers: [{ geometry: 'cylinder', radius: 0.3 }]
       };
       const rb = new RicochetBumpers(world, group, config, SURFACE_HEIGHT);
       expect(rb.meshes).toHaveLength(1);
@@ -493,7 +487,7 @@ describe('RicochetBumpers', () => {
     it('applies custom color from config', () => {
       const config = {
         color: 0xff0000,
-        bumpers: [{ position: new THREE.Vector3(0, 0, 0) }],
+        bumpers: [{ position: new THREE.Vector3(0, 0, 0) }]
       };
       const rb = new RicochetBumpers(world, group, config, SURFACE_HEIGHT);
       expect(rb.meshes).toHaveLength(1);
@@ -502,7 +496,7 @@ describe('RicochetBumpers', () => {
     it('applies per-bumper color override', () => {
       const config = {
         color: 0xff0000,
-        bumpers: [{ position: new THREE.Vector3(0, 0, 0), color: 0x00ff00 }],
+        bumpers: [{ position: new THREE.Vector3(0, 0, 0), color: 0x00ff00 }]
       };
       const rb = new RicochetBumpers(world, group, config, SURFACE_HEIGHT);
       expect(rb.meshes).toHaveLength(1);
@@ -514,8 +508,8 @@ describe('RicochetBumpers', () => {
       const config = {
         bumpers: [
           { position: new THREE.Vector3(-1, 0, 0), geometry: 'cylinder' },
-          { position: new THREE.Vector3(1, 0, 0), geometry: 'sphere' },
-        ],
+          { position: new THREE.Vector3(1, 0, 0), geometry: 'sphere' }
+        ]
       };
       const rb = new RicochetBumpers(world, group, config, SURFACE_HEIGHT);
       expect(rb.meshes).toHaveLength(2);

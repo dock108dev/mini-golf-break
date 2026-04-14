@@ -19,6 +19,14 @@ import './BankWall';
 import './SplitRoute';
 import './RicochetBumpers';
 import './ElevatedGreen';
+import './MultiLevelRamp';
+
+// Timed hazards
+import './LaserGrid';
+import './DisappearingPlatform';
+
+// Directional force
+import './GravityFunnel';
 
 // Teleportation
 import './PortalGate';

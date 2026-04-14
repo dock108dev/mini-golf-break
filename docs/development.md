@@ -131,6 +131,53 @@ The `vercel.json` configures:
 - Security headers (X-Content-Type-Options, X-Frame-Options, Referrer-Policy, Permissions-Policy)
 - Long-lived cache headers for hashed asset filenames
 
+## Par Calibration
+
+A dev-mode stroke logging harness records actual strokes per hole and produces a calibration report to validate par values.
+
+### Usage
+
+Start the dev server with `?par_calibration=true`:
+
+```
+http://localhost:8080?par_calibration=true
+```
+
+Play the full 18-hole course. After completing the final hole, a calibration report overlay appears showing:
+- Hole number, current par, recorded stroke counts, mean strokes, and suggested par
+- Holes where current par differs from suggested par by >= 1 stroke are highlighted
+- A "Copy Report" button copies the full report as JSON to clipboard
+
+Stroke data persists in localStorage across sessions (keyed by course and hole number), so multiple playthroughs accumulate data.
+
+### Current Par Values
+
+Calibrated on 2026-04-12.
+
+| Hole | Name | Par |
+|------|------|-----|
+| 1 | Docking Lane | 2 |
+| 2 | Crater Rim | 2 |
+| 3 | Satellite Slingshot | 3 |
+| 4 | Asteroid Belt Bounce | 3 |
+| 5 | Wormhole Transfer | 2 |
+| 6 | Solar Flare Run | 3 |
+| 7 | Zero G Lab | 2 |
+| 8 | Event Horizon | 3 |
+| 9 | Station Core Finale | 4 |
+| **Front 9** | | **24** |
+| 10 | Laser Grid | 3 |
+| 11 | Blackout Corridor | 3 |
+| 12 | Gravity Well | 4 |
+| 13 | Debris Field | 4 |
+| 14 | Reactor Bypass | 3 |
+| 15 | Wormhole Relay | 4 |
+| 16 | Eclipse Steps | 4 |
+| 17 | Comet Run | 3 |
+| 18 | Starforge Finale | 5 |
+| **Back 9** | | **33** |
+| **Full Course** | | **57** |
+
 ## Known Limitations
 
 - No CI/CD pipeline (GitHub Actions not configured)

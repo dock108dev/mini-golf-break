@@ -22,7 +22,7 @@ beforeAll(() => {
         this.x = x;
         this.y = y;
         this.z = z;
-      }),
+      })
     },
     velocity: { x: 0, y: 0, z: 0, set: jest.fn() },
     quaternion: {
@@ -32,10 +32,10 @@ beforeAll(() => {
       w: 1,
       set: jest.fn(),
       setFromAxisAngle: jest.fn(),
-      copy: jest.fn(),
+      copy: jest.fn()
     },
     addShape: jest.fn(),
-    userData: {},
+    userData: {}
   }));
 
   CANNON.Quaternion = jest.fn(() => ({
@@ -43,7 +43,7 @@ beforeAll(() => {
     y: 0,
     z: 0,
     w: 1,
-    setFromAxisAngle: jest.fn(),
+    setFromAxisAngle: jest.fn()
   }));
 
   CANNON.Trimesh = jest.fn(() => ({ type: 'trimesh' }));
@@ -58,7 +58,7 @@ beforeAll(() => {
           this.x = x;
           this.y = y;
           this.z = z;
-        }),
+        })
       },
       rotation: {
         x: 0,
@@ -68,12 +68,12 @@ beforeAll(() => {
           this.x = x;
           this.y = y;
           this.z = z;
-        }),
+        })
       },
       receiveShadow: false,
       castShadow: false,
       geometry: { dispose: jest.fn() },
-      material: { dispose: jest.fn() },
+      material: { dispose: jest.fn() }
     };
     mesh.parent = null;
     return mesh;
@@ -81,7 +81,9 @@ beforeAll(() => {
 
   THREE.MeshStandardMaterial.mockImplementation(opts => {
     const mat = { color: 0xffffff, dispose: jest.fn() };
-    if (opts) Object.assign(mat, opts);
+    if (opts) {
+      Object.assign(mat, opts);
+    }
     return mat;
   });
 
@@ -98,7 +100,7 @@ function makeMockWorld() {
     addBody: jest.fn(),
     removeBody: jest.fn(),
     groundMaterial: { id: 'ground' },
-    bumperMaterial: { id: 'bumper' },
+    bumperMaterial: { id: 'bumper' }
   };
 }
 
@@ -108,9 +110,11 @@ function makeMockGroup() {
     add: jest.fn(child => children.push(child)),
     remove: jest.fn(child => {
       const idx = children.indexOf(child);
-      if (idx !== -1) children.splice(idx, 1);
+      if (idx !== -1) {
+        children.splice(idx, 1);
+      }
     }),
-    children,
+    children
   };
 }
 
@@ -119,16 +123,16 @@ function makeConfig(overrides = {}) {
     platform: {
       position: { x: 0, y: 0, z: -5 },
       width: 4,
-      length: 4,
+      length: 4
     },
     elevation: 0.5,
     ramp: {
       start: { x: 0, y: 0, z: -3 },
       end: { x: 0, y: 0, z: -5 },
-      width: 2,
+      width: 2
     },
     color: 0x2ecc71,
-    ...overrides,
+    ...overrides
   };
 }
 
@@ -158,13 +162,13 @@ describe('ElevatedGreen', () => {
       expect(platformMesh.position.set).toHaveBeenCalledWith(
         config.platform.position.x,
         expectedY,
-        config.platform.position.z,
+        config.platform.position.z
       );
     });
 
     it('creates platform with correct dimensions from config', () => {
       const customConfig = makeConfig({
-        platform: { position: { x: 2, y: 0, z: -8 }, width: 6, length: 10 },
+        platform: { position: { x: 2, y: 0, z: -8 }, width: 6, length: 10 }
       });
       const eg = new ElevatedGreen(world, group, customConfig, surfaceHeight);
 
@@ -182,7 +186,7 @@ describe('ElevatedGreen', () => {
       expect(platBody.position.set).toHaveBeenCalledWith(
         config.platform.position.x,
         surfaceHeight + config.elevation,
-        config.platform.position.z,
+        config.platform.position.z
       );
     });
 
@@ -204,7 +208,7 @@ describe('ElevatedGreen', () => {
       expect(frontMesh.position.set).toHaveBeenCalledWith(
         config.platform.position.x,
         surfaceHeight + config.elevation / 2,
-        expectedFrontZ,
+        expectedFrontZ
       );
     });
 
@@ -249,7 +253,7 @@ describe('ElevatedGreen', () => {
       expect(rampBody.position.set).toHaveBeenCalledWith(
         config.ramp.start.x,
         surfaceHeight,
-        config.ramp.start.z,
+        config.ramp.start.z
       );
       expect(rampBody.userData).toEqual({ type: 'ramp' });
     });
@@ -270,7 +274,7 @@ describe('ElevatedGreen', () => {
       // Ramp going diagonally
       const diagonalConfig = makeConfig({
         ramp: { start: { x: 0, y: 0, z: 0 }, end: { x: 2, y: 0, z: -2 }, width: 2 },
-        elevation: 1.0,
+        elevation: 1.0
       });
       const eg = new ElevatedGreen(world, group, diagonalConfig, surfaceHeight);
 
@@ -333,12 +337,12 @@ describe('ElevatedGreen', () => {
       expect(leftRailMesh.position.set).toHaveBeenCalledWith(
         rampMidX - halfWidth,
         expect.any(Number),
-        expect.any(Number),
+        expect.any(Number)
       );
       expect(rightRailMesh.position.set).toHaveBeenCalledWith(
         rampMidX + halfWidth,
         expect.any(Number),
-        expect.any(Number),
+        expect.any(Number)
       );
     });
   });
@@ -368,7 +372,7 @@ describe('ElevatedGreen', () => {
       // The platform position + width/length defines the platform region
       const regionConfig = makeConfig({
         platform: { position: { x: 3, y: 0, z: -7 }, width: 5, length: 8 },
-        elevation: 1.0,
+        elevation: 1.0
       });
 
       const eg = new ElevatedGreen(world, group, regionConfig, surfaceHeight);
@@ -423,7 +427,7 @@ describe('ElevatedGreen', () => {
       const steepConfig = makeConfig({
         elevation: 5,
         ramp: { start: { x: 0, y: 0, z: 0 }, end: { x: 0, y: 0, z: -1 }, width: 2 },
-        platform: { position: { x: 0, y: 0, z: -2 }, width: 4, length: 4 },
+        platform: { position: { x: 0, y: 0, z: -2 }, width: 4, length: 4 }
       });
 
       const eg = new ElevatedGreen(world, group, steepConfig, surfaceHeight);
@@ -432,11 +436,7 @@ describe('ElevatedGreen', () => {
       const maxElevation = Math.tan(Math.PI / 6) * 1;
       const platformMesh = eg.meshes[0];
       const expectedY = surfaceHeight + maxElevation;
-      expect(platformMesh.position.set).toHaveBeenCalledWith(
-        0,
-        expect.closeTo(expectedY, 2),
-        -2,
-      );
+      expect(platformMesh.position.set).toHaveBeenCalledWith(0, expect.closeTo(expectedY, 2), -2);
     });
 
     it('does not clamp when angle is under 30 degrees', () => {
@@ -444,17 +444,13 @@ describe('ElevatedGreen', () => {
       const gentleConfig = makeConfig({
         elevation: 0.3,
         ramp: { start: { x: 0, y: 0, z: 0 }, end: { x: 0, y: 0, z: -4 }, width: 2 },
-        platform: { position: { x: 0, y: 0, z: -6 }, width: 4, length: 4 },
+        platform: { position: { x: 0, y: 0, z: -6 }, width: 4, length: 4 }
       });
 
       const eg = new ElevatedGreen(world, group, gentleConfig, surfaceHeight);
 
       const platformMesh = eg.meshes[0];
-      expect(platformMesh.position.set).toHaveBeenCalledWith(
-        0,
-        surfaceHeight + 0.3,
-        -6,
-      );
+      expect(platformMesh.position.set).toHaveBeenCalledWith(0, surfaceHeight + 0.3, -6);
     });
   });
 

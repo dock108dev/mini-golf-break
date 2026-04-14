@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { MATERIAL_PALETTE } from '../themes/palette';
 
 /**
  * SpaceDecorations - Adds cosmic background elements to enhance the space theme
@@ -26,35 +27,38 @@ export class SpaceDecorations {
     // Earth-like planet
     const earthGeometry = new THREE.SphereGeometry(5, 32, 32);
     const earthMaterial = new THREE.MeshPhongMaterial({
-      color: 0x2233ff,
-      emissive: 0x112244,
-      emissiveIntensity: 0.1
+      color: 0x1a2266,
+      roughness: MATERIAL_PALETTE.background.planet.roughness,
+      emissive: MATERIAL_PALETTE.background.planet.emissive,
+      emissiveIntensity: MATERIAL_PALETTE.background.planet.emissiveIntensity
     });
     const earth = new THREE.Mesh(earthGeometry, earthMaterial);
     earth.position.set(-30, 15, -50);
     earth.userData.type = 'decoration';
+    earth.userData.permanent = true;
     this.scene.add(earth);
     this.decorations.push(earth);
 
     // Mars-like planet
     const marsGeometry = new THREE.SphereGeometry(3, 32, 32);
     const marsMaterial = new THREE.MeshPhongMaterial({
-      color: 0xff4444,
-      emissive: 0x441111,
-      emissiveIntensity: 0.1
+      color: 0x883333,
+      emissive: MATERIAL_PALETTE.background.planet.emissive,
+      emissiveIntensity: MATERIAL_PALETTE.background.planet.emissiveIntensity
     });
     const mars = new THREE.Mesh(marsGeometry, marsMaterial);
     mars.position.set(40, 10, -40);
     mars.userData.type = 'decoration';
+    mars.userData.permanent = true;
     this.scene.add(mars);
     this.decorations.push(mars);
 
     // Saturn with rings
     const saturnGeometry = new THREE.SphereGeometry(6, 32, 32);
     const saturnMaterial = new THREE.MeshPhongMaterial({
-      color: 0xffaa66,
-      emissive: 0x332211,
-      emissiveIntensity: 0.1
+      color: 0x886644,
+      emissive: MATERIAL_PALETTE.background.planet.emissive,
+      emissiveIntensity: MATERIAL_PALETTE.background.planet.emissiveIntensity
     });
     const saturn = new THREE.Mesh(saturnGeometry, saturnMaterial);
     saturn.position.set(0, 20, -60);
@@ -62,16 +66,17 @@ export class SpaceDecorations {
     // Saturn's rings
     const ringGeometry = new THREE.RingGeometry(8, 12, 64);
     const ringMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffddaa,
+      color: 0x887755,
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.6
+      opacity: 0.35
     });
     const rings = new THREE.Mesh(ringGeometry, ringMaterial);
     rings.rotation.x = Math.PI / 2;
     saturn.add(rings);
 
     saturn.userData.type = 'decoration';
+    saturn.userData.permanent = true;
     this.scene.add(saturn);
     this.decorations.push(saturn);
   }
@@ -82,9 +87,9 @@ export class SpaceDecorations {
   addDistantNebula() {
     const nebulaGeometry = new THREE.PlaneGeometry(100, 50);
     const nebulaMaterial = new THREE.MeshBasicMaterial({
-      color: 0x6633ff,
+      color: 0x332266,
       transparent: true,
-      opacity: 0.2,
+      opacity: MATERIAL_PALETTE.background.nebula.opacity,
       side: THREE.DoubleSide,
       blending: THREE.AdditiveBlending
     });
@@ -93,13 +98,15 @@ export class SpaceDecorations {
     nebula1.position.set(-50, 30, -100);
     nebula1.rotation.y = Math.PI / 4;
     nebula1.userData.type = 'decoration';
+    nebula1.userData.nebulaIndex = 0;
+    nebula1.userData.permanent = true;
     this.scene.add(nebula1);
     this.decorations.push(nebula1);
 
     const nebula2Material = new THREE.MeshBasicMaterial({
-      color: 0xff3366,
+      color: 0x662233,
       transparent: true,
-      opacity: 0.15,
+      opacity: MATERIAL_PALETTE.background.nebula.opacity,
       side: THREE.DoubleSide,
       blending: THREE.AdditiveBlending
     });
@@ -108,6 +115,8 @@ export class SpaceDecorations {
     nebula2.position.set(60, 25, -90);
     nebula2.rotation.y = -Math.PI / 3;
     nebula2.userData.type = 'decoration';
+    nebula2.userData.nebulaIndex = 1;
+    nebula2.userData.permanent = true;
     this.scene.add(nebula2);
     this.decorations.push(nebula2);
   }
@@ -118,14 +127,15 @@ export class SpaceDecorations {
   addSpaceDebris() {
     const debrisGroup = new THREE.Group();
     debrisGroup.userData.type = 'decoration';
+    debrisGroup.userData.permanent = true;
 
     for (let i = 0; i < 20; i++) {
       const size = Math.random() * 0.5 + 0.2;
       const geometry = new THREE.OctahedronGeometry(size);
       const material = new THREE.MeshPhongMaterial({
-        color: 0x888888,
-        emissive: 0x222222,
-        emissiveIntensity: 0.2
+        color: 0x555555,
+        emissive: MATERIAL_PALETTE.background.debris.emissive,
+        emissiveIntensity: MATERIAL_PALETTE.background.debris.emissiveIntensity
       });
 
       const debris = new THREE.Mesh(geometry, material);
@@ -165,10 +175,31 @@ export class SpaceDecorations {
       star.rotation.z = Math.PI / 2;
       star.visible = false; // Will be animated
       star.userData.type = 'shootingStar';
+      star.userData.permanent = true;
 
       this.scene.add(star);
       this.decorations.push(star);
     }
+  }
+
+  setThemeVariant(theme) {
+    if (!theme?.nebula) {
+      return;
+    }
+    this.decorations.forEach(decoration => {
+      if (decoration.userData.type !== 'decoration' || !decoration.material) {
+        return;
+      }
+      if (
+        decoration.geometry &&
+        decoration.geometry.type === 'PlaneGeometry' &&
+        decoration.material.blending === THREE.AdditiveBlending
+      ) {
+        decoration.material.color.set(
+          decoration.userData.nebulaIndex === 0 ? theme.nebula.color1 : theme.nebula.color2
+        );
+      }
+    });
   }
 
   /**

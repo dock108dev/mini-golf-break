@@ -1,27 +1,23 @@
-/**
- * Unit tests for StateManager
- */
-
 import { StateManager } from '../../managers/StateManager';
 import { GameState } from '../../states/GameState';
 import { EventTypes } from '../../events/EventTypes';
 
-// Mock dependencies
 jest.mock('../../states/GameState', () => ({
   GameState: {
-    INITIALIZING: 'INITIALIZING',
-    AIMING: 'AIMING',
-    BALL_MOVING: 'BALL_MOVING',
-    HOLE_COMPLETED: 'HOLE_COMPLETED',
-    GAME_COMPLETED: 'GAME_COMPLETED'
+    INITIALIZING: 'initializing',
+    PLAYING: 'playing',
+    AIMING: 'aiming',
+    HOLE_COMPLETED: 'hole_completed',
+    GAME_COMPLETED: 'game_completed',
+    PAUSED: 'paused'
   }
 }));
 
 jest.mock('../../events/EventTypes', () => ({
   EventTypes: {
-    STATE_CHANGED: 'STATE_CHANGED',
-    GAME_COMPLETED: 'GAME_COMPLETED',
-    HOLE_STARTED: 'HOLE_STARTED'
+    STATE_CHANGED: 'state:changed',
+    GAME_COMPLETED: 'game:completed',
+    HOLE_STARTED: 'hole:started'
   }
 }));
 
@@ -36,37 +32,66 @@ describe('StateManager', () => {
   let stateManager;
 
   beforeEach(() => {
-    // Mock game object
     mockGame = {
       eventManager: {
         publish: jest.fn()
       },
       course: {
-        getTotalHoles: jest.fn(() => 9)
+        getTotalHoles: jest.fn(() => 9),
+        getCurrentHoleConfig: jest.fn(() => ({ par: 3, maxStrokes: 8 })),
+        getHoleStartPosition: jest.fn(() => ({ x: 0, y: 0, z: 0 })),
+        createCourse: jest.fn(() => Promise.resolve(true))
       },
       scoringSystem: {
         completeHole: jest.fn(),
-        resetCurrentStrokes: jest.fn()
-      }
+        resetCurrentStrokes: jest.fn(),
+        setMaxStrokes: jest.fn()
+      },
+      holeTransitionManager: {
+        unloadCurrentHole: jest.fn(() => Promise.resolve())
+      },
+      physicsManager: {
+        resetWorld: jest.fn(() => Promise.resolve({ world: {} }))
+      },
+      uiManager: {
+        showTransitionOverlay: jest.fn(),
+        hideTransitionOverlay: jest.fn(),
+        updateHoleInfo: jest.fn(),
+        showMessage: jest.fn(),
+        updateScore: jest.fn(),
+        updateStrokes: jest.fn()
+      },
+      ballManager: {
+        createBall: jest.fn()
+      },
+      inputController: {
+        enableInput: jest.fn()
+      },
+      cameraController: {
+        positionCameraForHole: jest.fn()
+      },
+      hazardManager: {
+        setHoleBounds: jest.fn()
+      },
+      holeCompletionManager: {
+        resetGracePeriod: jest.fn()
+      },
+      cannonDebugRenderer: null
     };
 
-    // Mock console methods
-    console.log = jest.fn();
-    console.warn = jest.fn();
-    console.error = jest.fn();
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(Date, 'now').mockReturnValue(1000000);
 
-    // Mock Date.now
-    global.Date.now = jest.fn(() => 1000000);
+    stateManager = new StateManager(mockGame);
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    jest.restoreAllMocks();
   });
 
   describe('constructor', () => {
-    test('should initialize with game reference and default state', () => {
-      stateManager = new StateManager(mockGame);
-
+    test('initializes with game reference and default state', () => {
       expect(stateManager.game).toBe(mockGame);
       expect(stateManager.state).toEqual({
         ballInMotion: false,
@@ -79,6 +104,9 @@ describe('StateManager', () => {
         showingMessage: false,
         debugMode: false
       });
+    });
+
+    test('initializes empty event callback arrays', () => {
       expect(stateManager.eventCallbacks).toEqual({
         onHoleCompleted: [],
         onBallStopped: [],
@@ -89,28 +117,30 @@ describe('StateManager', () => {
   });
 
   describe('setGameState', () => {
-    beforeEach(() => {
-      stateManager = new StateManager(mockGame);
+    test('updates currentGameState', () => {
+      stateManager.setGameState(GameState.AIMING);
+      expect(stateManager.state.currentGameState).toBe(GameState.AIMING);
     });
 
-    test('should change game state and publish event', () => {
+    test('publishes STATE_CHANGED with old and new state', () => {
       stateManager.setGameState(GameState.AIMING);
 
-      expect(stateManager.state.currentGameState).toBe(GameState.AIMING);
       expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
         EventTypes.STATE_CHANGED,
-        {
-          oldState: GameState.INITIALIZING,
-          newState: GameState.AIMING
-        },
+        { oldState: GameState.INITIALIZING, newState: GameState.AIMING },
         stateManager
       );
     });
 
-    test('should publish GAME_COMPLETED event when transitioning to completed state', () => {
+    test('publishes GAME_COMPLETED event when transitioning to GAME_COMPLETED', () => {
       stateManager.setGameState(GameState.GAME_COMPLETED);
 
       expect(mockGame.eventManager.publish).toHaveBeenCalledTimes(2);
+      expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
+        EventTypes.STATE_CHANGED,
+        { oldState: GameState.INITIALIZING, newState: GameState.GAME_COMPLETED },
+        stateManager
+      );
       expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
         EventTypes.GAME_COMPLETED,
         { timestamp: 1000000 },
@@ -118,220 +148,334 @@ describe('StateManager', () => {
       );
     });
 
-    test('should return self for chaining', () => {
-      const result = stateManager.setGameState(GameState.AIMING);
-      expect(result).toBe(stateManager);
+    test('does not publish GAME_COMPLETED event for non-completed states', () => {
+      stateManager.setGameState(GameState.AIMING);
+      expect(mockGame.eventManager.publish).toHaveBeenCalledTimes(1);
+    });
+
+    test('returns self for chaining', () => {
+      expect(stateManager.setGameState(GameState.AIMING)).toBe(stateManager);
+    });
+  });
+
+  describe('every GameState value is reachable', () => {
+    test.each([
+      ['INITIALIZING', GameState.INITIALIZING],
+      ['PLAYING', GameState.PLAYING],
+      ['AIMING', GameState.AIMING],
+      ['HOLE_COMPLETED', GameState.HOLE_COMPLETED],
+      ['GAME_COMPLETED', GameState.GAME_COMPLETED],
+      ['PAUSED', GameState.PAUSED]
+    ])('can transition to %s', (_label, state) => {
+      stateManager.setGameState(state);
+      expect(stateManager.getGameState()).toBe(state);
+    });
+  });
+
+  describe('valid state transitions', () => {
+    test('INITIALIZING -> AIMING', () => {
+      stateManager.setGameState(GameState.AIMING);
+      expect(stateManager.getGameState()).toBe(GameState.AIMING);
+    });
+
+    test('AIMING -> PLAYING', () => {
+      stateManager.setGameState(GameState.AIMING);
+      stateManager.setGameState(GameState.PLAYING);
+      expect(stateManager.getGameState()).toBe(GameState.PLAYING);
+    });
+
+    test('PLAYING -> AIMING (ball stops, no hole)', () => {
+      stateManager.setGameState(GameState.PLAYING);
+      stateManager.setGameState(GameState.AIMING);
+      expect(stateManager.getGameState()).toBe(GameState.AIMING);
+    });
+
+    test('PLAYING -> HOLE_COMPLETED', () => {
+      stateManager.setGameState(GameState.PLAYING);
+      stateManager.setGameState(GameState.HOLE_COMPLETED);
+      expect(stateManager.getGameState()).toBe(GameState.HOLE_COMPLETED);
+    });
+
+    test('HOLE_COMPLETED -> AIMING (next hole)', () => {
+      stateManager.setGameState(GameState.HOLE_COMPLETED);
+      stateManager.setGameState(GameState.AIMING);
+      expect(stateManager.getGameState()).toBe(GameState.AIMING);
+    });
+
+    test('HOLE_COMPLETED -> GAME_COMPLETED (last hole)', () => {
+      stateManager.setGameState(GameState.HOLE_COMPLETED);
+      stateManager.setGameState(GameState.GAME_COMPLETED);
+      expect(stateManager.getGameState()).toBe(GameState.GAME_COMPLETED);
+    });
+
+    test('each transition emits STATE_CHANGED with correct old/new', () => {
+      stateManager.setGameState(GameState.AIMING);
+      stateManager.setGameState(GameState.PLAYING);
+
+      expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
+        EventTypes.STATE_CHANGED,
+        { oldState: GameState.INITIALIZING, newState: GameState.AIMING },
+        stateManager
+      );
+      expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
+        EventTypes.STATE_CHANGED,
+        { oldState: GameState.AIMING, newState: GameState.PLAYING },
+        stateManager
+      );
+    });
+  });
+
+  describe('PAUSED state', () => {
+    test.each([
+      ['AIMING', GameState.AIMING],
+      ['PLAYING', GameState.PLAYING],
+      ['HOLE_COMPLETED', GameState.HOLE_COMPLETED],
+      ['INITIALIZING', GameState.INITIALIZING]
+    ])('can be entered from %s', (_label, activeState) => {
+      stateManager.setGameState(activeState);
+      mockGame.eventManager.publish.mockClear();
+
+      stateManager.setGameState(GameState.PAUSED);
+
+      expect(stateManager.getGameState()).toBe(GameState.PAUSED);
+      expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
+        EventTypes.STATE_CHANGED,
+        { oldState: activeState, newState: GameState.PAUSED },
+        stateManager
+      );
+    });
+
+    test.each([
+      ['AIMING', GameState.AIMING],
+      ['PLAYING', GameState.PLAYING],
+      ['HOLE_COMPLETED', GameState.HOLE_COMPLETED]
+    ])('can resume back to %s', (_label, priorState) => {
+      stateManager.setGameState(priorState);
+      const savedState = stateManager.getGameState();
+
+      stateManager.setGameState(GameState.PAUSED);
+      expect(stateManager.getGameState()).toBe(GameState.PAUSED);
+
+      stateManager.setGameState(savedState);
+      expect(stateManager.getGameState()).toBe(priorState);
+    });
+
+    test('pausing and resuming emits two STATE_CHANGED events', () => {
+      stateManager.setGameState(GameState.AIMING);
+      mockGame.eventManager.publish.mockClear();
+
+      stateManager.setGameState(GameState.PAUSED);
+      stateManager.setGameState(GameState.AIMING);
+
+      expect(mockGame.eventManager.publish).toHaveBeenCalledTimes(2);
+      expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
+        EventTypes.STATE_CHANGED,
+        { oldState: GameState.AIMING, newState: GameState.PAUSED },
+        stateManager
+      );
+      expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
+        EventTypes.STATE_CHANGED,
+        { oldState: GameState.PAUSED, newState: GameState.AIMING },
+        stateManager
+      );
+    });
+  });
+
+  describe('state integrity on repeated transitions', () => {
+    test('setting same state twice does not corrupt state', () => {
+      stateManager.setGameState(GameState.AIMING);
+      stateManager.setGameState(GameState.AIMING);
+      expect(stateManager.getGameState()).toBe(GameState.AIMING);
+    });
+
+    test('setting an unrecognized string does set it (no guard)', () => {
+      stateManager.setGameState('BOGUS_STATE');
+      expect(stateManager.getGameState()).toBe('BOGUS_STATE');
     });
   });
 
   describe('getGameState', () => {
-    beforeEach(() => {
-      stateManager = new StateManager(mockGame);
+    test('returns INITIALIZING by default', () => {
+      expect(stateManager.getGameState()).toBe(GameState.INITIALIZING);
     });
 
-    test('should return current game state', () => {
-      expect(stateManager.getGameState()).toBe(GameState.INITIALIZING);
-
-      stateManager.setGameState(GameState.BALL_MOVING);
-      expect(stateManager.getGameState()).toBe(GameState.BALL_MOVING);
+    test('reflects the most recent setGameState call', () => {
+      stateManager.setGameState(GameState.PLAYING);
+      expect(stateManager.getGameState()).toBe(GameState.PLAYING);
     });
   });
 
   describe('isInState', () => {
-    beforeEach(() => {
-      stateManager = new StateManager(mockGame);
-    });
-
-    test('should return true when in specified state', () => {
+    test('returns true for matching state', () => {
       stateManager.setGameState(GameState.AIMING);
       expect(stateManager.isInState(GameState.AIMING)).toBe(true);
     });
 
-    test('should return false when not in specified state', () => {
+    test('returns false for non-matching state', () => {
       stateManager.setGameState(GameState.AIMING);
-      expect(stateManager.isInState(GameState.BALL_MOVING)).toBe(false);
+      expect(stateManager.isInState(GameState.PLAYING)).toBe(false);
     });
   });
 
-  describe('ball motion methods', () => {
-    beforeEach(() => {
-      stateManager = new StateManager(mockGame);
-    });
-
-    test('setBallInMotion should set ball motion state', () => {
-      stateManager.setBallInMotion(true);
-      expect(stateManager.state.ballInMotion).toBe(true);
-
-      stateManager.setBallInMotion(false);
-      expect(stateManager.state.ballInMotion).toBe(false);
-    });
-
-    test('setBallInMotion should return self for chaining', () => {
-      const result = stateManager.setBallInMotion(true);
-      expect(result).toBe(stateManager);
-    });
-
-    test('isBallInMotion should return ball motion state', () => {
+  describe('ball motion', () => {
+    test('setBallInMotion updates and isBallInMotion reads', () => {
       expect(stateManager.isBallInMotion()).toBe(false);
-
       stateManager.setBallInMotion(true);
       expect(stateManager.isBallInMotion()).toBe(true);
+      stateManager.setBallInMotion(false);
+      expect(stateManager.isBallInMotion()).toBe(false);
+    });
+
+    test('setBallInMotion returns self', () => {
+      expect(stateManager.setBallInMotion(true)).toBe(stateManager);
     });
   });
 
-  describe('hole completion methods', () => {
-    beforeEach(() => {
-      stateManager = new StateManager(mockGame);
-    });
+  describe('hole completion', () => {
+    test('setHoleCompleted(true) sets flag, transitions to HOLE_COMPLETED, notifies callbacks', () => {
+      const cb = jest.fn();
+      stateManager.eventCallbacks.onHoleCompleted.push(cb);
 
-    test('setHoleCompleted should set hole completion state', () => {
       stateManager.setHoleCompleted(true);
+
       expect(stateManager.state.holeCompleted).toBe(true);
-      expect(stateManager.state.currentGameState).toBe(GameState.HOLE_COMPLETED);
+      expect(stateManager.getGameState()).toBe(GameState.HOLE_COMPLETED);
+      expect(cb).toHaveBeenCalled();
     });
 
-    test('setHoleCompleted(false) should only set flag', () => {
+    test('setHoleCompleted(false) sets flag only, no state transition', () => {
       stateManager.setHoleCompleted(false);
       expect(stateManager.state.holeCompleted).toBe(false);
-      expect(stateManager.state.currentGameState).toBe(GameState.INITIALIZING);
+      expect(stateManager.getGameState()).toBe(GameState.INITIALIZING);
     });
 
-    test('setHoleCompleted(true) should notify callbacks', () => {
-      const mockCallback = jest.fn();
-      stateManager.eventCallbacks.onHoleCompleted.push(mockCallback);
+    test('setHoleCompleted returns self', () => {
+      expect(stateManager.setHoleCompleted(true)).toBe(stateManager);
+    });
+
+    test('callback error does not prevent other callbacks', () => {
+      const cb1 = jest.fn();
+      const errorCb = jest.fn(() => {
+        throw new Error('fail');
+      });
+      const cb2 = jest.fn();
+      stateManager.eventCallbacks.onHoleCompleted = [cb1, errorCb, cb2];
 
       stateManager.setHoleCompleted(true);
 
-      expect(mockCallback).toHaveBeenCalled();
-    });
-
-    test('setHoleCompleted should handle callback errors gracefully', () => {
-      const errorCallback = jest.fn(() => {
-        throw new Error('Callback error');
-      });
-      stateManager.eventCallbacks.onHoleCompleted.push(errorCallback);
-
-      expect(() => {
-        stateManager.setHoleCompleted(true);
-      }).not.toThrow();
-
+      expect(cb1).toHaveBeenCalled();
+      expect(cb2).toHaveBeenCalled();
       expect(console.error).toHaveBeenCalledWith(
         'Error in hole completed callback:',
         expect.any(Error)
       );
     });
 
-    test('isHoleCompleted should return hole completion state', () => {
+    test('isHoleCompleted reflects current flag', () => {
       expect(stateManager.isHoleCompleted()).toBe(false);
-
       stateManager.setHoleCompleted(true);
       expect(stateManager.isHoleCompleted()).toBe(true);
     });
   });
 
   describe('getCurrentHoleNumber', () => {
-    beforeEach(() => {
-      stateManager = new StateManager(mockGame);
+    test('returns 1 initially', () => {
+      expect(stateManager.getCurrentHoleNumber()).toBe(1);
     });
 
-    test('should return current hole number', () => {
-      expect(stateManager.getCurrentHoleNumber()).toBe(1);
-
-      stateManager.state.currentHoleNumber = 5;
-      expect(stateManager.getCurrentHoleNumber()).toBe(5);
+    test('returns updated value', () => {
+      stateManager.state.currentHoleNumber = 7;
+      expect(stateManager.getCurrentHoleNumber()).toBe(7);
     });
   });
 
-  describe('game over methods', () => {
-    beforeEach(() => {
-      stateManager = new StateManager(mockGame);
-    });
-
-    test('setGameOver(true) should set game over and complete state', () => {
+  describe('game over', () => {
+    test('setGameOver(true) sets flag and transitions to GAME_COMPLETED', () => {
       stateManager.setGameOver(true);
-
       expect(stateManager.state.gameOver).toBe(true);
-      expect(stateManager.state.currentGameState).toBe(GameState.GAME_COMPLETED);
+      expect(stateManager.getGameState()).toBe(GameState.GAME_COMPLETED);
     });
 
-    test('setGameOver(false) should only set flag', () => {
+    test('setGameOver(false) sets flag only', () => {
       stateManager.setGameOver(false);
-
       expect(stateManager.state.gameOver).toBe(false);
-      expect(stateManager.state.currentGameState).toBe(GameState.INITIALIZING);
+      expect(stateManager.getGameState()).toBe(GameState.INITIALIZING);
     });
 
-    test('setGameOver should return self for chaining', () => {
-      const result = stateManager.setGameOver(true);
-      expect(result).toBe(stateManager);
+    test('setGameOver returns self', () => {
+      expect(stateManager.setGameOver(true)).toBe(stateManager);
     });
 
-    test('isGameOver should return game over state', () => {
+    test('isGameOver reflects current flag', () => {
       expect(stateManager.isGameOver()).toBe(false);
-
       stateManager.setGameOver(true);
       expect(stateManager.isGameOver()).toBe(true);
     });
   });
 
   describe('resetForNextHole', () => {
-    beforeEach(() => {
-      stateManager = new StateManager(mockGame);
-    });
-
-    test('should increment hole number when not at last hole', () => {
+    test('increments hole number when not at last hole', () => {
       stateManager.state.currentHoleNumber = 3;
-
       stateManager.resetForNextHole();
-
       expect(stateManager.state.currentHoleNumber).toBe(4);
-      expect(stateManager.state.holeCompleted).toBe(false);
-      expect(stateManager.state.ballInMotion).toBe(false);
-      expect(stateManager.state.currentGameState).toBe(GameState.AIMING);
     });
 
-    test('should not increment when at last hole', () => {
+    test('does not increment at last hole', () => {
       stateManager.state.currentHoleNumber = 9;
-      mockGame.course.getTotalHoles.mockReturnValue(9);
-
       stateManager.resetForNextHole();
-
       expect(stateManager.state.currentHoleNumber).toBe(9);
     });
 
-    test('should set game completed when past last hole', () => {
+    test('sets GAME_COMPLETED when past last hole', () => {
       stateManager.state.currentHoleNumber = 10;
-      mockGame.course.getTotalHoles.mockReturnValue(9);
-
       stateManager.resetForNextHole();
 
+      expect(stateManager.getGameState()).toBe(GameState.GAME_COMPLETED);
       expect(console.warn).toHaveBeenCalledWith(
         '[StateManager] No more holes available - past last hole'
       );
-      expect(stateManager.state.currentGameState).toBe(GameState.GAME_COMPLETED);
     });
 
-    test('should reset scoring system', () => {
+    test('resets holeCompleted and ballInMotion', () => {
+      stateManager.state.holeCompleted = true;
+      stateManager.state.ballInMotion = true;
+      stateManager.state.currentHoleNumber = 1;
+
       stateManager.resetForNextHole();
 
+      expect(stateManager.state.holeCompleted).toBe(false);
+      expect(stateManager.state.ballInMotion).toBe(false);
+    });
+
+    test('calls scoringSystem.completeHole and resetCurrentStrokes', () => {
+      stateManager.resetForNextHole();
+
+      expect(mockGame.scoringSystem.completeHole).toHaveBeenCalled();
       expect(mockGame.scoringSystem.resetCurrentStrokes).toHaveBeenCalled();
     });
 
-    test('should handle missing scoring system', () => {
+    test('calls scoringSystem.setMaxStrokes with config values', () => {
+      stateManager.resetForNextHole();
+
+      expect(mockGame.scoringSystem.setMaxStrokes).toHaveBeenCalledWith(3, 8);
+    });
+
+    test('handles missing scoringSystem gracefully', () => {
       mockGame.scoringSystem = null;
 
-      expect(() => {
-        stateManager.resetForNextHole();
-      }).not.toThrow();
-
+      expect(() => stateManager.resetForNextHole()).not.toThrow();
       expect(console.warn).toHaveBeenCalledWith(
         '[StateManager] ScoringSystem not found, cannot reset strokes.'
       );
     });
 
-    test('should publish HOLE_STARTED event', () => {
-      stateManager.state.currentHoleNumber = 2;
+    test('transitions to AIMING state', () => {
+      stateManager.resetForNextHole();
+      expect(stateManager.getGameState()).toBe(GameState.AIMING);
+    });
 
+    test('publishes HOLE_STARTED event with updated hole number', () => {
+      stateManager.state.currentHoleNumber = 2;
       stateManager.resetForNextHole();
 
       expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
@@ -341,38 +485,122 @@ describe('StateManager', () => {
       );
     });
 
-    test('should handle case where no more holes are available', () => {
-      // Test with valid eventManager but past last hole
+    test('handles missing eventManager', () => {
+      mockGame.eventManager = null;
       stateManager = new StateManager(mockGame);
-      stateManager.state.currentHoleNumber = 10;
-      mockGame.course.getTotalHoles.mockReturnValue(9);
 
+      expect(() => stateManager.resetForNextHole()).toThrow();
+    });
+
+    test('returns self for chaining', () => {
+      expect(stateManager.resetForNextHole()).toBe(stateManager);
+    });
+
+    test('handles missing course config for setMaxStrokes', () => {
+      mockGame.course.getCurrentHoleConfig.mockReturnValue(null);
       stateManager.resetForNextHole();
 
-      // Since we're past the last hole, it should warn and set game completed
-      expect(console.warn).toHaveBeenCalledWith(
-        '[StateManager] No more holes available - past last hole'
-      );
+      expect(mockGame.scoringSystem.setMaxStrokes).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('skipToHole', () => {
+    test('returns false for non-integer hole number', async () => {
+      const result = await stateManager.skipToHole(1.5);
+      expect(result).toBe(false);
+    });
+
+    test('returns false for hole number below 1', async () => {
+      const result = await stateManager.skipToHole(0);
+      expect(result).toBe(false);
+    });
+
+    test('returns false for hole number above total', async () => {
+      const result = await stateManager.skipToHole(10);
+      expect(result).toBe(false);
+    });
+
+    test('successfully skips to a valid hole', async () => {
+      const result = await stateManager.skipToHole(5);
+
+      expect(result).toBe(true);
+      expect(stateManager.state.currentHoleNumber).toBe(5);
+      expect(stateManager.state.holeCompleted).toBe(false);
+      expect(stateManager.state.ballInMotion).toBe(false);
+      expect(stateManager.getGameState()).toBe(GameState.AIMING);
+    });
+
+    test('unloads current hole and resets physics', async () => {
+      await stateManager.skipToHole(3);
+
+      expect(mockGame.holeTransitionManager.unloadCurrentHole).toHaveBeenCalled();
+      expect(mockGame.physicsManager.resetWorld).toHaveBeenCalled();
+    });
+
+    test('creates course for target hole', async () => {
+      await stateManager.skipToHole(4);
+      expect(mockGame.course.createCourse).toHaveBeenCalledWith(4);
+    });
+
+    test('publishes HOLE_STARTED event on success', async () => {
+      await stateManager.skipToHole(5);
+
       expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
-        EventTypes.GAME_COMPLETED,
-        { timestamp: expect.any(Number) },
+        EventTypes.HOLE_STARTED,
+        { holeNumber: 5 },
         stateManager
       );
     });
 
-    test('should return self for chaining', () => {
-      const result = stateManager.resetForNextHole();
-      expect(result).toBe(stateManager);
+    test('updates UI after skip', async () => {
+      await stateManager.skipToHole(5);
+
+      expect(mockGame.uiManager.updateHoleInfo).toHaveBeenCalledWith(5);
+      expect(mockGame.uiManager.showMessage).toHaveBeenCalledWith('Hole 5');
+      expect(mockGame.uiManager.updateScore).toHaveBeenCalled();
+      expect(mockGame.uiManager.updateStrokes).toHaveBeenCalled();
+      expect(mockGame.uiManager.hideTransitionOverlay).toHaveBeenCalled();
+    });
+
+    test('returns false when createCourse fails', async () => {
+      mockGame.course.createCourse.mockResolvedValue(false);
+      const result = await stateManager.skipToHole(3);
+      expect(result).toBe(false);
+    });
+
+    test('returns false and hides overlay on error', async () => {
+      mockGame.holeTransitionManager.unloadCurrentHole.mockRejectedValue(new Error('fail'));
+      const result = await stateManager.skipToHole(3);
+
+      expect(result).toBe(false);
+      expect(mockGame.uiManager.hideTransitionOverlay).toHaveBeenCalled();
+    });
+
+    test('handles missing physicsManager.resetWorld', async () => {
+      mockGame.physicsManager = {};
+      const result = await stateManager.skipToHole(3);
+      expect(result).toBe(true);
+    });
+
+    test('sets up managers after skip', async () => {
+      await stateManager.skipToHole(3);
+
+      expect(mockGame.holeCompletionManager.resetGracePeriod).toHaveBeenCalled();
+      expect(mockGame.ballManager.createBall).toHaveBeenCalled();
+      expect(mockGame.inputController.enableInput).toHaveBeenCalled();
+      expect(mockGame.cameraController.positionCameraForHole).toHaveBeenCalled();
+    });
+
+    test('resets scoring for new hole', async () => {
+      await stateManager.skipToHole(5);
+
+      expect(mockGame.scoringSystem.resetCurrentStrokes).toHaveBeenCalled();
+      expect(mockGame.scoringSystem.setMaxStrokes).toHaveBeenCalledWith(3, 8);
     });
   });
 
   describe('resetState', () => {
-    beforeEach(() => {
-      stateManager = new StateManager(mockGame);
-    });
-
-    test('should reset all state to initial values', () => {
-      // Set some non-default values
+    test('resets all state to initial values', () => {
       stateManager.state.ballInMotion = true;
       stateManager.state.holeCompleted = true;
       stateManager.state.currentHoleNumber = 5;
@@ -380,7 +608,7 @@ describe('StateManager', () => {
       stateManager.state.gameOver = true;
       stateManager.state.gameStarted = true;
       stateManager.state.showingMessage = true;
-      stateManager.state.currentGameState = GameState.BALL_MOVING;
+      stateManager.state.currentGameState = GameState.PLAYING;
 
       stateManager.resetState();
 
@@ -397,163 +625,146 @@ describe('StateManager', () => {
       });
     });
 
-    test('should return self for chaining', () => {
-      const result = stateManager.resetState();
-      expect(result).toBe(stateManager);
+    test('publishes STATE_CHANGED to INITIALIZING', () => {
+      stateManager.setGameState(GameState.PLAYING);
+      mockGame.eventManager.publish.mockClear();
+
+      stateManager.resetState();
+
+      expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
+        EventTypes.STATE_CHANGED,
+        { oldState: GameState.PLAYING, newState: GameState.INITIALIZING },
+        stateManager
+      );
+    });
+
+    test('returns self for chaining', () => {
+      expect(stateManager.resetState()).toBe(stateManager);
     });
   });
 
   describe('reset ball methods', () => {
-    beforeEach(() => {
-      stateManager = new StateManager(mockGame);
-    });
-
-    test('setResetBall should set reset ball flag', () => {
+    test('setResetBall sets the flag', () => {
       stateManager.setResetBall(true);
       expect(stateManager.state.resetBall).toBe(true);
-
       stateManager.setResetBall(false);
       expect(stateManager.state.resetBall).toBe(false);
     });
 
-    test('shouldResetBall should return reset ball state', () => {
+    test('shouldResetBall returns the flag', () => {
       expect(stateManager.shouldResetBall()).toBe(false);
-
       stateManager.setResetBall(true);
       expect(stateManager.shouldResetBall()).toBe(true);
     });
 
-    test('clearResetBall should clear reset ball flag', () => {
+    test('clearResetBall sets flag to false', () => {
       stateManager.setResetBall(true);
       stateManager.clearResetBall();
-
-      expect(stateManager.state.resetBall).toBe(false);
+      expect(stateManager.shouldResetBall()).toBe(false);
     });
   });
 
-  describe('debug mode methods', () => {
-    beforeEach(() => {
-      stateManager = new StateManager(mockGame);
+  describe('debug mode', () => {
+    test('isDebugMode returns false by default', () => {
+      expect(stateManager.isDebugMode()).toBe(false);
     });
 
-    test('isDebugMode should return debug mode state', () => {
-      expect(stateManager.isDebugMode()).toBe(false);
-
-      stateManager.state.debugMode = true;
-      expect(stateManager.isDebugMode()).toBe(true);
-    });
-
-    test('toggleDebugMode should toggle debug mode', () => {
-      expect(stateManager.isDebugMode()).toBe(false);
-
+    test('toggleDebugMode flips the flag', () => {
       stateManager.toggleDebugMode();
       expect(stateManager.isDebugMode()).toBe(true);
-
       stateManager.toggleDebugMode();
       expect(stateManager.isDebugMode()).toBe(false);
     });
   });
 
   describe('_notifyHoleCompleted', () => {
-    beforeEach(() => {
-      stateManager = new StateManager(mockGame);
-    });
-
-    test('should call all registered callbacks', () => {
-      const callback1 = jest.fn();
-      const callback2 = jest.fn();
-      const callback3 = jest.fn();
-
-      stateManager.eventCallbacks.onHoleCompleted = [callback1, callback2, callback3];
+    test('calls all registered callbacks', () => {
+      const cb1 = jest.fn();
+      const cb2 = jest.fn();
+      stateManager.eventCallbacks.onHoleCompleted = [cb1, cb2];
 
       stateManager._notifyHoleCompleted();
 
-      expect(callback1).toHaveBeenCalled();
-      expect(callback2).toHaveBeenCalled();
-      expect(callback3).toHaveBeenCalled();
+      expect(cb1).toHaveBeenCalled();
+      expect(cb2).toHaveBeenCalled();
     });
 
-    test('should continue calling callbacks even if one throws', () => {
-      const callback1 = jest.fn();
-      const callback2 = jest.fn(() => {
-        throw new Error('Callback error');
+    test('continues after callback error', () => {
+      const cb1 = jest.fn(() => {
+        throw new Error('boom');
       });
-      const callback3 = jest.fn();
-
-      stateManager.eventCallbacks.onHoleCompleted = [callback1, callback2, callback3];
+      const cb2 = jest.fn();
+      stateManager.eventCallbacks.onHoleCompleted = [cb1, cb2];
 
       stateManager._notifyHoleCompleted();
 
-      expect(callback1).toHaveBeenCalled();
-      expect(callback2).toHaveBeenCalled();
-      expect(callback3).toHaveBeenCalled();
-      expect(console.error).toHaveBeenCalledWith(
-        'Error in hole completed callback:',
-        expect.any(Error)
-      );
+      expect(cb2).toHaveBeenCalled();
+      expect(console.error).toHaveBeenCalled();
+    });
+
+    test('does nothing with empty callback array', () => {
+      expect(() => stateManager._notifyHoleCompleted()).not.toThrow();
     });
   });
 
-  describe('integration scenarios', () => {
-    beforeEach(() => {
-      stateManager = new StateManager(mockGame);
-    });
+  describe('integration: full gameplay flow', () => {
+    test('complete hole progression from start to finish', () => {
+      expect(stateManager.getGameState()).toBe(GameState.INITIALIZING);
 
-    test('should handle complete hole progression', () => {
-      // Start at hole 1
-      expect(stateManager.getCurrentHoleNumber()).toBe(1);
+      stateManager.setGameState(GameState.AIMING);
+      expect(stateManager.isInState(GameState.AIMING)).toBe(true);
 
-      // Complete hole 1
+      stateManager.setBallInMotion(true);
+      stateManager.setGameState(GameState.PLAYING);
+      expect(stateManager.isBallInMotion()).toBe(true);
+      expect(stateManager.getGameState()).toBe(GameState.PLAYING);
+
+      stateManager.setBallInMotion(false);
       stateManager.setHoleCompleted(true);
-      expect(stateManager.isHoleCompleted()).toBe(true);
+      expect(stateManager.getGameState()).toBe(GameState.HOLE_COMPLETED);
 
-      // Reset for hole 2
       stateManager.resetForNextHole();
       expect(stateManager.getCurrentHoleNumber()).toBe(2);
-      expect(stateManager.isHoleCompleted()).toBe(false);
       expect(stateManager.getGameState()).toBe(GameState.AIMING);
+      expect(stateManager.isHoleCompleted()).toBe(false);
     });
 
-    test('should handle game completion flow', () => {
-      // Set to last hole
+    test('game completion at last hole', () => {
       stateManager.state.currentHoleNumber = 9;
-      mockGame.course.getTotalHoles.mockReturnValue(9);
 
-      // Complete last hole
       stateManager.setHoleCompleted(true);
-
-      // Try to go to next hole
       stateManager.resetForNextHole();
-
-      // Should still be on hole 9
       expect(stateManager.getCurrentHoleNumber()).toBe(9);
 
-      // Set game over
       stateManager.setGameOver(true);
       expect(stateManager.isGameOver()).toBe(true);
       expect(stateManager.getGameState()).toBe(GameState.GAME_COMPLETED);
     });
 
-    test('should handle state transitions during gameplay', () => {
-      // Initial state
-      expect(stateManager.getGameState()).toBe(GameState.INITIALIZING);
-
-      // Start aiming
+    test('pause and resume mid-play', () => {
       stateManager.setGameState(GameState.AIMING);
-      expect(stateManager.isInState(GameState.AIMING)).toBe(true);
-
-      // Ball is hit
       stateManager.setBallInMotion(true);
-      stateManager.setGameState(GameState.BALL_MOVING);
+      stateManager.setGameState(GameState.PLAYING);
+
+      const priorState = stateManager.getGameState();
+      stateManager.setGameState(GameState.PAUSED);
+      expect(stateManager.getGameState()).toBe(GameState.PAUSED);
       expect(stateManager.isBallInMotion()).toBe(true);
 
-      // Ball stops
-      stateManager.setBallInMotion(false);
-      stateManager.setGameState(GameState.AIMING);
+      stateManager.setGameState(priorState);
+      expect(stateManager.getGameState()).toBe(GameState.PLAYING);
+    });
 
-      // Ball goes in hole
-      stateManager.setHoleCompleted(true);
-      expect(stateManager.getGameState()).toBe(GameState.HOLE_COMPLETED);
+    test('resetState then start new game', () => {
+      stateManager.setGameState(GameState.AIMING);
+      stateManager.state.currentHoleNumber = 5;
+      stateManager.setBallInMotion(true);
+
+      stateManager.resetState();
+
+      expect(stateManager.getGameState()).toBe(GameState.INITIALIZING);
+      expect(stateManager.getCurrentHoleNumber()).toBe(1);
+      expect(stateManager.isBallInMotion()).toBe(false);
     });
   });
 });

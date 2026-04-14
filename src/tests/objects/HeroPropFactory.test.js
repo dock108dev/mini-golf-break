@@ -27,7 +27,9 @@ jest.mock('three', () => {
       dispose: jest.fn()
     })),
     Vector3: jest.fn((x = 0, y = 0, z = 0) => ({
-      x, y, z,
+      x,
+      y,
+      z,
       copy: jest.fn(),
       set: jest.fn()
     })),
@@ -68,7 +70,7 @@ describe('HeroPropFactory', () => {
   ];
 
   describe('createHeroProp', () => {
-    test.each(PROP_TYPES)('creates meshes for %s without throwing', (type) => {
+    test.each(PROP_TYPES)('creates meshes for %s without throwing', type => {
       const config = {
         type,
         position: new THREE.Vector3(1, 0, 2),

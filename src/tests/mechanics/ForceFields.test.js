@@ -23,7 +23,7 @@ beforeAll(() => {
     x,
     y,
     z,
-    scale: s => ({ x: x * s, y: y * s, z: z * s }),
+    scale: s => ({ x: x * s, y: y * s, z: z * s })
   }));
 
   // Body needs position.set for BoostStrip trigger body
@@ -36,18 +36,20 @@ beforeAll(() => {
         this.x = x;
         this.y = y;
         this.z = z;
-      }),
+      })
     },
     velocity: { x: 0, y: 0, z: 0, set: jest.fn() },
     quaternion: { x: 0, y: 0, z: 0, w: 1, set: jest.fn(), setFromAxisAngle: jest.fn() },
     addShape: jest.fn(),
-    userData: {},
+    userData: {}
   }));
 
   // MeshStandardMaterial needs to pass through constructor opts
   THREE.MeshStandardMaterial.mockImplementation(opts => {
     const mat = { color: 0xffffff, roughness: 0.3, metalness: 0.2, dispose: jest.fn() };
-    if (opts) Object.assign(mat, opts);
+    if (opts) {
+      Object.assign(mat, opts);
+    }
     return mat;
   });
 
@@ -64,7 +66,7 @@ function makeMockWorld() {
   return {
     addBody: jest.fn(),
     removeBody: jest.fn(),
-    step: jest.fn(),
+    step: jest.fn()
   };
 }
 
@@ -74,9 +76,11 @@ function makeMockGroup() {
     add: jest.fn(child => children.push(child)),
     remove: jest.fn(child => {
       const idx = children.indexOf(child);
-      if (idx !== -1) children.splice(idx, 1);
+      if (idx !== -1) {
+        children.splice(idx, 1);
+      }
     }),
-    children,
+    children
   };
 }
 
@@ -87,7 +91,7 @@ function makeMockBall(x = 0, z = 0, mass = 0.45) {
     quaternion: { x: 0, y: 0, z: 0, w: 1 },
     mass,
     sleepState: 0, // AWAKE (numeric, not CANNON.Body.AWAKE which is undefined in mock)
-    applyForce: jest.fn(),
+    applyForce: jest.fn()
   };
 }
 
@@ -113,7 +117,7 @@ describe('BoostStrip', () => {
     position: new THREE.Vector3(0, 0, 0),
     direction: new THREE.Vector3(0, 0, -1),
     force: 10,
-    size: { width: 2, length: 4 },
+    size: { width: 2, length: 4 }
   };
 
   describe('constructor', () => {
@@ -154,10 +158,7 @@ describe('BoostStrip', () => {
     it('applies directional force when ball is in zone', () => {
       const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
       // Place ball at same position as trigger body
-      const ball = makeMockBall(
-        strip.triggerBody.position.x,
-        strip.triggerBody.position.z
-      );
+      const ball = makeMockBall(strip.triggerBody.position.x, strip.triggerBody.position.z);
 
       strip.update(0.016, ball);
 
@@ -175,10 +176,7 @@ describe('BoostStrip', () => {
 
     it('wakes sleeping ball in zone and applies force', () => {
       const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
-      const ball = makeMockBall(
-        strip.triggerBody.position.x,
-        strip.triggerBody.position.z
-      );
+      const ball = makeMockBall(strip.triggerBody.position.x, strip.triggerBody.position.z);
       ball.sleepState = SLEEPING;
       ball.wakeUp = jest.fn();
 
@@ -224,7 +222,7 @@ describe('SuctionZone', () => {
   const defaultConfig = {
     position: new THREE.Vector3(0, 0, 0),
     radius: 5,
-    force: 10,
+    force: 10
   };
 
   describe('constructor', () => {
@@ -239,7 +237,7 @@ describe('SuctionZone', () => {
       const config = {
         position: new THREE.Vector3(3, 0, -4),
         radius: 7,
-        force: 5,
+        force: 5
       };
       const zone = new SuctionZone(world, group, config, SURFACE_HEIGHT);
       expect(zone.centerX).toBe(3);
@@ -350,7 +348,7 @@ describe('LowGravityZone', () => {
   const defaultConfig = {
     position: new THREE.Vector3(0, 0, 0),
     radius: 3,
-    gravityMultiplier: 0.3,
+    gravityMultiplier: 0.3
   };
 
   describe('constructor', () => {
@@ -459,7 +457,7 @@ describe('BowlContour', () => {
   const defaultConfig = {
     position: new THREE.Vector3(0, 0, 0),
     radius: 4,
-    force: 5,
+    force: 5
   };
 
   describe('constructor', () => {
@@ -474,7 +472,7 @@ describe('BowlContour', () => {
       const config = {
         position: new THREE.Vector3(2, 0, -3),
         radius: 6,
-        force: 8,
+        force: 8
       };
       const bowl = new BowlContour(world, group, config, SURFACE_HEIGHT);
       expect(bowl.centerX).toBe(2);

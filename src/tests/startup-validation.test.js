@@ -20,11 +20,12 @@ function makeHoleConfig(overrides = {}) {
       { x: 5, y: -5 },
       { x: 5, y: 5 },
       { x: -5, y: 5 },
+      { x: -5, y: -5 }
     ],
     startPosition: { x: 0, y: 0.2, z: 3 },
     holePosition: { x: 0, y: 0.2, z: -3 },
     mechanics: [],
-    ...overrides,
+    ...overrides
   };
 }
 
@@ -36,7 +37,7 @@ describe('Dev-mode startup validation (ISSUE-065)', () => {
     consoleSpy = {
       log: jest.spyOn(console, 'log').mockImplementation(() => {}),
       warn: jest.spyOn(console, 'warn').mockImplementation(() => {}),
-      error: jest.spyOn(console, 'error').mockImplementation(() => {}),
+      error: jest.spyOn(console, 'error').mockImplementation(() => {})
     };
   });
 
@@ -59,7 +60,11 @@ describe('Dev-mode startup validation (ISSUE-065)', () => {
     expect(types).toContain('split_route');
     expect(types).toContain('elevated_green');
     expect(types).toContain('ricochet_bumpers');
-    expect(types.length).toBe(12);
+    expect(types).toContain('laser_grid');
+    expect(types).toContain('disappearing_platform');
+    expect(types).toContain('gravity_funnel');
+    expect(types).toContain('multi_level_ramp');
+    expect(types.length).toBe(16);
   });
 
   test('unregistered mechanic type produces console.error with hole index and type', () => {
@@ -67,12 +72,12 @@ describe('Dev-mode startup validation (ISSUE-065)', () => {
     const configs = [
       makeHoleConfig({
         index: 3,
-        mechanics: [{ type: 'nonexistent_laser_beam' }],
-      }),
+        mechanics: [{ type: 'nonexistent_laser_beam' }]
+      })
     ];
 
     const result = validateCourse(configs, 'Orbital Drift', {
-      registeredTypes: getRegisteredTypes(),
+      registeredTypes: getRegisteredTypes()
     });
 
     expect(result.valid).toBe(false);
@@ -91,14 +96,26 @@ describe('Dev-mode startup validation (ISSUE-065)', () => {
       makeHoleConfig({
         index: 0,
         mechanics: [
-          { type: 'moving_sweeper', pivot: { x: 0, y: 0, z: 0 }, armLength: 3, speed: 1, size: { width: 2, height: 0.4, depth: 0.3 } },
-          { type: 'boost_strip', position: { x: 0, y: 0, z: 0 }, direction: { x: 1, y: 0, z: 0 }, force: 5, size: { width: 2, length: 1 } },
-        ],
-      }),
+          {
+            type: 'moving_sweeper',
+            pivot: { x: 0, y: 0, z: 0 },
+            armLength: 3,
+            speed: 1,
+            size: { width: 2, height: 0.4, depth: 0.3 }
+          },
+          {
+            type: 'boost_strip',
+            position: { x: 0, y: 0, z: 0 },
+            direction: { x: 1, y: 0, z: 0 },
+            force: 5,
+            size: { width: 2, length: 1 }
+          }
+        ]
+      })
     ];
 
     const result = validateCourse(configs, 'Orbital Drift', {
-      registeredTypes: getRegisteredTypes(),
+      registeredTypes: getRegisteredTypes()
     });
 
     expect(result.valid).toBe(true);
@@ -110,12 +127,12 @@ describe('Dev-mode startup validation (ISSUE-065)', () => {
     const configs = [
       makeHoleConfig({
         index: 0,
-        mechanics: [{ type: 'totally_fake_type' }],
-      }),
+        mechanics: [{ type: 'totally_fake_type' }]
+      })
     ];
 
     const result = validateCourse(configs, 'Orbital Drift', {
-      registeredTypes: getRegisteredTypes(),
+      registeredTypes: getRegisteredTypes()
     });
 
     // In production, validateHoleConfig returns [] so no errors
@@ -128,14 +145,14 @@ describe('Dev-mode startup validation (ISSUE-065)', () => {
     const configs = [
       makeHoleConfig({
         index: 0,
-        mechanics: [{ type: 'fake_type_1' }, { type: 'fake_type_2' }],
-      }),
+        mechanics: [{ type: 'fake_type_1' }, { type: 'fake_type_2' }]
+      })
     ];
 
     // Should not throw — just logs and returns
     expect(() => {
       validateCourse(configs, 'Orbital Drift', {
-        registeredTypes: getRegisteredTypes(),
+        registeredTypes: getRegisteredTypes()
       });
     }).not.toThrow();
 
@@ -147,17 +164,17 @@ describe('Dev-mode startup validation (ISSUE-065)', () => {
     const configs = [
       makeHoleConfig({
         index: 0,
-        mechanics: [{ type: 'bad_type_a' }],
+        mechanics: [{ type: 'bad_type_a' }]
       }),
       makeHoleConfig({
         index: 1,
         description: 'Hole 2',
-        mechanics: [{ type: 'bad_type_b' }],
-      }),
+        mechanics: [{ type: 'bad_type_b' }]
+      })
     ];
 
     const result = validateCourse(configs, 'Test', {
-      registeredTypes: getRegisteredTypes(),
+      registeredTypes: getRegisteredTypes()
     });
 
     expect(result.valid).toBe(false);

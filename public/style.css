@@ -9,6 +9,7 @@ body {
 #game-container {
     width: 100vw;
     height: 100vh;
+    height: 100dvh;
     position: relative;
     touch-action: none;
 }
@@ -29,6 +30,8 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    box-sizing: border-box;
 }
 
 #loading-screen.hidden {
@@ -92,6 +95,8 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    box-sizing: border-box;
 }
 
 .menu-content {
@@ -179,7 +184,7 @@ body {
 #power-indicator {
     --power-width: 0%;
     position: absolute;
-    bottom: 40px;
+    bottom: calc(40px + env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
     width: 200px;
@@ -204,7 +209,7 @@ body {
 /* Ready indicator */
 #ready-indicator {
     position: absolute;
-    bottom: 100px;
+    bottom: calc(100px + env(safe-area-inset-bottom));
     left: 50%;
     transform: translateX(-50%);
     background-color: rgba(0, 0, 0, 0.6);
@@ -237,6 +242,8 @@ body {
     pointer-events: none; /* Initially not interactive */
     transition: opacity 0.3s ease, visibility 0s linear 0.3s;
     z-index: 1000; /* Ensure it's on top */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    box-sizing: border-box;
 }
 
 .scorecard-overlay.visible {
@@ -353,6 +360,66 @@ body {
     margin-top: 4px;
 }
 
+/* Name entry modal (high score initials input) */
+.name-entry-modal {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: rgba(97, 218, 251, 0.1);
+    border: 1px solid #61dafb;
+    border-radius: 8px;
+}
+
+.name-entry-prompt {
+    color: #ffd700;
+    font-weight: bold;
+    font-size: 1.1em;
+    margin-bottom: 12px;
+}
+
+.name-entry-input {
+    width: 80px;
+    padding: 8px 12px;
+    font-size: 1.4em;
+    font-weight: bold;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 4px;
+    background-color: #1a1e24;
+    color: #ffffff;
+    border: 2px solid #61dafb;
+    border-radius: 5px;
+    outline: none;
+    font-family: monospace;
+}
+
+.name-entry-input:focus {
+    border-color: #ffd700;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
+}
+
+.name-entry-input::placeholder {
+    color: #555;
+    letter-spacing: 4px;
+}
+
+.name-entry-buttons {
+    margin-top: 12px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.name-entry-skip {
+    background-color: transparent;
+    color: #aaaaaa;
+    border: 1px solid #555;
+}
+
+.name-entry-skip:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
 /* Top-right score container */
 .top-right-container {
     position: absolute;
@@ -459,6 +526,8 @@ body {
     pointer-events: none;
     transition: opacity 0.3s ease, visibility 0s linear 0.3s;
     z-index: 999;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    box-sizing: border-box;
 }
 
 .transition-overlay.visible {
@@ -498,6 +567,8 @@ body {
     pointer-events: none;
     transition: opacity 0.3s ease, visibility 0s linear 0.3s;
     z-index: 1000;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    box-sizing: border-box;
 }
 
 .pause-overlay.visible {
@@ -519,6 +590,8 @@ body {
 }
 
 .pause-resume-button {
+    display: block;
+    margin: 0 auto;
     background-color: #61dafb;
     color: #282c34;
     border: none;
@@ -537,6 +610,80 @@ body {
 
 .pause-resume-button:active {
     transform: translateY(0px);
+}
+
+.pause-quit-button {
+    display: block;
+    margin: 12px auto 0;
+    background-color: transparent;
+    color: #ff6b6b;
+    border: 1px solid #ff6b6b;
+    padding: 10px 30px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: bold;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.pause-quit-button:hover {
+    background-color: rgba(255, 107, 107, 0.15);
+    transform: translateY(-1px);
+}
+
+.pause-quit-button:active {
+    transform: translateY(0px);
+}
+
+/* Pause volume slider */
+.pause-volume-container {
+    margin: 20px auto 0;
+    max-width: 220px;
+    text-align: center;
+}
+
+.pause-volume-label {
+    display: block;
+    color: #ffffff;
+    font-size: 0.95em;
+    margin-bottom: 8px;
+    opacity: 0.85;
+}
+
+.pause-volume-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.25);
+    outline: none;
+    cursor: pointer;
+}
+
+.pause-volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #61dafb;
+    cursor: pointer;
+    border: none;
+}
+
+.pause-volume-slider::-moz-range-thumb {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: #61dafb;
+    cursor: pointer;
+    border: none;
+}
+
+.pause-volume-slider:focus-visible {
+    outline: 2px solid #61dafb;
+    outline-offset: 4px;
 }
 
 /* Stuck ball reset button */
@@ -665,6 +812,8 @@ body {
     pointer-events: none;
     transition: opacity 0.3s ease;
     z-index: 2000;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    box-sizing: border-box;
 }
 
 .controls-overlay.visible {
@@ -796,6 +945,145 @@ body {
 
     .controls-section h3 {
         font-size: 1em;
+    }
+}
+
+/* High Score History overlay */
+.scores-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 2000;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+    box-sizing: border-box;
+}
+
+.scores-overlay.visible {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.scores-content {
+    background-color: #282c34;
+    color: #ffffff;
+    padding: 30px;
+    border-radius: 10px;
+    text-align: center;
+    width: 85%;
+    max-width: 480px;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+}
+
+.scores-title {
+    margin: 0 0 20px 0;
+    font-size: 1.8em;
+    color: #61dafb;
+}
+
+.scores-empty {
+    color: #aaaaaa;
+    font-size: 1.1em;
+    padding: 20px 0;
+}
+
+.scores-table {
+    width: 100%;
+    margin-bottom: 20px;
+    border-collapse: collapse;
+}
+
+.scores-table th {
+    padding: 8px 12px;
+    border-bottom: 2px solid #555;
+    text-align: center;
+    font-size: 0.9em;
+    color: #61dafb;
+}
+
+.scores-table td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #444;
+    text-align: center;
+}
+
+.scores-table tr:last-child td {
+    border-bottom: none;
+}
+
+.scores-actions {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 20px;
+}
+
+.scores-clear-button {
+    background-color: transparent;
+    color: #ff6b6b;
+    border: 1px solid #ff6b6b;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: bold;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.scores-clear-button:hover {
+    background-color: rgba(255, 107, 107, 0.15);
+    transform: translateY(-1px);
+}
+
+.scores-clear-button:active {
+    transform: translateY(0px);
+}
+
+.scores-close-button {
+    background-color: #61dafb;
+    color: #282c34;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: bold;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.scores-close-button:hover {
+    background-color: #7ad7f7;
+    transform: translateY(-1px);
+}
+
+.scores-close-button:active {
+    transform: translateY(0px);
+}
+
+@media (max-width: 768px) {
+    .scores-content {
+        padding: 20px;
+        width: 90%;
+    }
+
+    .scores-title {
+        font-size: 1.5em;
+    }
+
+    .scores-table th,
+    .scores-table td {
+        padding: 6px 8px;
+        font-size: 0.9em;
     }
 }
 

@@ -241,6 +241,21 @@ export class HoleTransitionManager {
         this.game.uiManager.showMessage(`Hole ${targetHoleNumber}`);
       }
 
+      // Update OOB boundaries for the new hole
+      if (this.game.hazardManager && this.game.course) {
+        const holeConfig = this.game.course.getCurrentHoleConfig();
+        this.game.hazardManager.setHoleBounds(holeConfig);
+      }
+
+      // Apply theme-variant lighting and background for the new hole
+      const loadedConfig = this.game.course?.getCurrentHoleConfig();
+      if (loadedConfig?.theme) {
+        this.game.updateLightingForTheme(loadedConfig.theme);
+        if (this.game.spaceDecorations) {
+          this.game.spaceDecorations.setThemeVariant(loadedConfig.theme);
+        }
+      }
+
       // Log success
       debug.log(`[HoleTransitionManager] Successfully loaded hole #${targetHoleNumber}`);
 

@@ -265,9 +265,7 @@ describe('GameLoopManager', () => {
 
       animationFrameCallback();
 
-      expect(mockGame.physicsManager.update).toHaveBeenCalledWith(
-        expect.closeTo(1 / 30, 4)
-      );
+      expect(mockGame.physicsManager.update).toHaveBeenCalledWith(expect.closeTo(1 / 30, 4));
     });
 
     test('should pass clamped dt to camera controller', () => {
@@ -275,9 +273,7 @@ describe('GameLoopManager', () => {
 
       animationFrameCallback();
 
-      expect(mockGame.cameraController.update).toHaveBeenCalledWith(
-        expect.closeTo(1 / 30, 4)
-      );
+      expect(mockGame.cameraController.update).toHaveBeenCalledWith(expect.closeTo(1 / 30, 4));
     });
   });
 

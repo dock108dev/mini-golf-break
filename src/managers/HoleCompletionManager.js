@@ -1,6 +1,7 @@
 import { debug } from '../utils/debug';
 import { EventTypes } from '../events/EventTypes';
 import { GameState } from '../states/GameState';
+import { isIsolationMode } from '../utils/devHoleHarness';
 
 /**
  * HoleCompletionManager - Handles hole completion logic and effects
@@ -29,6 +30,12 @@ export class HoleCompletionManager {
   setupEventListeners() {
     // Listen for ball in hole events
     this.game.eventManager.subscribe(EventTypes.BALL_IN_HOLE, this.handleBallInHole, this);
+    // Listen for stroke limit reached events
+    this.game.eventManager.subscribe(
+      EventTypes.STROKE_LIMIT_REACHED,
+      this.handleStrokeLimitReached,
+      this
+    );
   }
 
   /**
@@ -96,6 +103,13 @@ export class HoleCompletionManager {
     // Update score
     this.updateScore(currentHoleNumber, totalStrokes);
 
+    // In isolation mode, stay on the current hole
+    if (isIsolationMode()) {
+      debug.log('[HoleCompletionManager] Isolation mode — staying on current hole');
+      this.isTransitioning = false;
+      return;
+    }
+
     // Check if this was the last hole
     if (currentHoleNumber >= totalHoles) {
       debug.log(`[HoleCompletionManager] Final hole ${currentHoleNumber} completed`);
@@ -112,6 +126,53 @@ export class HoleCompletionManager {
       }
 
       debug.log('[HoleCompletionManager] Scheduling transition to next hole');
+      this.game.holeTransitionManager.transitionToNextHole();
+      this.isTransitioning = false;
+    }, 1500);
+  }
+
+  /**
+   * Handle stroke limit reached — auto-advance after delay
+   */
+  handleStrokeLimitReached() {
+    const currentHoleNumber = this.game.stateManager.getCurrentHoleNumber();
+    const totalHoles = this.game.course.getTotalHoles();
+
+    debug.log(
+      `[HoleCompletionManager] Stroke limit reached on hole ${currentHoleNumber} of ${totalHoles}`
+    );
+
+    if (this.game.stateManager.isHoleCompleted() || this.isTransitioning) {
+      return;
+    }
+
+    this.isTransitioning = true;
+
+    this.game.uiManager.showMessage('Max strokes reached', 2000);
+
+    this.game.stateManager.setHoleCompleted(true);
+
+    const totalStrokes = this.game.scoringSystem.getTotalStrokes();
+    this.updateScore(currentHoleNumber, totalStrokes);
+
+    if (isIsolationMode()) {
+      debug.log('[HoleCompletionManager] Isolation mode — staying on current hole (stroke limit)');
+      this.isTransitioning = false;
+      return;
+    }
+
+    if (currentHoleNumber >= totalHoles) {
+      debug.log(`[HoleCompletionManager] Final hole ${currentHoleNumber} — stroke limit`);
+      this.game.stateManager.setGameState(GameState.GAME_COMPLETED);
+      this.isTransitioning = false;
+      return;
+    }
+
+    setTimeout(() => {
+      if (!this.isTransitioning) {
+        return;
+      }
+      debug.log('[HoleCompletionManager] Stroke limit — transitioning to next hole');
       this.game.holeTransitionManager.transitionToNextHole();
       this.isTransitioning = false;
     }, 1500);
@@ -229,5 +290,4 @@ export class HoleCompletionManager {
   update(dt) {
     // REMOVE commented-out, redundant ball-in-hole check
   }
-
 }

@@ -56,6 +56,16 @@ public/           # Static assets (index.html, CSS, logo)
 tests/uat/        # Playwright end-to-end tests
 ```
 
+## iOS Build (Capacitor)
+
+```bash
+npm run build          # Production build to dist/
+npm run cap:sync       # Copy dist/ to iOS project and sync plugins
+npm run cap:open:ios   # Open the Xcode project
+```
+
+In Xcode, select a target device or simulator and press Run. The `cap sync` step copies the latest `dist/` output into the native iOS project and resolves Capacitor plugin dependencies.
+
 ## Deployment
 
 ```bash
@@ -68,6 +78,7 @@ Deploy the `dist/` folder to any static host. Vercel configuration is included (
 
 - [Architecture](docs/architecture.md) -- system design, game loop, managers, mechanics
 - [Development Guide](docs/development.md) -- setup, testing, debugging, build, deployment
+- [Obstacle Taxonomy](docs/obstacle-taxonomy.md) -- all mechanic types, config shapes, parameter ranges
 
 ## License
 

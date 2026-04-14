@@ -49,7 +49,9 @@ jest.mock('cannon-es', () => ({
         this.z = z;
       }),
       lengthSquared: jest.fn(() => 0),
-      length: jest.fn(() => 0)
+      length: jest.fn(() => 0),
+      scale: jest.fn(),
+      setZero: jest.fn()
     },
     force: {
       x: 0,
@@ -80,7 +82,9 @@ jest.mock('cannon-es', () => ({
         this.y = y;
         this.z = z;
       }),
-      lengthSquared: jest.fn(() => 0)
+      lengthSquared: jest.fn(() => 0),
+      scale: jest.fn(),
+      setZero: jest.fn()
     },
     quaternion: { x: 0, y: 0, z: 0, w: 1 },
     linearDamping: 0,
@@ -608,5 +612,32 @@ describe('Ball', () => {
     expect(pos.x).toBe(5);
     expect(pos.y).toBe(2);
     expect(pos.z).toBe(3);
+  });
+
+  test('should clamp velocity when speed is below 0.02', () => {
+    ball.body.velocity.length = jest.fn(() => 0.01);
+
+    ball.update();
+
+    expect(ball.body.velocity.setZero).toHaveBeenCalled();
+    expect(ball.body.angularVelocity.setZero).toHaveBeenCalled();
+  });
+
+  test('should dampen velocity when speed is between 0.02 and 0.08', () => {
+    ball.body.velocity.length = jest.fn(() => 0.05);
+
+    ball.update();
+
+    expect(ball.body.velocity.scale).toHaveBeenCalledWith(0.85, ball.body.velocity);
+    expect(ball.body.angularVelocity.scale).toHaveBeenCalledWith(0.85, ball.body.angularVelocity);
+  });
+
+  test('should not clamp velocity when speed is above 0.08', () => {
+    ball.body.velocity.length = jest.fn(() => 1.0);
+
+    ball.update();
+
+    expect(ball.body.velocity.scale).not.toHaveBeenCalled();
+    expect(ball.body.velocity.setZero).not.toHaveBeenCalled();
   });
 });

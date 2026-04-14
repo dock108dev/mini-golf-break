@@ -157,7 +157,8 @@ export class WebGLContextManager {
 
     const detail = document.createElement('div');
     detail.textContent = 'The graphics context was lost. This can happen under memory pressure.';
-    detail.style.cssText = 'font-size:1em;margin-bottom:24px;opacity:0.7;text-align:center;max-width:400px;';
+    detail.style.cssText =
+      'font-size:1em;margin-bottom:24px;opacity:0.7;text-align:center;max-width:400px;';
 
     const retryButton = document.createElement('button');
     retryButton.textContent = 'Retry';

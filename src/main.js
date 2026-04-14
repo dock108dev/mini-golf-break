@@ -2,13 +2,18 @@ import { debug } from './utils/debug';
 import { Game } from './scenes/Game';
 import { HighScoreManager } from './game/HighScoreManager';
 import { isWebGLAvailable, showWebGLFallback } from './utils/webglDetect';
+import { parseDevParams, getInitialHoleNumber, setupConfigHotReload } from './utils/devHoleHarness';
 import '../public/style.css';
+
+const COURSE_NAME = 'Orbital Drift';
+const COURSE_PAR = 24;
 
 class App {
   constructor() {
     this.game = new Game();
     this.isGameRunning = false;
     this.menuScreen = document.getElementById('menu-screen');
+    this._clearConfirmPending = false;
     this.setupEventListeners();
     this.updateBestScoreDisplay();
   }
@@ -40,9 +45,46 @@ class App {
       });
     }
 
+    // Scores button on menu screen
+    const scoresButton = document.getElementById('scores-menu');
+    if (scoresButton) {
+      scoresButton.addEventListener('click', () => {
+        this.showScoresOverlay();
+      });
+    }
+
+    // Scores overlay close button
+    const scoresCloseButton = document.getElementById('scores-close');
+    if (scoresCloseButton) {
+      scoresCloseButton.addEventListener('click', () => {
+        this.hideScoresOverlay();
+      });
+    }
+
+    // Scores overlay clear button
+    const scoresClearButton = document.getElementById('scores-clear');
+    if (scoresClearButton) {
+      scoresClearButton.addEventListener('click', () => {
+        this._handleClearScores();
+      });
+    }
+
+    // Scores overlay keyboard and focus trap
+    const scoresOverlay = document.getElementById('scores-overlay');
+    if (scoresOverlay) {
+      scoresOverlay.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          this.hideScoresOverlay();
+          return;
+        }
+        this._trapFocus(e, scoresOverlay);
+      });
+    }
+
     // Trap focus within menu screen when visible
     if (this.menuScreen) {
-      this.menuScreen.addEventListener('keydown', (e) => {
+      this.menuScreen.addEventListener('keydown', e => {
         if (e.key !== 'Tab') {
           return;
         }
@@ -92,12 +134,15 @@ class App {
       if (loadingScreen) {
         const spinner = document.getElementById('loading-spinner');
         const loadingText = document.getElementById('loading-text');
-        if (spinner) spinner.remove();
-        if (loadingText) loadingText.remove();
+        if (spinner) {
+          spinner.remove();
+        }
+        if (loadingText) {
+          loadingText.remove();
+        }
         const errorMsg = document.createElement('p');
         errorMsg.className = 'loading-error';
-        errorMsg.textContent =
-          'Failed to load the game. Please refresh the page and try again.';
+        errorMsg.textContent = 'Failed to load the game. Please refresh the page and try again.';
         loadingScreen.appendChild(errorMsg);
       }
     }
@@ -108,9 +153,11 @@ class App {
    */
   updateBestScoreDisplay() {
     const bestScoreEl = document.getElementById('menu-best-score');
-    if (!bestScoreEl) return;
+    if (!bestScoreEl) {
+      return;
+    }
 
-    const bestScore = HighScoreManager.getBestScore('Orbital Drift');
+    const bestScore = HighScoreManager.getBestScore(COURSE_NAME);
     if (bestScore !== null) {
       bestScoreEl.textContent = `Personal Best: ${bestScore} strokes`;
       bestScoreEl.style.display = '';
@@ -179,6 +226,139 @@ class App {
     }
   }
 
+  showScoresOverlay() {
+    const overlay = document.getElementById('scores-overlay');
+    if (!overlay) {
+      return;
+    }
+    this._clearConfirmPending = false;
+    this._renderScoresBody();
+    overlay.style.display = '';
+    overlay.classList.add('visible');
+    const closeButton = document.getElementById('scores-close');
+    if (closeButton) {
+      closeButton.focus();
+    }
+  }
+
+  hideScoresOverlay() {
+    const overlay = document.getElementById('scores-overlay');
+    if (overlay) {
+      overlay.classList.remove('visible');
+      overlay.style.display = 'none';
+    }
+    this._clearConfirmPending = false;
+    const clearButton = document.getElementById('scores-clear');
+    if (clearButton) {
+      clearButton.textContent = 'Clear Scores';
+    }
+    const scoresButton = document.getElementById('scores-menu');
+    if (scoresButton) {
+      scoresButton.focus();
+    }
+  }
+
+  _renderScoresBody() {
+    const body = document.getElementById('scores-body');
+    if (!body) {
+      return;
+    }
+
+    const scores = HighScoreManager.getScores(COURSE_NAME);
+
+    if (scores.length === 0) {
+      body.innerHTML = '<p class="scores-empty">No rounds played yet</p>';
+      const clearButton = document.getElementById('scores-clear');
+      if (clearButton) {
+        clearButton.style.display = 'none';
+      }
+      return;
+    }
+
+    const clearButton = document.getElementById('scores-clear');
+    if (clearButton) {
+      clearButton.style.display = '';
+    }
+
+    const rows = scores
+      .map((score, i) => {
+        const diff = score.totalStrokes - COURSE_PAR;
+        let parText;
+        let parClass;
+        if (diff < 0) {
+          parText = `${diff}`;
+          parClass = 'score-under-par';
+        } else if (diff > 0) {
+          parText = `+${diff}`;
+          parClass = 'score-over-par';
+        } else {
+          parText = 'E';
+          parClass = 'score-even-par';
+        }
+        const date = new Date(score.timestamp).toLocaleDateString();
+        return (
+          '<tr>' +
+          `<td>${i + 1}</td>` +
+          `<td>${score.totalStrokes}</td>` +
+          `<td class="${parClass}">${parText}</td>` +
+          `<td>${date}</td>` +
+          '</tr>'
+        );
+      })
+      .join('');
+
+    body.innerHTML =
+      '<table class="scores-table">' +
+      '<thead><tr><th>#</th><th>Strokes</th><th>+/- Par</th><th>Date</th></tr></thead>' +
+      `<tbody>${rows}</tbody>` +
+      '</table>';
+  }
+
+  _handleClearScores() {
+    const clearButton = document.getElementById('scores-clear');
+    if (!clearButton) {
+      return;
+    }
+
+    if (!this._clearConfirmPending) {
+      this._clearConfirmPending = true;
+      clearButton.textContent = 'Confirm Clear?';
+      return;
+    }
+
+    HighScoreManager.clearScores(COURSE_NAME);
+    this._clearConfirmPending = false;
+    clearButton.textContent = 'Clear Scores';
+    this._renderScoresBody();
+    this.updateBestScoreDisplay();
+  }
+
+  _trapFocus(e, container) {
+    if (e.key !== 'Tab') {
+      return;
+    }
+    const focusableElements = container.querySelectorAll(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusableElements.length === 0) {
+      return;
+    }
+    const firstFocusable = focusableElements[0];
+    const lastFocusable = focusableElements[focusableElements.length - 1];
+
+    if (e.shiftKey) {
+      if (document.activeElement === firstFocusable) {
+        e.preventDefault();
+        lastFocusable.focus();
+      }
+    } else {
+      if (document.activeElement === lastFocusable) {
+        e.preventDefault();
+        firstFocusable.focus();
+      }
+    }
+  }
+
   async startCourse() {
     debug.log('[App] startCourse called.');
     // Hide the menu screen
@@ -194,6 +374,16 @@ class App {
         await this.game.startGame();
         debug.log('[App] game.startGame() finished.');
         this.isGameRunning = true;
+
+        // Dev harness: skip to URL-specified hole after game starts
+        if (process.env.NODE_ENV === 'development') {
+          const initialHole = getInitialHoleNumber();
+          if (initialHole && initialHole > 1) {
+            debug.log(`[App] Dev harness: skipping to hole ${initialHole}`);
+            await this.game.stateManager.skipToHole(initialHole);
+          }
+          setupConfigHotReload(this.game);
+        }
       } catch (error) {
         console.error('[App] CRITICAL: Failed to start game:', error);
         // Show error message to user
@@ -225,9 +415,20 @@ window.addEventListener('load', async () => {
     return;
   }
 
+  // Dev harness: parse URL params early (total holes count is approximate until course loads)
+  if (process.env.NODE_ENV === 'development') {
+    parseDevParams(18);
+  }
+
   window.App = new App();
   // Also expose game for easier testing access
   window.game = window.App.game;
   // Initialize visual systems immediately so the menu has a space backdrop
   await window.App.initVisuals();
+
+  // Dev harness: auto-start game if ?hole= param is present
+  if (process.env.NODE_ENV === 'development' && getInitialHoleNumber() !== null) {
+    debug.log('[App] Dev harness: auto-starting game for ?hole= param');
+    await window.App.startCourse();
+  }
 });

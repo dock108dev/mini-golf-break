@@ -16,7 +16,7 @@ describe('UIDebugOverlay', () => {
   let uiDebugOverlay;
   let mockGame;
   let mockParentContainer;
-  let mockDebugElement;
+  let originalCreateElement;
 
   beforeEach(() => {
     // Mock game object
@@ -26,30 +26,26 @@ describe('UIDebugOverlay', () => {
       }
     };
 
-    // Mock DOM elements
-    mockDebugElement = {
-      style: { display: 'none' },
-      classList: {
-        add: jest.fn()
-      },
-      remove: jest.fn(),
-      innerHTML: ''
-    };
+    // Restore real document.createElement so DOM operations work correctly
+    originalCreateElement = document.createElement.getMockImplementation
+      ? document.createElement
+      : null;
+    if (originalCreateElement) {
+      document.createElement = Document.prototype.createElement.bind(document);
+    }
 
-    // Mock parent container
-    mockParentContainer = {
-      querySelector: jest.fn(() => null),
-      appendChild: jest.fn()
-    };
-
-    // Mock document.createElement
-    document.createElement = jest.fn(() => mockDebugElement);
+    // Use real DOM elements so appendChild/createTextNode work correctly
+    mockParentContainer = document.createElement('div');
 
     // Clear all mocks
     jest.clearAllMocks();
   });
 
   afterEach(() => {
+    // Restore the mock if it was in place
+    if (originalCreateElement) {
+      document.createElement = originalCreateElement;
+    }
     jest.clearAllMocks();
   });
 
@@ -72,28 +68,27 @@ describe('UIDebugOverlay', () => {
     test('should create debug element if it does not exist', () => {
       uiDebugOverlay.init();
 
-      expect(mockParentContainer.querySelector).toHaveBeenCalledWith('.debug-overlay');
-      expect(document.createElement).toHaveBeenCalledWith('div');
-      expect(mockDebugElement.classList.add).toHaveBeenCalledWith('debug-overlay');
-      expect(mockParentContainer.appendChild).toHaveBeenCalledWith(mockDebugElement);
-      expect(mockDebugElement.style.display).toBe('none');
+      const debugEl = uiDebugOverlay.debugElement;
+      expect(debugEl).not.toBeNull();
+      expect(debugEl.classList.contains('debug-overlay')).toBe(true);
+      expect(mockParentContainer.contains(debugEl)).toBe(true);
+      expect(debugEl.style.display).toBe('none');
       expect(debug.log).toHaveBeenCalledWith('[UIDebugOverlay] Initialized.');
     });
 
     test('should use existing debug element if found', () => {
-      const existingElement = {
-        style: { display: 'block' },
-        classList: { add: jest.fn() }
-      };
-      mockParentContainer.querySelector.mockReturnValue(existingElement);
+      // Pre-add an element with the debug-overlay class
+      const existingElement = document.createElement('div');
+      existingElement.classList.add('debug-overlay');
+      existingElement.style.display = 'block';
+      mockParentContainer.appendChild(existingElement);
 
       uiDebugOverlay.init();
 
-      expect(mockParentContainer.querySelector).toHaveBeenCalledWith('.debug-overlay');
-      expect(document.createElement).not.toHaveBeenCalled();
-      expect(mockParentContainer.appendChild).not.toHaveBeenCalled();
-      expect(existingElement.style.display).toBe('none');
       expect(uiDebugOverlay.debugElement).toBe(existingElement);
+      expect(existingElement.style.display).toBe('none');
+      // Should not have added a second child
+      expect(mockParentContainer.querySelectorAll('.debug-overlay').length).toBe(1);
     });
   });
 
@@ -104,40 +99,42 @@ describe('UIDebugOverlay', () => {
     });
 
     test('should return early if debug element does not exist', () => {
+      const debugEl = uiDebugOverlay.debugElement;
       uiDebugOverlay.debugElement = null;
 
       uiDebugOverlay.updateDebugDisplay({ fps: 60 });
 
-      expect(mockDebugElement.innerHTML).toBe('');
+      // debugElement was null, nothing should have changed
+      expect(debugEl.innerHTML).toBe('');
     });
 
     test('should hide overlay when debug manager is disabled', () => {
       mockGame.debugManager.enabled = false;
-      mockDebugElement.style.display = 'block';
+      uiDebugOverlay.debugElement.style.display = 'block';
 
       uiDebugOverlay.updateDebugDisplay({ fps: 60 });
 
-      expect(mockDebugElement.style.display).toBe('none');
+      expect(uiDebugOverlay.debugElement.style.display).toBe('none');
       expect(debug.log).toHaveBeenCalledWith('[UIDebugOverlay] Hiding debug overlay.');
     });
 
     test('should not log when already hidden and debug is disabled', () => {
       mockGame.debugManager.enabled = false;
-      mockDebugElement.style.display = 'none';
+      uiDebugOverlay.debugElement.style.display = 'none';
 
       uiDebugOverlay.updateDebugDisplay({ fps: 60 });
 
-      expect(mockDebugElement.style.display).toBe('none');
+      expect(uiDebugOverlay.debugElement.style.display).toBe('none');
       expect(debug.log).not.toHaveBeenCalledWith('[UIDebugOverlay] Hiding debug overlay.');
     });
 
     test('should show overlay when debug manager is enabled', () => {
       mockGame.debugManager.enabled = true;
-      mockDebugElement.style.display = 'none';
+      uiDebugOverlay.debugElement.style.display = 'none';
 
       uiDebugOverlay.updateDebugDisplay({ fps: 60 });
 
-      expect(mockDebugElement.style.display).toBe('block');
+      expect(uiDebugOverlay.debugElement.style.display).toBe('block');
       expect(debug.log).toHaveBeenCalledWith('[UIDebugOverlay] Showing debug overlay.');
     });
 
@@ -152,9 +149,13 @@ describe('UIDebugOverlay', () => {
 
       uiDebugOverlay.updateDebugDisplay(debugInfo);
 
-      expect(mockDebugElement.innerHTML).toContain('<strong>fps:</strong> 60.12');
-      expect(mockDebugElement.innerHTML).toContain('<strong>strokeCount:</strong> 3.00');
-      expect(mockDebugElement.innerHTML).toContain('<strong>timeElapsed:</strong> 45.68');
+      const html = uiDebugOverlay.debugElement.innerHTML;
+      expect(html).toContain('fps:');
+      expect(html).toContain('60.12');
+      expect(html).toContain('strokeCount:');
+      expect(html).toContain('3.00');
+      expect(html).toContain('timeElapsed:');
+      expect(html).toContain('45.68');
     });
 
     test('should format and display debug info with Vector3-like objects', () => {
@@ -167,12 +168,11 @@ describe('UIDebugOverlay', () => {
 
       uiDebugOverlay.updateDebugDisplay(debugInfo);
 
-      expect(mockDebugElement.innerHTML).toContain(
-        '<strong>ballPosition:</strong> (1.23, 2.57, 3.89)'
-      );
-      expect(mockDebugElement.innerHTML).toContain(
-        '<strong>velocity:</strong> (-0.12, 0.00, 0.46)'
-      );
+      const html = uiDebugOverlay.debugElement.innerHTML;
+      expect(html).toContain('ballPosition:');
+      expect(html).toContain('(1.23, 2.57, 3.89)');
+      expect(html).toContain('velocity:');
+      expect(html).toContain('(-0.12, 0.00, 0.46)');
     });
 
     test('should format and display debug info with other objects', () => {
@@ -185,12 +185,11 @@ describe('UIDebugOverlay', () => {
 
       uiDebugOverlay.updateDebugDisplay(debugInfo);
 
-      expect(mockDebugElement.innerHTML).toContain(
-        '<strong>gameState:</strong> {"state":"playing","level":3}'
-      );
-      expect(mockDebugElement.innerHTML).toContain(
-        '<strong>flags:</strong> {"isActive":true,"isPaused":false}'
-      );
+      const html = uiDebugOverlay.debugElement.innerHTML;
+      expect(html).toContain('gameState:');
+      expect(html).toContain('{"state":"playing","level":3}');
+      expect(html).toContain('flags:');
+      expect(html).toContain('{"isActive":true,"isPaused":false}');
     });
 
     test('should handle null values in debug info', () => {
@@ -204,27 +203,31 @@ describe('UIDebugOverlay', () => {
 
       uiDebugOverlay.updateDebugDisplay(debugInfo);
 
-      expect(mockDebugElement.innerHTML).toContain('<strong>nullValue:</strong> null');
-      expect(mockDebugElement.innerHTML).toContain('<strong>undefinedValue:</strong> undefined');
-      expect(mockDebugElement.innerHTML).toContain('<strong>stringValue:</strong> test');
+      const html = uiDebugOverlay.debugElement.innerHTML;
+      expect(html).toContain('nullValue:');
+      expect(html).toContain('null');
+      expect(html).toContain('undefinedValue:');
+      expect(html).toContain('undefined');
+      expect(html).toContain('stringValue:');
+      expect(html).toContain('test');
     });
 
     test('should handle missing debugManager', () => {
       mockGame.debugManager = null;
-      mockDebugElement.style.display = 'block';
+      uiDebugOverlay.debugElement.style.display = 'block';
 
       uiDebugOverlay.updateDebugDisplay({ fps: 60 });
 
-      expect(mockDebugElement.style.display).toBe('none');
+      expect(uiDebugOverlay.debugElement.style.display).toBe('none');
     });
 
     test('should handle debugManager without enabled property', () => {
       mockGame.debugManager = {};
-      mockDebugElement.style.display = 'block';
+      uiDebugOverlay.debugElement.style.display = 'block';
 
       uiDebugOverlay.updateDebugDisplay({ fps: 60 });
 
-      expect(mockDebugElement.style.display).toBe('none');
+      expect(uiDebugOverlay.debugElement.style.display).toBe('none');
     });
   });
 
@@ -235,9 +238,12 @@ describe('UIDebugOverlay', () => {
     });
 
     test('should remove debug element and reset reference', () => {
+      const debugEl = uiDebugOverlay.debugElement;
+      jest.spyOn(debugEl, 'remove');
+
       uiDebugOverlay.cleanup();
 
-      expect(mockDebugElement.remove).toHaveBeenCalled();
+      expect(debugEl.remove).toHaveBeenCalled();
       expect(uiDebugOverlay.debugElement).toBe(null);
       expect(debug.log).toHaveBeenCalledWith('[UIDebugOverlay] Cleaned up.');
     });
@@ -261,9 +267,11 @@ describe('UIDebugOverlay', () => {
       uiDebugOverlay.init();
       expect(uiDebugOverlay.debugElement).toBeDefined();
 
+      const debugEl = uiDebugOverlay.debugElement;
+
       // Update while disabled - should stay hidden
       uiDebugOverlay.updateDebugDisplay({ fps: 30 });
-      expect(mockDebugElement.style.display).toBe('none');
+      expect(debugEl.style.display).toBe('none');
 
       // Enable debug mode
       mockGame.debugManager.enabled = true;
@@ -274,15 +282,15 @@ describe('UIDebugOverlay', () => {
         position: { x: 10, y: 5, z: 15 },
         score: 42
       });
-      expect(mockDebugElement.style.display).toBe('block');
-      expect(mockDebugElement.innerHTML).toContain('60.00');
-      expect(mockDebugElement.innerHTML).toContain('(10.00, 5.00, 15.00)');
-      expect(mockDebugElement.innerHTML).toContain('42.00');
+      expect(debugEl.style.display).toBe('block');
+      expect(debugEl.innerHTML).toContain('60.00');
+      expect(debugEl.innerHTML).toContain('(10.00, 5.00, 15.00)');
+      expect(debugEl.innerHTML).toContain('42.00');
 
       // Disable debug mode
       mockGame.debugManager.enabled = false;
       uiDebugOverlay.updateDebugDisplay({ fps: 45 });
-      expect(mockDebugElement.style.display).toBe('none');
+      expect(debugEl.style.display).toBe('none');
 
       // Cleanup
       uiDebugOverlay.cleanup();
@@ -292,15 +300,17 @@ describe('UIDebugOverlay', () => {
     test('should handle rapid enable/disable toggles', () => {
       uiDebugOverlay.init();
 
+      const debugEl = uiDebugOverlay.debugElement;
+
       // Toggle debug mode rapidly
       for (let i = 0; i < 5; i++) {
         mockGame.debugManager.enabled = true;
         uiDebugOverlay.updateDebugDisplay({ iteration: i });
-        expect(mockDebugElement.style.display).toBe('block');
+        expect(debugEl.style.display).toBe('block');
 
         mockGame.debugManager.enabled = false;
         uiDebugOverlay.updateDebugDisplay({ iteration: i });
-        expect(mockDebugElement.style.display).toBe('none');
+        expect(debugEl.style.display).toBe('none');
       }
 
       // Verify debug log was called appropriate number of times

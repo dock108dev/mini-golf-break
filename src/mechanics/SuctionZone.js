@@ -69,6 +69,9 @@ class SuctionZone extends MechanicBase {
   }
 }
 
-registerMechanic('suction_zone', (world, group, config, sh, theme) => new SuctionZone(world, group, config, sh, theme));
+registerMechanic(
+  'suction_zone',
+  (world, group, config, sh, theme) => new SuctionZone(world, group, config, sh, theme)
+);
 
 export { SuctionZone };

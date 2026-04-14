@@ -93,7 +93,11 @@ export class InputController {
       this.game.debugManager?.log('InputController DOM event listeners initialized');
     } catch (error) {
       if (this.game.debugManager) {
-        this.game.debugManager.error('InputController.initEventListeners', 'Failed to init DOM listeners', error);
+        this.game.debugManager.error(
+          'InputController.initEventListeners',
+          'Failed to init DOM listeners',
+          error
+        );
       } else {
         console.error('Failed to initialize DOM event listeners:', error);
       }
@@ -114,7 +118,11 @@ export class InputController {
       this.game.debugManager?.log('InputController game event listeners initialized');
     } catch (error) {
       if (this.game.debugManager) {
-        this.game.debugManager.error('InputController', 'Failed to set up game event listeners', error);
+        this.game.debugManager.error(
+          'InputController',
+          'Failed to set up game event listeners',
+          error
+        );
       } else {
         console.error('Failed to set up game event listeners:', error);
       }
@@ -122,7 +130,9 @@ export class InputController {
   }
 
   handleBallStopped(_event) {
-    if (!this.game.stateManager.isHoleCompleted()) {this.enableInput();}
+    if (!this.game.stateManager.isHoleCompleted()) {
+      this.enableInput();
+    }
   }
 
   handleBallInHole(_event) {
@@ -135,16 +145,28 @@ export class InputController {
 
   isEventInsideCanvas(event) {
     const rect = this.renderer.domElement.getBoundingClientRect();
-    return event.clientX >= rect.left && event.clientX <= rect.right &&
-           event.clientY >= rect.top && event.clientY <= rect.bottom;
+    return (
+      event.clientX >= rect.left &&
+      event.clientX <= rect.right &&
+      event.clientY >= rect.top &&
+      event.clientY <= rect.bottom
+    );
   }
 
   onMouseDown(event) {
     const ball = this.game.ballManager?.ball;
-    if (!this.isInputEnabled || (ball && !ball.isStopped())) {return;}
-    if (event.button !== 0) {return;}
-    if (!this.isEventInsideCanvas(event)) {return;}
-    if (this.game.stateManager?.isBallInMotion()) {return;}
+    if (!this.isInputEnabled || (ball && !ball.isStopped())) {
+      return;
+    }
+    if (event.button !== 0) {
+      return;
+    }
+    if (!this.isEventInsideCanvas(event)) {
+      return;
+    }
+    if (this.game.stateManager?.isBallInMotion()) {
+      return;
+    }
 
     if (this.game.cameraController?.controls) {
       this.controlsWereEnabled = this.game.cameraController.controls.enabled;
@@ -191,7 +213,9 @@ export class InputController {
   }
 
   onMouseMove(event) {
-    if (!this.isInputEnabled || !this.isPointerDown) {return;}
+    if (!this.isInputEnabled || !this.isPointerDown) {
+      return;
+    }
     this.isDragging = true;
 
     this.pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
@@ -219,23 +243,37 @@ export class InputController {
   handleEdgePanning() {
     const edgeThreshold = 0.15;
     const panSpeed = 0.03;
-    let panX = 0, panZ = 0;
+    let panX = 0,
+      panZ = 0;
     const screenX = (this.pointer.x + 1) / 2;
     const screenY = (this.pointer.y + 1) / 2;
 
-    if (screenX < edgeThreshold) {panX = -panSpeed * (1 - screenX / edgeThreshold);}
-    if (screenX > 1 - edgeThreshold) {panX = panSpeed * (1 - (1 - screenX) / edgeThreshold);}
-    if (screenY > 1 - edgeThreshold) {panZ = -panSpeed * (1 - (1 - screenY) / edgeThreshold);}
-    if (screenY < edgeThreshold) {panZ = panSpeed * (1 - screenY / edgeThreshold);}
+    if (screenX < edgeThreshold) {
+      panX = -panSpeed * (1 - screenX / edgeThreshold);
+    }
+    if (screenX > 1 - edgeThreshold) {
+      panX = panSpeed * (1 - (1 - screenX) / edgeThreshold);
+    }
+    if (screenY > 1 - edgeThreshold) {
+      panZ = -panSpeed * (1 - (1 - screenY) / edgeThreshold);
+    }
+    if (screenY < edgeThreshold) {
+      panZ = panSpeed * (1 - screenY / edgeThreshold);
+    }
 
     if ((panX !== 0 || panZ !== 0) && this.game.cameraController) {
       const panDirection = new THREE.Vector3(panX, 0, panZ).normalize();
-      this.game.cameraController.panCameraOnEdge(panDirection, Math.sqrt(panX * panX + panZ * panZ));
+      this.game.cameraController.panCameraOnEdge(
+        panDirection,
+        Math.sqrt(panX * panX + panZ * panZ)
+      );
     }
   }
 
   onMouseUp(event) {
-    if (event.button !== 0) {return;}
+    if (event.button !== 0) {
+      return;
+    }
     if (!this.isPointerDown) {
       if (this.game.cameraController?.controls && !this.controlsWereEnabled) {
         this.game.cameraController.controls.enabled = this.controlsWereEnabled;
@@ -247,7 +285,9 @@ export class InputController {
 
     if (this.isDragging && this.isInputEnabled && this.hitPower > 0.05) {
       this.removeDirectionLine();
-      if (this.powerIndicator) {this.powerIndicator.style.display = 'none';}
+      if (this.powerIndicator) {
+        this.powerIndicator.style.display = 'none';
+      }
       if (this.game.ballManager) {
         this.game.ballManager.hitBall(this.hitDirection.clone(), this.hitPower);
         this.disableInput();
@@ -268,7 +308,9 @@ export class InputController {
 
   onTouchStart(event) {
     const ball = this.game.ballManager?.ball;
-    if (!this.isInputEnabled || (ball && !ball.isStopped())) {return;}
+    if (!this.isInputEnabled || (ball && !ball.isStopped())) {
+      return;
+    }
 
     this.isMultiTouch = event.touches.length > 1;
     if (event.touches.length === 2) {
@@ -282,8 +324,10 @@ export class InputController {
       this.lastTouchPosition.set(touch.clientX, touch.clientY);
       this.touchStartTime = performance.now();
       this.onMouseDown({
-        clientX: touch.clientX, clientY: touch.clientY,
-        button: 0, preventDefault: () => event.preventDefault()
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        button: 0,
+        preventDefault: () => event.preventDefault()
       });
     }
   }
@@ -292,7 +336,8 @@ export class InputController {
     if (this.isPointerDown && event.touches.length === 1) {
       const touch = event.touches[0];
       this.onMouseMove({
-        clientX: touch.clientX, clientY: touch.clientY,
+        clientX: touch.clientX,
+        clientY: touch.clientY,
         preventDefault: () => event.preventDefault()
       });
     }
@@ -310,11 +355,19 @@ export class InputController {
     const key = event.key;
 
     // Ignore if input disabled, ball moving, or mouse/touch is active
-    if (!this.isInputEnabled) return;
-    if (this.isPointerDown) return;
+    if (!this.isInputEnabled) {
+      return;
+    }
+    if (this.isPointerDown) {
+      return;
+    }
     const ball = this.game.ballManager?.ball;
-    if (!ball || !ball.isStopped()) return;
-    if (this.game.stateManager?.isBallInMotion()) return;
+    if (!ball || !ball.isStopped()) {
+      return;
+    }
+    if (this.game.stateManager?.isBallInMotion()) {
+      return;
+    }
 
     // Arrow keys for aiming direction
     if (key === 'ArrowLeft' || key === 'ArrowRight') {
@@ -330,7 +383,9 @@ export class InputController {
     // Space or Enter for power charge
     if (key === ' ' || key === 'Enter') {
       event.preventDefault();
-      if (this.isKeyboardCharging) return; // already charging
+      if (this.isKeyboardCharging) {
+        return;
+      } // already charging
       if (!this.isKeyboardAiming) {
         this.startKeyboardAiming();
       }
@@ -380,7 +435,9 @@ export class InputController {
   }
 
   startKeyboardUpdateLoop() {
-    if (this.keyboardAnimationId !== null) return;
+    if (this.keyboardAnimationId !== null) {
+      return;
+    }
     this.lastKeyboardUpdateTime = performance.now();
     const loop = () => {
       const now = performance.now();
@@ -421,7 +478,9 @@ export class InputController {
 
   updateKeyboardAimVisual() {
     const ball = this.game.ballManager?.ball;
-    if (!ball?.mesh) return;
+    if (!ball?.mesh) {
+      return;
+    }
 
     const ballPosition = ball.mesh.position.clone();
     const direction = new THREE.Vector3(
@@ -449,7 +508,9 @@ export class InputController {
     );
 
     this.removeDirectionLine();
-    if (this.powerIndicator) this.powerIndicator.style.display = 'none';
+    if (this.powerIndicator) {
+      this.powerIndicator.style.display = 'none';
+    }
 
     if (this.game.ballManager) {
       this.game.ballManager.hitBall(direction, this.keyboardPower);
@@ -461,7 +522,9 @@ export class InputController {
 
   cancelKeyboardAiming() {
     this.removeDirectionLine();
-    if (this.powerIndicator) this.powerIndicator.style.display = 'none';
+    if (this.powerIndicator) {
+      this.powerIndicator.style.display = 'none';
+    }
     this.resetPowerIndicator();
     this.resetKeyboardState();
   }
@@ -476,13 +539,16 @@ export class InputController {
 
   /** Remove and dispose the direction/aim line */
   removeDirectionLine() {
-    if (!this.directionLine) {return;}
-    if (this.game.scene) {this.game.scene.remove(this.directionLine);}
+    if (!this.directionLine) {
+      return;
+    }
+    if (this.game.scene) {
+      this.game.scene.remove(this.directionLine);
+    }
     this.directionLine.geometry?.dispose();
     this.directionLine.material?.dispose();
     this.directionLine = null;
   }
-
 
   updatePowerIndicator(power) {
     if (this.powerIndicator) {
@@ -552,7 +618,11 @@ export class InputController {
       window.removeEventListener('keydown', this.onKeyDown);
       window.removeEventListener('keyup', this.onKeyUp);
     } catch (error) {
-      this.game.debugManager?.warn('InputController.cleanup', 'Error removing DOM listeners', error);
+      this.game.debugManager?.warn(
+        'InputController.cleanup',
+        'Error removing DOM listeners',
+        error
+      );
     }
     if (this.eventSubscriptions) {
       this.eventSubscriptions.forEach(fn => fn());
@@ -567,5 +637,4 @@ export class InputController {
     this.isInitialized = false;
     this.game.debugManager?.log('InputController cleaned up');
   }
-
 }

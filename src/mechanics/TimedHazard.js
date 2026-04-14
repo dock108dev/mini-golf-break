@@ -34,9 +34,10 @@ class TimedHazard extends MechanicBase {
     this.halfLength = length / 2;
 
     const themeHazardColors = theme?.mechanics?.timedHazard;
-    const defaultColor = this.hazardType === 'water'
-      ? (themeHazardColors?.waterColor || 0xff4400)
-      : (themeHazardColors?.sandColor || 0xffaa00);
+    const defaultColor =
+      this.hazardType === 'water'
+        ? themeHazardColors?.waterColor || 0xff4400
+        : themeHazardColors?.sandColor || 0xffaa00;
     const activeColor = config.color || defaultColor;
 
     // Visual mesh (shown/hidden based on timer)
@@ -91,6 +92,9 @@ class TimedHazard extends MechanicBase {
   }
 }
 
-registerMechanic('timed_hazard', (world, group, config, sh, theme) => new TimedHazard(world, group, config, sh, theme));
+registerMechanic(
+  'timed_hazard',
+  (world, group, config, sh, theme) => new TimedHazard(world, group, config, sh, theme)
+);
 
 export { TimedHazard };

@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { CSG } from 'three-csg-ts';
+import { MATERIAL_PALETTE } from '../themes/palette';
 
 // Helper function to get bounding box of the shape
 function getShapeBounds(shapePoints) {
@@ -32,16 +33,23 @@ function getShapeBounds(shapePoints) {
  * @param {Array} params.boundaryShape - Boundary shape points (Vector2[])
  * @returns {{ meshes: THREE.Mesh[], bodies: CANNON.Body[] }}
  */
-export function buildGreenSurface({ config, world, group, worldHolePosition, surfaceHeight, boundaryShape }) {
+export function buildGreenSurface({
+  config,
+  world,
+  group,
+  worldHolePosition,
+  surfaceHeight,
+  boundaryShape
+}) {
   const meshes = [];
   const bodies = [];
 
   const theme = config.theme || {};
   const greenTheme = theme.green || {};
   const greenMaterial = new THREE.MeshStandardMaterial({
-    color: greenTheme.color || 0x2ecc71,
-    roughness: greenTheme.roughness ?? 0.8,
-    metalness: greenTheme.metalness ?? 0.1,
+    color: greenTheme.color || MATERIAL_PALETTE.floor.color,
+    roughness: greenTheme.roughness ?? MATERIAL_PALETTE.floor.roughness,
+    metalness: greenTheme.metalness ?? MATERIAL_PALETTE.floor.metalness,
     ...(greenTheme.emissive && { emissive: greenTheme.emissive }),
     ...(greenTheme.emissiveIntensity && { emissiveIntensity: greenTheme.emissiveIntensity })
   });

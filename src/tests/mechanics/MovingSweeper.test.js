@@ -22,7 +22,7 @@ beforeAll(() => {
         this.x = x;
         this.y = y;
         this.z = z;
-      }),
+      })
     },
     velocity: { x: 0, y: 0, z: 0, set: jest.fn() },
     quaternion: {
@@ -32,11 +32,11 @@ beforeAll(() => {
       w: 1,
       set: jest.fn(),
       setFromAxisAngle: jest.fn(),
-      copy: jest.fn(),
+      copy: jest.fn()
     },
     addShape: jest.fn(),
     addEventListener: jest.fn(),
-    userData: {},
+    userData: {}
   }));
 
   // Quaternion is not mocked in setup.js, define it as a constructor
@@ -45,7 +45,7 @@ beforeAll(() => {
     y: 0,
     z: 0,
     w: 1,
-    setFromAxisAngle: jest.fn(),
+    setFromAxisAngle: jest.fn()
   }));
 
   THREE.Mesh.mockImplementation(() => {
@@ -58,13 +58,13 @@ beforeAll(() => {
           this.x = x;
           this.y = y;
           this.z = z;
-        }),
+        })
       },
       rotation: { x: 0, y: 0, z: 0 },
       quaternion: { x: 0, y: 0, z: 0, w: 1, copy: jest.fn() },
       castShadow: false,
       geometry: { dispose: jest.fn() },
-      material: { dispose: jest.fn() },
+      material: { dispose: jest.fn() }
     };
     mesh.parent = null;
     return mesh;
@@ -72,7 +72,9 @@ beforeAll(() => {
 
   THREE.MeshStandardMaterial.mockImplementation(opts => {
     const mat = { color: 0xffffff, dispose: jest.fn() };
-    if (opts) Object.assign(mat, opts);
+    if (opts) {
+      Object.assign(mat, opts);
+    }
     return mat;
   });
 
@@ -88,7 +90,7 @@ function makeMockWorld() {
   return {
     addBody: jest.fn(),
     removeBody: jest.fn(),
-    bumperMaterial: { id: 'bumper' },
+    bumperMaterial: { id: 'bumper' }
   };
 }
 
@@ -98,9 +100,11 @@ function makeMockGroup() {
     add: jest.fn(child => children.push(child)),
     remove: jest.fn(child => {
       const idx = children.indexOf(child);
-      if (idx !== -1) children.splice(idx, 1);
+      if (idx !== -1) {
+        children.splice(idx, 1);
+      }
     }),
-    children,
+    children
   };
 }
 
@@ -110,7 +114,7 @@ function makeConfig(overrides = {}) {
     armLength: 4,
     speed: 2,
     size: { width: 4, height: 0.4, depth: 0.3 },
-    ...overrides,
+    ...overrides
   };
 }
 
@@ -208,7 +212,11 @@ describe('MovingSweeper', () => {
     });
 
     it('applies phase offset to first update position', () => {
-      const phaseConfig = makeConfig({ phase: Math.PI / 2, pivot: { x: 0, y: 0, z: 0 }, armLength: 4 });
+      const phaseConfig = makeConfig({
+        phase: Math.PI / 2,
+        pivot: { x: 0, y: 0, z: 0 },
+        armLength: 4
+      });
       const sweeper = new MovingSweeper(world, group, phaseConfig, surfaceHeight);
 
       // After one update with dt=0, angle stays at phase
@@ -227,7 +235,12 @@ describe('MovingSweeper', () => {
 
   describe('update(dt)', () => {
     it('increments the angle by speed * dt', () => {
-      const sweeper = new MovingSweeper(world, group, makeConfig({ speed: 2, phase: 0 }), surfaceHeight);
+      const sweeper = new MovingSweeper(
+        world,
+        group,
+        makeConfig({ speed: 2, phase: 0 }),
+        surfaceHeight
+      );
 
       sweeper.update(0.5, null);
       expect(sweeper.angle).toBeCloseTo(1.0, 5);
@@ -261,7 +274,12 @@ describe('MovingSweeper', () => {
     });
 
     it('updates the mesh rotation to match the current angle', () => {
-      const sweeper = new MovingSweeper(world, group, makeConfig({ speed: 1, phase: 0 }), surfaceHeight);
+      const sweeper = new MovingSweeper(
+        world,
+        group,
+        makeConfig({ speed: 1, phase: 0 }),
+        surfaceHeight
+      );
 
       sweeper.update(0.5, null);
 
@@ -284,7 +302,12 @@ describe('MovingSweeper', () => {
     });
 
     it('correctly offsets from non-zero pivot', () => {
-      const pivotConfig = makeConfig({ pivot: { x: 5, y: 0, z: 3 }, armLength: 2, speed: 0, phase: 0 });
+      const pivotConfig = makeConfig({
+        pivot: { x: 5, y: 0, z: 3 },
+        armLength: 2,
+        speed: 0,
+        phase: 0
+      });
       const sweeper = new MovingSweeper(world, group, pivotConfig, surfaceHeight);
 
       sweeper.update(0, null);
@@ -310,7 +333,12 @@ describe('MovingSweeper', () => {
     });
 
     it('shorter arm length keeps sweeper closer to pivot', () => {
-      const shortConfig = makeConfig({ pivot: { x: 0, y: 0, z: 0 }, armLength: 2, speed: 0, phase: 0 });
+      const shortConfig = makeConfig({
+        pivot: { x: 0, y: 0, z: 0 },
+        armLength: 2,
+        speed: 0,
+        phase: 0
+      });
       const sweeper = new MovingSweeper(world, group, shortConfig, surfaceHeight);
 
       sweeper.update(0, null);

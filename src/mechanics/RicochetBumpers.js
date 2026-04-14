@@ -76,6 +76,9 @@ class RicochetBumpers extends MechanicBase {
   }
 }
 
-registerMechanic('ricochet_bumpers', (world, group, config, sh, theme) => new RicochetBumpers(world, group, config, sh, theme));
+registerMechanic(
+  'ricochet_bumpers',
+  (world, group, config, sh, theme) => new RicochetBumpers(world, group, config, sh, theme)
+);
 
 export { RicochetBumpers };

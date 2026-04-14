@@ -30,8 +30,9 @@ class TimedGate extends MechanicBase {
     const depth = config.size?.depth || 0.2;
     const color = config.color || theme?.mechanics?.timedGate?.color || 0x4488cc;
 
-    this.closedY = surfaceHeight + height / 2;
-    this.openY = surfaceHeight - height; // Below surface when open
+    const baseY = (config.baseElevation || 0) + surfaceHeight;
+    this.closedY = baseY + height / 2;
+    this.openY = baseY - height;
 
     // Visual mesh
     const geometry = new THREE.BoxGeometry(width, height, depth);
@@ -95,6 +96,9 @@ class TimedGate extends MechanicBase {
   }
 }
 
-registerMechanic('timed_gate', (world, group, config, sh, theme) => new TimedGate(world, group, config, sh, theme));
+registerMechanic(
+  'timed_gate',
+  (world, group, config, sh, theme) => new TimedGate(world, group, config, sh, theme)
+);
 
 export { TimedGate };

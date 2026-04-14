@@ -29,7 +29,8 @@ test.describe('Mobile Device Testing', () => {
     // Check viewport meta tag for mobile optimization
     const viewport = await page.getAttribute('meta[name="viewport"]', 'content');
     expect(viewport).toContain('width=device-width');
-    
+    expect(viewport).toContain('viewport-fit=cover');
+
     await testHelper.takeScreenshot('mobile-responsive');
   });
 

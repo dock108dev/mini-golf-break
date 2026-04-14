@@ -41,7 +41,7 @@ jest.mock('three', () => {
       userData: {},
       children: [],
       visible: true,
-      parent: null,
+      parent: null
     })),
     Scene: jest.fn(),
     Mesh: jest.fn(),
@@ -55,13 +55,13 @@ jest.mock('three', () => {
     MeshBasicMaterial: jest.fn(() => ({ color: 0xffffff })),
     CanvasTexture: jest.fn(),
     PointLight: jest.fn(() => ({
-      position: { x: 0, y: 0, z: 0, copy: jest.fn() },
+      position: { x: 0, y: 0, z: 0, copy: jest.fn() }
     })),
     Box3: jest.fn(() => ({
       min: { x: 0, y: 0, z: 0 },
       max: { x: 0, y: 0, z: 0 },
-      expandByPoint: jest.fn(),
-    })),
+      expandByPoint: jest.fn()
+    }))
   };
 });
 
@@ -74,7 +74,7 @@ jest.mock('cannon-es', () => ({
   Sphere: jest.fn(),
   Box: jest.fn(),
   Cylinder: jest.fn(),
-  Plane: jest.fn(),
+  Plane: jest.fn()
 }));
 
 jest.mock('three-csg-ts', () => ({ CSG: {} }));
@@ -93,19 +93,19 @@ jest.mock('../../objects/HoleEntity', () => ({
       update: mockHoleEntityUpdate,
       config,
       group,
-      mechanics: config.mechanics || [],
+      mechanics: config.mechanics || []
     };
     mockHoleEntityInstances.push(instance);
     return instance;
-  }),
+  })
 }));
 
 jest.mock('../../mechanics/index', () => ({}));
 jest.mock('../../mechanics/MechanicRegistry', () => ({
-  createMechanic: jest.fn(),
+  createMechanic: jest.fn()
 }));
 jest.mock('../../objects/HeroPropFactory', () => ({
-  createHeroProp: jest.fn(),
+  createHeroProp: jest.fn()
 }));
 
 describe('OrbitalDriftCourse ballBody threading regression', () => {
@@ -120,31 +120,31 @@ describe('OrbitalDriftCourse ballBody threading regression', () => {
 
     mockBallBody = {
       position: { x: 1, y: 0.5, z: 2 },
-      velocity: { x: 0, y: 0, z: 0 },
+      velocity: { x: 0, y: 0, z: 0 }
     };
 
     mockPhysicsWorld = {
       addBody: jest.fn(),
-      removeBody: jest.fn(),
+      removeBody: jest.fn()
     };
 
     mockScene = {
       add: jest.fn(),
       remove: jest.fn(),
-      children: [],
+      children: []
     };
 
     mockGame = {
       scene: mockScene,
       physicsWorld: mockPhysicsWorld,
       physicsManager: {
-        getWorld: jest.fn(() => mockPhysicsWorld),
+        getWorld: jest.fn(() => mockPhysicsWorld)
       },
       ballManager: {
         ball: {
-          body: mockBallBody,
-        },
-      },
+          body: mockBallBody
+        }
+      }
     };
 
     console.log = jest.fn();
@@ -160,7 +160,9 @@ describe('OrbitalDriftCourse ballBody threading regression', () => {
       course.update(0.016);
 
       expect(mockHoleEntityUpdate).toHaveBeenCalledTimes(1);
-      expect(mockHoleEntityUpdate).toHaveBeenCalledWith(0.016, mockBallBody, { dtWasClamped: false });
+      expect(mockHoleEntityUpdate).toHaveBeenCalledWith(0.016, mockBallBody, {
+        dtWasClamped: false
+      });
     });
 
     test('ballBody reference is the exact same object from ballManager', async () => {
@@ -276,7 +278,9 @@ describe('OrbitalDriftCourse ballBody threading regression', () => {
 
         course.update(0.016);
 
-        expect(mockHoleEntityUpdate).toHaveBeenCalledWith(0.016, mockBallBody, { dtWasClamped: false });
+        expect(mockHoleEntityUpdate).toHaveBeenCalledWith(0.016, mockBallBody, {
+          dtWasClamped: false
+        });
       }
     });
   });
@@ -290,7 +294,9 @@ describe('OrbitalDriftCourse ballBody threading regression', () => {
       // but this verifies the course-level call chain doesn't break.
       course.update(0.016);
 
-      expect(mockHoleEntityUpdate).toHaveBeenCalledWith(0.016, mockBallBody, { dtWasClamped: false });
+      expect(mockHoleEntityUpdate).toHaveBeenCalledWith(0.016, mockBallBody, {
+        dtWasClamped: false
+      });
     });
 
     test('multiple update calls work with empty mechanics', async () => {
@@ -312,7 +318,9 @@ describe('OrbitalDriftCourse ballBody threading regression', () => {
 
       // Verify update works on hole 1
       course.update(0.016);
-      expect(mockHoleEntityUpdate).toHaveBeenCalledWith(0.016, mockBallBody, { dtWasClamped: false });
+      expect(mockHoleEntityUpdate).toHaveBeenCalledWith(0.016, mockBallBody, {
+        dtWasClamped: false
+      });
 
       jest.clearAllMocks();
 
@@ -320,7 +328,9 @@ describe('OrbitalDriftCourse ballBody threading regression', () => {
       await course.createCourse(2);
       course.update(0.016);
 
-      expect(mockHoleEntityUpdate).toHaveBeenCalledWith(0.016, mockBallBody, { dtWasClamped: false });
+      expect(mockHoleEntityUpdate).toHaveBeenCalledWith(0.016, mockBallBody, {
+        dtWasClamped: false
+      });
       expect(course.currentHoleIndex).toBe(1);
     });
 
@@ -329,7 +339,9 @@ describe('OrbitalDriftCourse ballBody threading regression', () => {
       await course.initializeHole(0);
 
       course.update(0.016);
-      expect(mockHoleEntityUpdate).toHaveBeenCalledWith(0.016, mockBallBody, { dtWasClamped: false });
+      expect(mockHoleEntityUpdate).toHaveBeenCalledWith(0.016, mockBallBody, {
+        dtWasClamped: false
+      });
 
       // Clear and reinitialize
       course.clearCurrentHole();
@@ -344,7 +356,9 @@ describe('OrbitalDriftCourse ballBody threading regression', () => {
       await course.initializeHole(0);
       course.update(0.016);
 
-      expect(mockHoleEntityUpdate).toHaveBeenCalledWith(0.016, mockBallBody, { dtWasClamped: false });
+      expect(mockHoleEntityUpdate).toHaveBeenCalledWith(0.016, mockBallBody, {
+        dtWasClamped: false
+      });
     });
 
     test('previous HoleEntity is destroyed on transition', async () => {
@@ -365,7 +379,9 @@ describe('OrbitalDriftCourse ballBody threading regression', () => {
         expect(result).toBe(true);
 
         course.update(0.016);
-        expect(mockHoleEntityUpdate).toHaveBeenCalledWith(0.016, mockBallBody, { dtWasClamped: false });
+        expect(mockHoleEntityUpdate).toHaveBeenCalledWith(0.016, mockBallBody, {
+          dtWasClamped: false
+        });
       }
     });
 
@@ -375,7 +391,9 @@ describe('OrbitalDriftCourse ballBody threading regression', () => {
 
       // Ball exists initially
       course.update(0.016);
-      expect(mockHoleEntityUpdate).toHaveBeenCalledWith(0.016, mockBallBody, { dtWasClamped: false });
+      expect(mockHoleEntityUpdate).toHaveBeenCalledWith(0.016, mockBallBody, {
+        dtWasClamped: false
+      });
 
       // Transition
       await course.createCourse(2);
@@ -400,7 +418,9 @@ describe('OrbitalDriftCourse ballBody threading regression', () => {
       const newBallBody = { position: { x: 0, y: 1, z: 0 }, velocity: { x: 0, y: 0, z: 0 } };
       mockGame.ballManager.ball = { body: newBallBody };
       course.update(0.016);
-      expect(mockHoleEntityUpdate).toHaveBeenLastCalledWith(0.016, newBallBody, { dtWasClamped: false });
+      expect(mockHoleEntityUpdate).toHaveBeenLastCalledWith(0.016, newBallBody, {
+        dtWasClamped: false
+      });
     });
   });
 });

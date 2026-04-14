@@ -48,9 +48,10 @@ describe('AudioManager', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
-    // Clear persisted mute state between tests
+    // Clear persisted state between tests
     try {
       localStorage.removeItem('miniGolfBreak_audioMuted');
+      localStorage.removeItem('miniGolfBreak_audioVolume');
     } catch {
       // ignore
     }
@@ -171,6 +172,29 @@ describe('AudioManager', () => {
 
       audioManager.setVolume(-0.5);
       expect(audioManager.sounds.hit.setVolume).toHaveBeenCalledWith(0);
+    });
+
+    test('should persist volume to localStorage when setVolume is called', () => {
+      audioManager.setVolume(0.65);
+      expect(localStorage.getItem('miniGolfBreak_audioVolume')).toBe('0.65');
+    });
+
+    test('should round-trip volume through localStorage correctly', () => {
+      audioManager.setVolume(0.42);
+      const newManager = new AudioManager(mockGame);
+      expect(newManager.currentVolume).toBe(0.42);
+    });
+
+    test('should ignore corrupt stored volume and use default', () => {
+      localStorage.setItem('miniGolfBreak_audioVolume', 'garbage');
+      const newManager = new AudioManager(mockGame);
+      expect(newManager.currentVolume).toBe(1.0);
+    });
+
+    test('should ignore out-of-range stored volume and clamp', () => {
+      localStorage.setItem('miniGolfBreak_audioVolume', '5.0');
+      const newManager = new AudioManager(mockGame);
+      expect(newManager.currentVolume).toBe(1.0);
     });
   });
 
@@ -444,7 +468,9 @@ describe('AudioManager', () => {
 
     test('should limit concurrent mechanic sounds to 3 by default', () => {
       const now = 1000;
-      jest.spyOn(Date, 'now').mockReturnValueOnce(now) // isSoundOnCooldown
+      jest
+        .spyOn(Date, 'now')
+        .mockReturnValueOnce(now) // isSoundOnCooldown
         .mockReturnValueOnce(now) // recordSoundPlay
         .mockReturnValueOnce(now + 1) // isSoundOnCooldown
         .mockReturnValueOnce(now + 1) // recordSoundPlay
@@ -466,7 +492,9 @@ describe('AudioManager', () => {
 
     test('should allow mechanic sounds after concurrent slot frees up', () => {
       const now = 1000;
-      jest.spyOn(Date, 'now').mockReturnValueOnce(now)
+      jest
+        .spyOn(Date, 'now')
+        .mockReturnValueOnce(now)
         .mockReturnValueOnce(now)
         .mockReturnValueOnce(now + 1)
         .mockReturnValueOnce(now + 1)
@@ -507,7 +535,9 @@ describe('AudioManager', () => {
       audioManager.maxConcurrentMechanicSounds = 1;
 
       const now = 1000;
-      jest.spyOn(Date, 'now').mockReturnValueOnce(now)
+      jest
+        .spyOn(Date, 'now')
+        .mockReturnValueOnce(now)
         .mockReturnValueOnce(now)
         .mockReturnValueOnce(now + 1);
 
@@ -546,6 +576,123 @@ describe('AudioManager', () => {
       audioManager.recordSoundPlay('hit', 300);
       audioManager.recordSoundPlay('success', 500);
       expect(audioManager.activeMechanicSounds).toBe(0);
+    });
+  });
+
+  describe('master volume', () => {
+    beforeEach(() => {
+      audioManager = new AudioManager(mockGame);
+    });
+
+    test('setMasterVolume applies to all sounds and persists', () => {
+      audioManager.setMasterVolume(0.5);
+
+      expect(audioManager.currentVolume).toBe(0.5);
+      expect(audioManager.sounds.hit.setVolume).toHaveBeenCalledWith(0.5);
+      expect(audioManager.sounds.success.setVolume).toHaveBeenCalledWith(0.5);
+      expect(localStorage.getItem('miniGolfBreak_audioVolume')).toBe('0.5');
+    });
+
+    test('setMasterVolume clamps to 0-1 range', () => {
+      audioManager.setMasterVolume(1.5);
+      expect(audioManager.currentVolume).toBe(1);
+
+      audioManager.setMasterVolume(-0.3);
+      expect(audioManager.currentVolume).toBe(0);
+    });
+
+    test('setMasterVolume(0) sets isMuted to true', () => {
+      audioManager.setMasterVolume(0);
+      expect(audioManager.isMuted).toBe(true);
+    });
+
+    test('setMasterVolume above 0 sets isMuted to false', () => {
+      audioManager.isMuted = true;
+      audioManager.setMasterVolume(0.7);
+      expect(audioManager.isMuted).toBe(false);
+    });
+
+    test('getMasterVolume returns current volume', () => {
+      audioManager.setMasterVolume(0.6);
+      expect(audioManager.getMasterVolume()).toBe(0.6);
+    });
+
+    test('getMasterVolume returns persisted value after reload', () => {
+      localStorage.setItem('miniGolfBreak_audioVolume', '0.4');
+      const newManager = new AudioManager(mockGame);
+      expect(newManager.getMasterVolume()).toBe(0.4);
+    });
+
+    test('loadPersistedVolume restores from localStorage', () => {
+      localStorage.setItem('miniGolfBreak_audioVolume', '0.3');
+      audioManager.loadPersistedVolume();
+      expect(audioManager.currentVolume).toBe(0.3);
+    });
+
+    test('loadPersistedVolume handles missing key', () => {
+      localStorage.removeItem('miniGolfBreak_audioVolume');
+      audioManager.currentVolume = 0.8;
+      audioManager.loadPersistedVolume();
+      expect(audioManager.currentVolume).toBe(0.8);
+    });
+
+    test('loadPersistedVolume handles invalid value', () => {
+      localStorage.setItem('miniGolfBreak_audioVolume', 'not-a-number');
+      audioManager.currentVolume = 0.9;
+      audioManager.loadPersistedVolume();
+      expect(audioManager.currentVolume).toBe(0.9);
+    });
+
+    test('loadPersistedVolume handles localStorage error', () => {
+      jest.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('Access denied');
+      });
+
+      expect(() => {
+        audioManager.loadPersistedVolume();
+      }).not.toThrow();
+
+      Storage.prototype.getItem.mockRestore();
+    });
+
+    test('setMasterVolume handles localStorage error gracefully', () => {
+      jest.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('Storage full');
+      });
+
+      expect(() => {
+        audioManager.setMasterVolume(0.5);
+      }).not.toThrow();
+      expect(audioManager.currentVolume).toBe(0.5);
+
+      Storage.prototype.setItem.mockRestore();
+    });
+  });
+
+  describe('setMuted', () => {
+    beforeEach(() => {
+      audioManager = new AudioManager(mockGame);
+    });
+
+    test('setMuted(true) mutes audio', () => {
+      audioManager.setMuted(true);
+      expect(audioManager.isMuted).toBe(true);
+    });
+
+    test('setMuted(false) unmutes and restores volume', () => {
+      audioManager.setMasterVolume(0.6);
+      audioManager.setMuted(true);
+      audioManager.setMuted(false);
+      expect(audioManager.isMuted).toBe(false);
+      expect(audioManager.sounds.hit.setVolume).toHaveBeenLastCalledWith(0.6);
+    });
+
+    test('mute preserves currentVolume for unmute restore', () => {
+      audioManager.setMasterVolume(0.75);
+      audioManager.mute();
+      expect(audioManager.currentVolume).toBe(0.75);
+      audioManager.unmute();
+      expect(audioManager.sounds.hit.setVolume).toHaveBeenLastCalledWith(0.75);
     });
   });
 });

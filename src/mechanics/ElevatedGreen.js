@@ -18,8 +18,16 @@ class ElevatedGreen extends MechanicBase {
   constructor(world, group, config, surfaceHeight, theme) {
     super(world, group, config, surfaceHeight, theme);
 
-    const platformConfig = config.platform || { position: new THREE.Vector3(0, 0, -5), width: 4, length: 4 };
-    const rampConfig = config.ramp || { start: new THREE.Vector3(0, 0, -3), end: new THREE.Vector3(0, 0, -5), width: 2 };
+    const platformConfig = config.platform || {
+      position: new THREE.Vector3(0, 0, -5),
+      width: 4,
+      length: 4
+    };
+    const rampConfig = config.ramp || {
+      start: new THREE.Vector3(0, 0, -3),
+      end: new THREE.Vector3(0, 0, -5),
+      width: 2
+    };
     const color = config.color || theme?.mechanics?.elevatedGreen?.color || 0x2ecc71;
 
     // Calculate ramp horizontal length to determine max allowed elevation
@@ -38,7 +46,9 @@ class ElevatedGreen extends MechanicBase {
 
     const rampAngleY = Math.atan2(rampDx, rampDz);
     const rampAngleX = Math.atan2(elevation, rampHorizontalLength);
-    const rampActualLength = Math.sqrt(rampHorizontalLength * rampHorizontalLength + elevation * elevation);
+    const rampActualLength = Math.sqrt(
+      rampHorizontalLength * rampHorizontalLength + elevation * elevation
+    );
 
     const platformY = surfaceHeight + elevation;
 
@@ -62,7 +72,11 @@ class ElevatedGreen extends MechanicBase {
     // Front side
     const frontGeom = new THREE.BoxGeometry(platWidth, elevation, platThickness);
     const frontMesh = new THREE.Mesh(frontGeom, sideMat);
-    frontMesh.position.set(platformConfig.position.x, surfaceHeight + elevation / 2, platformConfig.position.z + platLength / 2);
+    frontMesh.position.set(
+      platformConfig.position.x,
+      surfaceHeight + elevation / 2,
+      platformConfig.position.z + platLength / 2
+    );
     group.add(frontMesh);
     this.meshes.push(frontMesh);
 
@@ -72,7 +86,9 @@ class ElevatedGreen extends MechanicBase {
       type: CANNON.Body.STATIC,
       material: world.groundMaterial
     });
-    platBody.addShape(new CANNON.Box(new CANNON.Vec3(platWidth / 2, platThickness / 2, platLength / 2)));
+    platBody.addShape(
+      new CANNON.Box(new CANNON.Vec3(platWidth / 2, platThickness / 2, platLength / 2))
+    );
     platBody.position.set(platformConfig.position.x, platformY, platformConfig.position.z);
     platBody.userData = { type: 'elevated_platform' };
     world.addBody(platBody);
@@ -102,11 +118,19 @@ class ElevatedGreen extends MechanicBase {
     const halfW = rampWidth / 2;
     const rampVertices = new Float32Array([
       // Bottom-left of ramp (at base level)
-      -halfW, 0, 0,
-      halfW, 0, 0,
+      -halfW,
+      0,
+      0,
+      halfW,
+      0,
+      0,
       // Top-left of ramp (at platform level)
-      -halfW, elevation, -rampHorizontalLength,
-      halfW, elevation, -rampHorizontalLength
+      -halfW,
+      elevation,
+      -rampHorizontalLength,
+      halfW,
+      elevation,
+      -rampHorizontalLength
     ]);
     const rampIndices = new Uint16Array([0, 2, 1, 1, 2, 3]);
 
@@ -145,7 +169,9 @@ class ElevatedGreen extends MechanicBase {
         type: CANNON.Body.STATIC,
         material: world.bumperMaterial
       });
-      railBody.addShape(new CANNON.Box(new CANNON.Vec3(railThickness / 2, railHeight / 2, rampActualLength / 2)));
+      railBody.addShape(
+        new CANNON.Box(new CANNON.Vec3(railThickness / 2, railHeight / 2, rampActualLength / 2))
+      );
       railBody.position.set(railX, rampMidY + railHeight / 2, rampMidZ);
       const railQuat = new CANNON.Quaternion();
       railQuat.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), rampAngleY);
@@ -157,6 +183,9 @@ class ElevatedGreen extends MechanicBase {
   }
 }
 
-registerMechanic('elevated_green', (world, group, config, sh, theme) => new ElevatedGreen(world, group, config, sh, theme));
+registerMechanic(
+  'elevated_green',
+  (world, group, config, sh, theme) => new ElevatedGreen(world, group, config, sh, theme)
+);
 
 export { ElevatedGreen };

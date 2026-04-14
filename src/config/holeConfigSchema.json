@@ -1,0 +1,543 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "holeConfigSchema",
+  "title": "Hole Configuration",
+  "description": "Schema for a single hole configuration in mini-golf-break",
+  "type": "object",
+  "required": [
+    "index",
+    "description",
+    "par",
+    "boundaryShape",
+    "startPosition",
+    "holePosition"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "index": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Zero-based hole index"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Display name (e.g. '1. Docking Lane')"
+    },
+    "par": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Par score for the hole"
+    },
+    "theme": {
+      "type": "object",
+      "description": "Visual theme overrides merged with defaultTheme"
+    },
+    "boundaryShape": {
+      "type": "array",
+      "minItems": 3,
+      "items": { "$ref": "#/$defs/vector2" },
+      "description": "Closed polygon defining the green boundary (2D points)"
+    },
+    "startPosition": {
+      "$ref": "#/$defs/vector3",
+      "description": "Ball spawn position"
+    },
+    "holePosition": {
+      "$ref": "#/$defs/vector3",
+      "description": "Cup position"
+    },
+    "hazards": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/hazard" },
+      "description": "Hazard zones (water, sand)"
+    },
+    "bumpers": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/bumper" },
+      "description": "Static box obstacles"
+    },
+    "mechanics": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/mechanic" },
+      "description": "Gameplay mechanics (obstacles, zones, gates)"
+    },
+    "heroProps": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/heroProp" },
+      "description": "Decorative visual props"
+    },
+    "outOfBounds": {
+      "$ref": "#/$defs/outOfBounds",
+      "description": "Per-hole OOB reset boundaries"
+    },
+    "cameraHint": {
+      "$ref": "#/$defs/cameraHint",
+      "description": "Camera position and look-at overrides"
+    }
+  },
+  "$defs": {
+    "vector2": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "2D point [x, y] where y maps to world z"
+    },
+    "vector3": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 3,
+      "maxItems": 3,
+      "description": "3D position [x, y, z]"
+    },
+    "euler": {
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 3,
+      "maxItems": 3,
+      "description": "Rotation [x, y, z] in radians"
+    },
+    "sizeWidthHeightDepth": {
+      "type": "object",
+      "required": ["width", "height", "depth"],
+      "additionalProperties": false,
+      "properties": {
+        "width": { "type": "number" },
+        "height": { "type": "number" },
+        "depth": { "type": "number" }
+      }
+    },
+    "sizeWidthLength": {
+      "type": "object",
+      "required": ["width", "length"],
+      "additionalProperties": false,
+      "properties": {
+        "width": { "type": "number" },
+        "length": { "type": "number" }
+      }
+    },
+    "outOfBounds": {
+      "type": "object",
+      "required": ["minX", "maxX", "minZ", "maxZ", "minY"],
+      "additionalProperties": false,
+      "properties": {
+        "minX": { "type": "number" },
+        "maxX": { "type": "number" },
+        "minZ": { "type": "number" },
+        "maxZ": { "type": "number" },
+        "minY": { "type": "number" }
+      }
+    },
+    "cameraHint": {
+      "type": "object",
+      "required": ["offset", "lookAt"],
+      "additionalProperties": false,
+      "properties": {
+        "offset": { "$ref": "#/$defs/vector3" },
+        "lookAt": { "$ref": "#/$defs/vector3" }
+      }
+    },
+    "hazard": {
+      "type": "object",
+      "required": ["type", "position"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["water", "sand"]
+        },
+        "position": { "$ref": "#/$defs/vector3" },
+        "shape": {
+          "type": "string",
+          "enum": ["circle", "rectangle", "compound"]
+        },
+        "size": {
+          "type": "object",
+          "properties": {
+            "radius": { "type": "number" },
+            "width": { "type": "number" },
+            "length": { "type": "number" }
+          }
+        },
+        "depth": { "type": "number" },
+        "subShapes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["position", "radius"],
+            "properties": {
+              "position": {
+                "type": "object",
+                "required": ["x", "z"],
+                "properties": {
+                  "x": { "type": "number" },
+                  "z": { "type": "number" }
+                }
+              },
+              "radius": { "type": "number" }
+            }
+          }
+        },
+        "color": { "type": "integer" }
+      }
+    },
+    "bumper": {
+      "type": "object",
+      "required": ["position", "size"],
+      "additionalProperties": false,
+      "properties": {
+        "position": { "$ref": "#/$defs/vector3" },
+        "size": { "$ref": "#/$defs/vector3" },
+        "rotation": { "$ref": "#/$defs/euler" },
+        "color": { "type": "integer" }
+      }
+    },
+    "heroProp": {
+      "type": "object",
+      "required": ["type", "position"],
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "rocket_stand",
+            "moon_rover",
+            "satellite_dish",
+            "asteroid_cluster",
+            "wormhole_ring",
+            "energy_collector",
+            "lab_equipment",
+            "black_hole_core",
+            "station_reactor",
+            "docking_clamp",
+            "laser_emitter",
+            "gravity_vortex"
+          ]
+        },
+        "position": { "$ref": "#/$defs/vector3" },
+        "scale": { "type": "number" },
+        "rotation": { "$ref": "#/$defs/euler" }
+      }
+    },
+    "mechanic": {
+      "oneOf": [
+        { "$ref": "#/$defs/moving_sweeper" },
+        { "$ref": "#/$defs/timed_hazard" },
+        { "$ref": "#/$defs/timed_gate" },
+        { "$ref": "#/$defs/boost_strip" },
+        { "$ref": "#/$defs/suction_zone" },
+        { "$ref": "#/$defs/low_gravity_zone" },
+        { "$ref": "#/$defs/bowl_contour" },
+        { "$ref": "#/$defs/portal_gate" },
+        { "$ref": "#/$defs/bank_wall" },
+        { "$ref": "#/$defs/split_route" },
+        { "$ref": "#/$defs/elevated_green" },
+        { "$ref": "#/$defs/ricochet_bumpers" },
+        { "$ref": "#/$defs/laser_grid" },
+        { "$ref": "#/$defs/disappearing_platform" },
+        { "$ref": "#/$defs/gravity_funnel" },
+        { "$ref": "#/$defs/multi_level_ramp" }
+      ]
+    },
+    "moving_sweeper": {
+      "type": "object",
+      "required": ["type", "pivot", "armLength", "speed", "size"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "moving_sweeper" },
+        "pivot": { "$ref": "#/$defs/vector3" },
+        "armLength": { "type": "number" },
+        "speed": { "type": "number" },
+        "size": { "$ref": "#/$defs/sizeWidthHeightDepth" },
+        "phase": { "type": "number" },
+        "color": { "type": "integer" }
+      }
+    },
+    "timed_hazard": {
+      "type": "object",
+      "required": ["type", "position", "size", "onDuration", "offDuration", "hazardType"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "timed_hazard" },
+        "position": { "$ref": "#/$defs/vector3" },
+        "size": { "$ref": "#/$defs/sizeWidthLength" },
+        "onDuration": { "type": "number", "exclusiveMinimum": 0 },
+        "offDuration": { "type": "number", "exclusiveMinimum": 0 },
+        "hazardType": { "type": "string", "enum": ["water", "sand"] },
+        "phase": { "type": "number" },
+        "color": { "type": "integer" }
+      }
+    },
+    "timed_gate": {
+      "type": "object",
+      "required": ["type", "position", "size", "openDuration", "closedDuration"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "timed_gate" },
+        "position": { "$ref": "#/$defs/vector3" },
+        "size": { "$ref": "#/$defs/sizeWidthHeightDepth" },
+        "openDuration": { "type": "number", "exclusiveMinimum": 0 },
+        "closedDuration": { "type": "number", "exclusiveMinimum": 0 },
+        "phase": { "type": "number" },
+        "color": { "type": "integer" },
+        "baseElevation": { "type": "number" }
+      }
+    },
+    "boost_strip": {
+      "type": "object",
+      "required": ["type", "position", "direction", "force", "size"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "boost_strip" },
+        "position": { "$ref": "#/$defs/vector3" },
+        "direction": { "$ref": "#/$defs/vector3" },
+        "force": { "type": "number" },
+        "size": { "$ref": "#/$defs/sizeWidthLength" },
+        "color": { "type": "integer" }
+      }
+    },
+    "suction_zone": {
+      "type": "object",
+      "required": ["type", "position", "radius", "force"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "suction_zone" },
+        "position": { "$ref": "#/$defs/vector3" },
+        "radius": { "type": "number", "exclusiveMinimum": 0 },
+        "force": { "type": "number" },
+        "color": { "type": "integer" }
+      }
+    },
+    "low_gravity_zone": {
+      "type": "object",
+      "required": ["type", "position", "radius", "gravityMultiplier"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "low_gravity_zone" },
+        "position": { "$ref": "#/$defs/vector3" },
+        "radius": { "type": "number", "exclusiveMinimum": 0 },
+        "gravityMultiplier": { "type": "number", "minimum": 0, "maximum": 1 },
+        "color": { "type": "integer" }
+      }
+    },
+    "bowl_contour": {
+      "type": "object",
+      "required": ["type", "position", "radius", "force"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "bowl_contour" },
+        "position": { "$ref": "#/$defs/vector3" },
+        "radius": { "type": "number", "exclusiveMinimum": 0 },
+        "force": { "type": "number" },
+        "color": { "type": "integer" }
+      }
+    },
+    "portal_gate": {
+      "type": "object",
+      "required": ["type", "entryPosition", "exitPosition"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "portal_gate" },
+        "entryPosition": { "$ref": "#/$defs/vector3" },
+        "exitPosition": { "$ref": "#/$defs/vector3" },
+        "radius": { "type": "number", "exclusiveMinimum": 0 },
+        "color": { "type": "integer" }
+      }
+    },
+    "bank_wall": {
+      "type": "object",
+      "required": ["type", "segments"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "bank_wall" },
+        "segments": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["start", "end"],
+            "additionalProperties": false,
+            "properties": {
+              "start": { "$ref": "#/$defs/vector3" },
+              "end": { "$ref": "#/$defs/vector3" }
+            }
+          }
+        },
+        "height": { "type": "number" },
+        "thickness": { "type": "number" },
+        "restitution": { "type": "number" },
+        "color": { "type": "integer" }
+      }
+    },
+    "split_route": {
+      "type": "object",
+      "required": ["type", "walls", "height"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "split_route" },
+        "walls": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["start", "end"],
+            "additionalProperties": false,
+            "properties": {
+              "start": { "$ref": "#/$defs/vector3" },
+              "end": { "$ref": "#/$defs/vector3" }
+            }
+          }
+        },
+        "height": { "type": "number" },
+        "thickness": { "type": "number" },
+        "color": { "type": "integer" }
+      }
+    },
+    "elevated_green": {
+      "type": "object",
+      "required": ["type", "platform", "elevation", "ramp"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "elevated_green" },
+        "platform": {
+          "type": "object",
+          "required": ["position", "width", "length"],
+          "additionalProperties": false,
+          "properties": {
+            "position": { "$ref": "#/$defs/vector3" },
+            "width": { "type": "number" },
+            "length": { "type": "number" }
+          }
+        },
+        "elevation": { "type": "number", "exclusiveMinimum": 0 },
+        "ramp": {
+          "type": "object",
+          "required": ["start", "end", "width"],
+          "additionalProperties": false,
+          "properties": {
+            "start": { "$ref": "#/$defs/vector3" },
+            "end": { "$ref": "#/$defs/vector3" },
+            "width": { "type": "number" }
+          }
+        },
+        "color": { "type": "integer" }
+      }
+    },
+    "ricochet_bumpers": {
+      "type": "object",
+      "required": ["type", "bumpers"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "ricochet_bumpers" },
+        "bumpers": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["position"],
+            "additionalProperties": false,
+            "properties": {
+              "position": { "$ref": "#/$defs/vector3" },
+              "geometry": {
+                "type": "string",
+                "enum": ["cylinder", "sphere", "box"]
+              },
+              "radius": { "type": "number" },
+              "height": { "type": "number" },
+              "size": { "$ref": "#/$defs/vector3" },
+              "restitution": { "type": "number" },
+              "color": { "type": "integer" }
+            }
+          }
+        },
+        "color": { "type": "integer" }
+      }
+    },
+    "laser_grid": {
+      "type": "object",
+      "required": ["type", "beams", "onDuration", "offDuration"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "laser_grid" },
+        "beams": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["start", "end"],
+            "additionalProperties": false,
+            "properties": {
+              "start": { "$ref": "#/$defs/vector3" },
+              "end": { "$ref": "#/$defs/vector3" }
+            }
+          }
+        },
+        "onDuration": { "type": "number", "exclusiveMinimum": 0 },
+        "offDuration": { "type": "number", "exclusiveMinimum": 0 },
+        "offset": { "type": "number" },
+        "width": { "type": "number" },
+        "color": { "type": "integer" }
+      }
+    },
+    "disappearing_platform": {
+      "type": "object",
+      "required": ["type", "platforms"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "disappearing_platform" },
+        "platforms": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["position"],
+            "additionalProperties": false,
+            "properties": {
+              "position": { "$ref": "#/$defs/vector3" },
+              "size": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "width": { "type": "number" },
+                  "height": { "type": "number" },
+                  "depth": { "type": "number" }
+                }
+              },
+              "onDuration": { "type": "number", "exclusiveMinimum": 0 },
+              "offDuration": { "type": "number", "exclusiveMinimum": 0 },
+              "offset": { "type": "number" }
+            }
+          }
+        },
+        "hazardBelowY": { "type": "number" }
+      }
+    },
+    "gravity_funnel": {
+      "type": "object",
+      "required": ["type", "position", "exitPoint", "radius"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "gravity_funnel" },
+        "position": { "$ref": "#/$defs/vector3" },
+        "exitPoint": { "$ref": "#/$defs/vector3" },
+        "radius": { "type": "number", "exclusiveMinimum": 0 },
+        "force": { "type": "number" },
+        "funnelAngle": { "type": "number" },
+        "color": { "type": "integer" }
+      }
+    },
+    "multi_level_ramp": {
+      "type": "object",
+      "required": ["type", "startPosition", "endPosition"],
+      "additionalProperties": false,
+      "properties": {
+        "type": { "const": "multi_level_ramp" },
+        "startPosition": { "$ref": "#/$defs/vector3" },
+        "endPosition": { "$ref": "#/$defs/vector3" },
+        "width": { "type": "number" },
+        "surfaceColor": { "type": "integer" },
+        "sideWalls": { "type": "boolean" }
+      }
+    }
+  }
+}

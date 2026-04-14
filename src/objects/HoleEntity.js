@@ -7,6 +7,7 @@ import { createHazard } from './hazards/HazardFactory';
 import { createMechanic } from '../mechanics/MechanicRegistry';
 import { createHeroProp } from './HeroPropFactory';
 import { defaultTheme } from '../themes/defaultTheme';
+import { MATERIAL_PALETTE } from '../themes/palette';
 // Trigger mechanic self-registration
 import '../mechanics/index';
 
@@ -54,13 +55,13 @@ export class HoleEntity extends BaseElement {
       Array.isArray(config.boundaryShape) && config.boundaryShape.length >= 3
         ? config.boundaryShape.map(p => new THREE.Vector2(p.x, p.y)) // Ensure Vector2, use y for world z
         : [
-          // Default rectangular shape if invalid
-          new THREE.Vector2(-2, -10),
-          new THREE.Vector2(-2, 10),
-          new THREE.Vector2(2, 10),
-          new THREE.Vector2(2, -10),
-          new THREE.Vector2(-2, -10)
-        ];
+            // Default rectangular shape if invalid
+            new THREE.Vector2(-2, -10),
+            new THREE.Vector2(-2, 10),
+            new THREE.Vector2(2, 10),
+            new THREE.Vector2(2, -10),
+            new THREE.Vector2(-2, -10)
+          ];
 
     // Hole-specific properties
     this.wallHeight = 1.0;
@@ -74,18 +75,18 @@ export class HoleEntity extends BaseElement {
       config.startPosition instanceof THREE.Vector3
         ? config.startPosition.clone()
         : new THREE.Vector3(
-          config.startPosition?.x || 0,
-          config.startPosition?.y || 0,
-          config.startPosition?.z || 0
-        );
+            config.startPosition?.x || 0,
+            config.startPosition?.y || 0,
+            config.startPosition?.z || 0
+          );
     this.worldHolePosition =
       config.holePosition instanceof THREE.Vector3
         ? config.holePosition.clone()
         : new THREE.Vector3(
-          config.holePosition?.x || 0,
-          config.holePosition?.y || 0,
-          config.holePosition?.z || 0
-        );
+            config.holePosition?.x || 0,
+            config.holePosition?.y || 0,
+            config.holePosition?.z || 0
+          );
 
     // Resolve theme: use config.theme if provided, fall back to defaultTheme
     this.resolvedTheme = { ...defaultTheme, ...(config.theme || {}) };
@@ -118,6 +119,7 @@ export class HoleEntity extends BaseElement {
       this.createHoleVisual();
       this.createHoleTrigger();
       this.createStartPosition();
+      this.createNeonTrim();
       this.createHazards();
       this.createBumpers();
       this.createMechanics();
@@ -153,9 +155,9 @@ export class HoleEntity extends BaseElement {
     const rimGeometry = new THREE.RingGeometry(visualHoleRadius, visualHoleRadius + 0.04, 32);
     const rimTheme = this.config.theme?.rim || {};
     const rimMaterial = new THREE.MeshStandardMaterial({
-      color: rimTheme.color || 0xcccccc,
-      roughness: rimTheme.roughness ?? 0.3,
-      metalness: rimTheme.metalness ?? 0.9,
+      color: rimTheme.color || MATERIAL_PALETTE.rim.color,
+      roughness: rimTheme.roughness ?? MATERIAL_PALETTE.rim.roughness,
+      metalness: rimTheme.metalness ?? MATERIAL_PALETTE.rim.metalness,
       ...(rimTheme.emissive && { emissive: rimTheme.emissive }),
       ...(rimTheme.emissiveIntensity && { emissiveIntensity: rimTheme.emissiveIntensity })
     });
@@ -183,12 +185,14 @@ export class HoleEntity extends BaseElement {
     );
     const holeInteriorTheme = this.config.theme?.holeInterior || {};
     const interiorMaterial = new THREE.MeshStandardMaterial({
-      color: holeInteriorTheme.color || 0x1a1a1a,
-      roughness: holeInteriorTheme.roughness ?? 0.9,
-      metalness: holeInteriorTheme.metalness ?? 0.1,
+      color: holeInteriorTheme.color || MATERIAL_PALETTE.holeInterior.color,
+      roughness: holeInteriorTheme.roughness ?? MATERIAL_PALETTE.holeInterior.roughness,
+      metalness: holeInteriorTheme.metalness ?? MATERIAL_PALETTE.holeInterior.metalness,
       side: THREE.DoubleSide,
       ...(holeInteriorTheme.emissive && { emissive: holeInteriorTheme.emissive }),
-      ...(holeInteriorTheme.emissiveIntensity && { emissiveIntensity: holeInteriorTheme.emissiveIntensity })
+      ...(holeInteriorTheme.emissiveIntensity && {
+        emissiveIntensity: holeInteriorTheme.emissiveIntensity
+      })
     });
     const holeInteriorMesh = new THREE.Mesh(interiorGeometry, interiorMaterial);
     const topEdgeY = this.visualGreenY + 0.01; // Local Y target for top edge
@@ -206,13 +210,11 @@ export class HoleEntity extends BaseElement {
   }
 
   createWalls() {
-    // Wall definitions use LOCAL offsets from the edges (relative to 0,0,0 group center)
-    const theme = this.config.theme || {};
-    const wallTheme = theme.wall || {};
+    const wallTheme = this.config.theme?.wall || {};
     const wallMaterial = new THREE.MeshStandardMaterial({
-      color: wallTheme.color || 0xa0522d,
-      roughness: wallTheme.roughness ?? 0.7,
-      metalness: wallTheme.metalness ?? 0.3,
+      color: wallTheme.color || MATERIAL_PALETTE.wall.color,
+      roughness: wallTheme.roughness ?? MATERIAL_PALETTE.wall.roughness,
+      metalness: wallTheme.metalness ?? MATERIAL_PALETTE.wall.metalness,
       ...(wallTheme.emissive && { emissive: wallTheme.emissive }),
       ...(wallTheme.emissiveIntensity && { emissiveIntensity: wallTheme.emissiveIntensity })
     });
@@ -301,9 +303,9 @@ export class HoleEntity extends BaseElement {
     const teeGeometry = new THREE.CylinderGeometry(0.6, 0.6, 0.05, 24);
     const teeTheme = this.config.theme?.tee || {};
     const teeMaterial = new THREE.MeshStandardMaterial({
-      color: teeTheme.color || 0x0077cc,
-      roughness: teeTheme.roughness ?? 0.5,
-      metalness: teeTheme.metalness ?? 0.2,
+      color: teeTheme.color || MATERIAL_PALETTE.tee.color,
+      roughness: teeTheme.roughness ?? MATERIAL_PALETTE.tee.roughness,
+      metalness: teeTheme.metalness ?? MATERIAL_PALETTE.tee.metalness,
       ...(teeTheme.emissive && { emissive: teeTheme.emissive }),
       ...(teeTheme.emissiveIntensity && { emissiveIntensity: teeTheme.emissiveIntensity })
     });
@@ -313,6 +315,51 @@ export class HoleEntity extends BaseElement {
     teeMesh.position.y = this.visualGreenY + 0.03; // Y offset relative to surface
     this.group.add(teeMesh); // Add to group at (0,0,0)
     this.meshes.push(teeMesh);
+  }
+
+  createNeonTrim() {
+    const trimTheme = this.config.theme?.neonTrim || MATERIAL_PALETTE.neonTrim;
+    const points = [];
+    for (const pt of this.boundaryShape) {
+      points.push(new THREE.Vector3(pt.x, this.visualGreenY + 0.005, pt.y));
+    }
+    if (points.length < 2) {
+      return;
+    }
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({
+      color: trimTheme.color || MATERIAL_PALETTE.neonTrim.color
+    });
+    const line = new THREE.Line(geometry, material);
+    this.group.add(line);
+    this.meshes.push(line);
+
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: trimTheme.emissive || MATERIAL_PALETTE.neonTrim.emissive,
+      transparent: true,
+      opacity: 0.4,
+      side: THREE.DoubleSide
+    });
+    const trimHeight = 0.06;
+    for (let i = 0; i < this.boundaryShape.length - 1; i++) {
+      const start = this.boundaryShape[i];
+      const end = this.boundaryShape[i + 1];
+      const dx = end.x - start.x;
+      const dz = end.y - start.y;
+      const len = Math.sqrt(dx * dx + dz * dz);
+      if (len < 0.01) {
+        continue;
+      }
+      const angle = Math.atan2(dz, dx);
+      const midX = (start.x + end.x) / 2;
+      const midZ = (start.y + end.y) / 2;
+      const stripGeom = new THREE.PlaneGeometry(len, trimHeight);
+      const strip = new THREE.Mesh(stripGeom, glowMaterial);
+      strip.position.set(midX, this.visualGreenY + trimHeight / 2 + 0.001, midZ);
+      strip.rotation.y = -angle;
+      this.group.add(strip);
+      this.meshes.push(strip);
+    }
   }
 
   createHazards() {
@@ -332,10 +379,10 @@ export class HoleEntity extends BaseElement {
           hazardConfig.position instanceof THREE.Vector3
             ? hazardConfig.position.clone()
             : new THREE.Vector3(
-              hazardConfig.position?.x || 0,
-              hazardConfig.position?.y || 0,
-              hazardConfig.position?.z || 0
-            );
+                hazardConfig.position?.x || 0,
+                hazardConfig.position?.y || 0,
+                hazardConfig.position?.z || 0
+              );
 
         // Create config to pass, ensuring WORLD position is used
         const factoryConfig = {
@@ -374,26 +421,27 @@ export class HoleEntity extends BaseElement {
           bumperConfig.position instanceof THREE.Vector3
             ? bumperConfig.position.clone()
             : new THREE.Vector3(
-              bumperConfig.position?.x || 0,
-              bumperConfig.position?.y || 0,
-              bumperConfig.position?.z || 0
-            );
+                bumperConfig.position?.x || 0,
+                bumperConfig.position?.y || 0,
+                bumperConfig.position?.z || 0
+              );
 
         // Ensure bumper rotation is Euler
         const worldBumperRot =
           bumperConfig.rotation instanceof THREE.Euler
             ? bumperConfig.rotation.clone()
             : new THREE.Euler(
-              bumperConfig.rotation?.x || 0,
-              bumperConfig.rotation?.y || 0,
-              bumperConfig.rotation?.z || 0
-            );
+                bumperConfig.rotation?.x || 0,
+                bumperConfig.rotation?.y || 0,
+                bumperConfig.rotation?.z || 0
+              );
 
         // Create visual mesh
         const bumperMaterial = new THREE.MeshStandardMaterial({
-          color: bumperConfig.color || this.config.theme?.bumper?.color || 0xff8c00,
-          roughness: 0.7,
-          metalness: 0.3
+          color:
+            bumperConfig.color || this.config.theme?.bumper?.color || MATERIAL_PALETTE.bumper.color,
+          roughness: this.config.theme?.bumper?.roughness ?? MATERIAL_PALETTE.bumper.roughness,
+          metalness: this.config.theme?.bumper?.metalness ?? MATERIAL_PALETTE.bumper.metalness
         });
         const bumperGeom = new THREE.BoxGeometry(
           bumperConfig.size.x,
@@ -469,14 +517,19 @@ export class HoleEntity extends BaseElement {
           mechanic.audioManager = this.audioManager || null;
           this.mechanics.push(mechanic);
           // Track mechanic's resources for cleanup
-          this.meshes.push(...mechanic.getMeshes?.() || mechanic.meshes || []);
-          this.bodies.push(...mechanic.getBodies?.() || mechanic.bodies || []);
+          this.meshes.push(...(mechanic.getMeshes?.() || mechanic.meshes || []));
+          this.bodies.push(...(mechanic.getBodies?.() || mechanic.bodies || []));
           debug.log(`[HoleEntity] Created mechanic: ${mechConfig.type}`);
         } else {
-          console.error(`[HoleEntity] Hole ${this.config.index}: unknown mechanic type "${mechConfig.type}"`);
+          console.error(
+            `[HoleEntity] Hole ${this.config.index}: unknown mechanic type "${mechConfig.type}"`
+          );
         }
       } catch (error) {
-        console.error(`[HoleEntity] Hole ${this.config.index}: failed to create mechanic "${mechConfig.type}":`, error);
+        console.error(
+          `[HoleEntity] Hole ${this.config.index}: failed to create mechanic "${mechConfig.type}":`,
+          error
+        );
       }
     }
   }
@@ -540,8 +593,7 @@ export class HoleEntity extends BaseElement {
       // Determine position from mechanic's first mesh or config
       const pos = mechanic.meshes?.[0]?.position ||
         mechanic.config?.position ||
-        mechanic.config?.pivot ||
-        { x: 0, y: this.surfaceHeight + 1, z: 0 };
+        mechanic.config?.pivot || { x: 0, y: this.surfaceHeight + 1, z: 0 };
 
       const geometry = new THREE.SphereGeometry(0.3, 8, 8);
       const material = new THREE.MeshBasicMaterial({
@@ -551,11 +603,7 @@ export class HoleEntity extends BaseElement {
         wireframe: true
       });
       const indicator = new THREE.Mesh(geometry, material);
-      indicator.position.set(
-        pos.x || 0,
-        (pos.y || this.surfaceHeight) + 1.5,
-        pos.z || 0
-      );
+      indicator.position.set(pos.x || 0, (pos.y || this.surfaceHeight) + 1.5, pos.z || 0);
       indicator.name = `failed_mechanic_${mechanic.config?.type || 'unknown'}`;
       indicator._isDebugIndicator = true;
       this.group.add(indicator);

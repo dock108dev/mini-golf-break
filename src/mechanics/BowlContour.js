@@ -64,6 +64,9 @@ class BowlContour extends MechanicBase {
   }
 }
 
-registerMechanic('bowl_contour', (world, group, config, sh, theme) => new BowlContour(world, group, config, sh, theme));
+registerMechanic(
+  'bowl_contour',
+  (world, group, config, sh, theme) => new BowlContour(world, group, config, sh, theme)
+);
 
 export { BowlContour };

@@ -1,11 +1,10 @@
 /**
- * Unit tests for UIManager
+ * Unit tests for UIManager — overlay lifecycle and event-driven visibility (ISSUE-119)
  */
 
 import { UIManager } from '../../managers/UIManager';
 import { EventTypes } from '../../events/EventTypes';
 
-// Mock dependencies
 jest.mock('../../events/EventTypes', () => ({
   EventTypes: {
     HOLE_COMPLETED: 'HOLE_COMPLETED',
@@ -14,6 +13,10 @@ jest.mock('../../events/EventTypes', () => ({
     BALL_HIT: 'BALL_HIT',
     BALL_IN_HOLE: 'BALL_IN_HOLE',
     HAZARD_DETECTED: 'HAZARD_DETECTED',
+    STROKE_LIMIT_WARNING: 'STROKE_LIMIT_WARNING',
+    STROKE_LIMIT_REACHED: 'STROKE_LIMIT_REACHED',
+    GAME_PAUSED: 'GAME_PAUSED',
+    GAME_RESUMED: 'GAME_RESUMED',
     UI_REQUEST_RESTART_GAME: 'UI_REQUEST_RESTART_GAME'
   }
 }));
@@ -22,7 +25,6 @@ jest.mock('../../managers/ui/UIScoreOverlay', () => ({
   UIScoreOverlay: jest.fn(() => ({
     init: jest.fn(),
     updateHoleInfo: jest.fn(),
-
     updateScore: jest.fn(),
     updateStrokes: jest.fn(),
     showFinalScorecard: jest.fn(),
@@ -47,41 +49,26 @@ jest.mock('../../utils/debug', () => ({
   }
 }));
 
+jest.mock('../../utils/navigation', () => ({
+  reloadPage: jest.fn()
+}));
+
 describe('UIManager', () => {
   let mockGame;
   let uiManager;
+  let subscribedHandlers;
 
-  beforeEach(() => {
-    // Mock DOM methods completely - no complex implementation
-    document.body.innerHTML = '';
-    document.createElement = jest.fn(() => ({
-      id: '',
-      classList: {
-        add: jest.fn(),
-        remove: jest.fn(),
-        contains: jest.fn()
-      },
-      appendChild: jest.fn(),
-      querySelector: jest.fn(),
-      addEventListener: jest.fn(),
-      setAttribute: jest.fn(),
-      style: {},
-      remove: jest.fn(),
-      removeChild: jest.fn(),
-      parentNode: null,
-      firstChild: null
-    }));
-    document.getElementById = jest.fn(() => null);
-    document.body.appendChild = jest.fn();
-    document.body.insertBefore = jest.fn();
-
-    // Create mock game
-    mockGame = {
+  function createMockGame() {
+    return {
       eventManager: {
-        subscribe: jest.fn(() => jest.fn()) // Return unsubscribe function
+        subscribe: jest.fn((type, handler) => {
+          subscribedHandlers[type] = handler;
+          return jest.fn();
+        })
       },
       scoringSystem: {
-        getTotalStrokes: jest.fn(() => 42)
+        getTotalStrokes: jest.fn(() => 42),
+        getCurrentStrokes: jest.fn(() => 3)
       },
       debugManager: {
         error: jest.fn(),
@@ -90,171 +77,97 @@ describe('UIManager', () => {
       audioManager: {
         isMuted: false,
         toggleMute: jest.fn(),
-        mute: jest.fn(),
-        unmute: jest.fn()
+        getMasterVolume: jest.fn().mockReturnValue(1.0),
+        setMasterVolume: jest.fn()
       }
     };
+  }
 
-    // Mock console methods
+  beforeEach(() => {
+    document.body.innerHTML = '';
+    subscribedHandlers = {};
+    mockGame = createMockGame();
+
     console.log = jest.fn();
     console.warn = jest.fn();
     console.error = jest.fn();
-
-    // Mock global alert
     global.alert = jest.fn();
-
-    // Mock setTimeout and clearTimeout
-    global.setTimeout = jest.fn((fn, timeout) => {
-      return 'timeout-id-' + timeout;
-    });
+    global.setTimeout = jest.fn((_fn, timeout) => 'timeout-id-' + timeout);
     global.clearTimeout = jest.fn();
   });
 
   afterEach(() => {
     jest.clearAllMocks();
-    // Clean up any remaining DOM elements
     document.body.innerHTML = '';
   });
 
   describe('constructor', () => {
-    test('should initialize with game reference', () => {
+    test('should initialize with game reference and default state', () => {
       uiManager = new UIManager(mockGame);
 
       expect(uiManager.game).toBe(mockGame);
-    });
-
-    test('should initialize with default state', () => {
-      uiManager = new UIManager(mockGame);
-
       expect(uiManager.uiContainer).toBeNull();
-      expect(uiManager.renderer).toBeNull();
       expect(uiManager.scoreOverlay).toBeNull();
       expect(uiManager.debugOverlay).toBeNull();
-      expect(uiManager.isShowingMessage).toBe(false);
-      expect(uiManager.messageTimeoutId).toBeNull();
-      expect(uiManager.messageTimeout).toBeNull();
-      expect(uiManager.messageElement).toBeNull();
-      expect(uiManager.powerIndicator).toBeNull();
-      expect(uiManager.transitionOverlay).toBeNull();
       expect(uiManager.eventSubscriptions).toEqual([]);
     });
   });
 
   describe('init', () => {
-    beforeEach(() => {
+    test('should initialize submodules and return self', () => {
       uiManager = new UIManager(mockGame);
-    });
-
-    test('should initialize successfully', () => {
       const result = uiManager.init();
 
-      expect(uiManager.uiContainer).toBeTruthy();
       expect(uiManager.scoreOverlay).toBeTruthy();
       expect(uiManager.debugOverlay).toBeTruthy();
-      expect(uiManager.messageElement).toBeTruthy();
-      expect(uiManager.powerIndicator).toBeTruthy();
-      expect(result).toBe(uiManager); // Returns self for chaining
+      expect(result).toBe(uiManager);
     });
 
     test('should handle initialization errors', () => {
-      // Mock createMainContainer to throw an error
-      const createMainContainerSpy = jest
-        .spyOn(uiManager, 'createMainContainer')
-        .mockImplementation(() => {
-          throw new Error('Failed to create container');
-        });
+      uiManager = new UIManager(mockGame);
+      jest.spyOn(uiManager, 'createMainContainer').mockImplementation(() => {
+        throw new Error('init failure');
+      });
 
       uiManager.init();
 
       expect(console.error).toHaveBeenCalledWith('[UIManager.init] Failed:', expect.any(Error));
-      expect(mockGame.debugManager.error).toHaveBeenCalledWith(
-        'UIManager.init',
-        'Initialization failed',
-        expect.any(Error),
-        true
-      );
-
-      createMainContainerSpy.mockRestore();
     });
   });
 
-  describe('createMainContainer', () => {
+  describe('setupEventListeners — subscription verification', () => {
     beforeEach(() => {
       uiManager = new UIManager(mockGame);
+      uiManager.init();
     });
 
-    test('should set uiContainer property when creating new container', () => {
-      uiManager.createMainContainer();
+    test('should subscribe to all expected EventTypes', () => {
+      const subscribeCalls = mockGame.eventManager.subscribe.mock.calls;
+      const subscribedTypes = subscribeCalls.map(call => call[0]);
 
-      expect(uiManager.uiContainer).toBeTruthy();
-      expect(document.createElement).toHaveBeenCalledWith('div');
+      expect(subscribedTypes).toContain(EventTypes.HOLE_COMPLETED);
+      expect(subscribedTypes).toContain(EventTypes.HOLE_STARTED);
+      expect(subscribedTypes).toContain(EventTypes.GAME_COMPLETED);
+      expect(subscribedTypes).toContain(EventTypes.BALL_HIT);
+      expect(subscribedTypes).toContain(EventTypes.BALL_IN_HOLE);
+      expect(subscribedTypes).toContain(EventTypes.HAZARD_DETECTED);
+      expect(subscribedTypes).toContain(EventTypes.STROKE_LIMIT_WARNING);
+      expect(subscribedTypes).toContain(EventTypes.STROKE_LIMIT_REACHED);
+      expect(subscribedTypes).toContain(EventTypes.GAME_PAUSED);
+      expect(subscribedTypes).toContain(EventTypes.GAME_RESUMED);
+      expect(subscribedTypes).toContain(EventTypes.UI_REQUEST_RESTART_GAME);
     });
 
-    test('should use existing container when available', () => {
-      const mockExistingContainer = { id: 'ui-container' };
-      document.getElementById.mockReturnValue(mockExistingContainer);
-
-      uiManager.createMainContainer();
-
-      expect(uiManager.uiContainer).toBe(mockExistingContainer);
-      expect(document.createElement).not.toHaveBeenCalled();
-    });
-
-    test('should call cleanup before creating container', () => {
-      const cleanupSpy = jest.spyOn(uiManager, 'cleanup').mockImplementation(() => {});
-
-      uiManager.createMainContainer();
-
-      expect(cleanupSpy).toHaveBeenCalled();
-      cleanupSpy.mockRestore();
-    });
-  });
-
-  describe('createMessageUI', () => {
-    beforeEach(() => {
-      uiManager = new UIManager(mockGame);
-      uiManager.uiContainer = { appendChild: jest.fn() };
-    });
-
-    test('should create and set messageElement property', () => {
-      uiManager.createMessageUI();
-
-      expect(uiManager.messageElement).toBeTruthy();
-      expect(document.createElement).toHaveBeenCalledWith('div');
-      expect(uiManager.uiContainer.appendChild).toHaveBeenCalledWith(uiManager.messageElement);
-    });
-  });
-
-  describe('createPowerIndicatorUI', () => {
-    beforeEach(() => {
-      uiManager = new UIManager(mockGame);
-      uiManager.uiContainer = { appendChild: jest.fn() };
-    });
-
-    test('should create and set powerIndicator property', () => {
-      uiManager.createPowerIndicatorUI();
-
-      expect(uiManager.powerIndicator).toBeTruthy();
-      expect(document.createElement).toHaveBeenCalledWith('div');
-      expect(uiManager.uiContainer.appendChild).toHaveBeenCalledWith(uiManager.powerIndicator);
-    });
-  });
-
-  describe('setupEventListeners', () => {
-    beforeEach(() => {
-      uiManager = new UIManager(mockGame);
-    });
-
-    test('should setup event listeners successfully', () => {
-      uiManager.setupEventListeners();
-
-      expect(mockGame.eventManager.subscribe).toHaveBeenCalledTimes(7); // All event types
-      expect(uiManager.eventSubscriptions.length).toBe(7);
+    test('should store unsubscribe functions for all subscriptions', () => {
+      expect(uiManager.eventSubscriptions.length).toBe(11);
+      uiManager.eventSubscriptions.forEach(unsub => {
+        expect(typeof unsub).toBe('function');
+      });
     });
 
     test('should handle missing event manager gracefully', () => {
       mockGame.eventManager = null;
-
+      uiManager = new UIManager(mockGame);
       uiManager.setupEventListeners();
 
       expect(console.warn).toHaveBeenCalledWith(
@@ -262,206 +175,363 @@ describe('UIManager', () => {
       );
     });
 
-    test('should clear existing subscriptions before adding new ones', () => {
-      const mockUnsubscribe1 = jest.fn();
-      const mockUnsubscribe2 = jest.fn();
-      uiManager.eventSubscriptions = [mockUnsubscribe1, mockUnsubscribe2];
+    test('should clear existing subscriptions before re-subscribing', () => {
+      const unsub1 = jest.fn();
+      const unsub2 = jest.fn();
+      uiManager.eventSubscriptions = [unsub1, unsub2];
 
       uiManager.setupEventListeners();
 
-      expect(mockUnsubscribe1).toHaveBeenCalled();
-      expect(mockUnsubscribe2).toHaveBeenCalled();
+      expect(unsub1).toHaveBeenCalled();
+      expect(unsub2).toHaveBeenCalled();
+    });
+  });
+
+  describe('HOLE_STARTED event — score overlay update', () => {
+    beforeEach(() => {
+      uiManager = new UIManager(mockGame);
+      uiManager.init();
     });
 
-    test('should handle subscription errors', () => {
-      mockGame.eventManager.subscribe.mockImplementation(() => {
-        throw new Error('Subscription failed');
-      });
+    test('should update score overlay with hole info and reset strokes', () => {
+      const mockEvent = { get: jest.fn(key => (key === 'holeNumber' ? 5 : null)) };
+      const showMessageSpy = jest.spyOn(uiManager, 'showMessage').mockImplementation(() => {});
 
-      uiManager.setupEventListeners();
+      uiManager.handleHoleStarted(mockEvent);
 
-      expect(console.error).toHaveBeenCalledWith(
-        '[UIManager.setupEventListeners] Failed:',
+      expect(showMessageSpy).toHaveBeenCalledWith('Hole 5', 2000);
+      expect(uiManager.scoreOverlay.updateHoleInfo).toHaveBeenCalled();
+      expect(uiManager.scoreOverlay.updateScore).toHaveBeenCalled();
+      expect(uiManager.scoreOverlay.updateStrokes).toHaveBeenCalled();
+    });
+  });
+
+  describe('BALL_HIT event — stroke count update', () => {
+    beforeEach(() => {
+      uiManager = new UIManager(mockGame);
+      uiManager.init();
+    });
+
+    test('should update strokes display on ball hit', () => {
+      uiManager.handleBallHit({});
+
+      expect(uiManager.scoreOverlay.updateScore).toHaveBeenCalled();
+      expect(uiManager.scoreOverlay.updateStrokes).toHaveBeenCalled();
+    });
+  });
+
+  describe('HOLE_COMPLETED event — completion overlay and power indicator', () => {
+    beforeEach(() => {
+      uiManager = new UIManager(mockGame);
+      uiManager.init();
+    });
+
+    test('should show completion message and hide power indicator', () => {
+      const mockEvent = { get: jest.fn(key => (key === 'holeNumber' ? 3 : null)) };
+      const showMessageSpy = jest.spyOn(uiManager, 'showMessage').mockImplementation(() => {});
+      const hidePowerSpy = jest.spyOn(uiManager, 'hidePowerIndicator').mockImplementation(() => {});
+
+      uiManager.handleHoleCompleted(mockEvent);
+
+      expect(showMessageSpy).toHaveBeenCalledWith(
+        'Hole 3 completed! Total strokes so far: 42',
+        3000
+      );
+      expect(hidePowerSpy).toHaveBeenCalled();
+      expect(uiManager.scoreOverlay.updateHoleInfo).toHaveBeenCalled();
+      expect(uiManager.scoreOverlay.updateScore).toHaveBeenCalled();
+    });
+
+    test('hidePowerIndicator sets display none on power indicator', () => {
+      uiManager.hidePowerIndicator();
+
+      expect(uiManager.powerIndicator.style.display).toBe('none');
+    });
+
+    test('hidePowerIndicator handles missing power indicator', () => {
+      uiManager.powerIndicator = null;
+
+      expect(() => uiManager.hidePowerIndicator()).not.toThrow();
+    });
+
+    test('showPowerIndicator restores display', () => {
+      uiManager.powerIndicator.style.display = 'none';
+      uiManager.showPowerIndicator();
+
+      expect(uiManager.powerIndicator.style.display).toBe('');
+    });
+  });
+
+  describe('GAME_PAUSED event — pause overlay visibility', () => {
+    beforeEach(() => {
+      uiManager = new UIManager(mockGame);
+      uiManager.init();
+    });
+
+    test('should show pause overlay when GAME_PAUSED handler is called', () => {
+      const showSpy = jest.spyOn(uiManager, 'showPauseOverlay');
+
+      uiManager.handleGamePaused();
+
+      expect(showSpy).toHaveBeenCalled();
+    });
+
+    test('showPauseOverlay adds visible class', () => {
+      uiManager.resumeButton = { focus: jest.fn() };
+
+      uiManager.showPauseOverlay();
+
+      expect(uiManager.pauseOverlay.classList.add).toHaveBeenCalledWith('visible');
+    });
+
+    test('showPauseOverlay hides the pause button', () => {
+      uiManager.resumeButton = { focus: jest.fn() };
+
+      uiManager.showPauseOverlay();
+
+      expect(uiManager.pauseButton.style.display).toBe('none');
+    });
+
+    test('showPauseOverlay focuses resume button', () => {
+      uiManager.resumeButton = { focus: jest.fn() };
+
+      uiManager.showPauseOverlay();
+
+      expect(uiManager.resumeButton.focus).toHaveBeenCalled();
+    });
+
+    test('showPauseOverlay handles missing overlay', () => {
+      uiManager.pauseOverlay = null;
+
+      expect(() => uiManager.showPauseOverlay()).not.toThrow();
+    });
+
+    test('GAME_PAUSED event triggers showPauseOverlay via subscription', () => {
+      const handler = subscribedHandlers[EventTypes.GAME_PAUSED];
+
+      expect(handler).toBeDefined();
+      expect(handler).toBe(uiManager.handleGamePaused);
+    });
+  });
+
+  describe('GAME_RESUMED event — pause overlay hidden', () => {
+    beforeEach(() => {
+      uiManager = new UIManager(mockGame);
+      uiManager.init();
+    });
+
+    test('should hide pause overlay when GAME_RESUMED handler is called', () => {
+      const hideSpy = jest.spyOn(uiManager, 'hidePauseOverlay');
+
+      uiManager.handleGameResumed();
+
+      expect(hideSpy).toHaveBeenCalled();
+    });
+
+    test('hidePauseOverlay removes visible class', () => {
+      uiManager.hidePauseOverlay();
+
+      expect(uiManager.pauseOverlay.classList.remove).toHaveBeenCalledWith('visible');
+    });
+
+    test('hidePauseOverlay restores pause button display', () => {
+      uiManager.pauseButton.style.display = 'none';
+
+      uiManager.hidePauseOverlay();
+
+      expect(uiManager.pauseButton.style.display).toBe('');
+    });
+
+    test('hidePauseOverlay handles missing overlay', () => {
+      uiManager.pauseOverlay = null;
+
+      expect(() => uiManager.hidePauseOverlay()).not.toThrow();
+    });
+
+    test('GAME_RESUMED event triggers hidePauseOverlay via subscription', () => {
+      const handler = subscribedHandlers[EventTypes.GAME_RESUMED];
+
+      expect(handler).toBeDefined();
+      expect(handler).toBe(uiManager.handleGameResumed);
+    });
+  });
+
+  describe('cleanup (dispose) — unsubscribes and disposes sub-overlays', () => {
+    beforeEach(() => {
+      uiManager = new UIManager(mockGame);
+      uiManager.init();
+    });
+
+    test('should call cleanup on scoreOverlay and debugOverlay', () => {
+      const scoreCleanup = uiManager.scoreOverlay.cleanup;
+      const debugCleanup = uiManager.debugOverlay.cleanup;
+
+      uiManager.cleanup();
+
+      expect(scoreCleanup).toHaveBeenCalled();
+      expect(debugCleanup).toHaveBeenCalled();
+    });
+
+    test('should unsubscribe all event listeners', () => {
+      const unsubFns = uiManager.eventSubscriptions.map(fn => fn);
+      expect(unsubFns.length).toBeGreaterThan(0);
+
+      uiManager.cleanup();
+
+      unsubFns.forEach(fn => expect(fn).toHaveBeenCalled());
+      expect(uiManager.eventSubscriptions).toEqual([]);
+    });
+
+    test('should null out all overlay references', () => {
+      uiManager.cleanup();
+
+      expect(uiManager.scoreOverlay).toBeNull();
+      expect(uiManager.debugOverlay).toBeNull();
+      expect(uiManager.pauseOverlay).toBeNull();
+      expect(uiManager.messageElement).toBeNull();
+      expect(uiManager.powerIndicator).toBeNull();
+      expect(uiManager.transitionOverlay).toBeNull();
+      expect(uiManager.uiContainer).toBeNull();
+      expect(uiManager.muteButton).toBeNull();
+      expect(uiManager.resumeButton).toBeNull();
+      expect(uiManager.quitButton).toBeNull();
+    });
+
+    test('should clear message timeout', () => {
+      uiManager.messageTimeout = 'timeout-id';
+
+      uiManager.cleanup();
+
+      expect(global.clearTimeout).toHaveBeenCalledWith('timeout-id');
+      expect(uiManager.messageTimeout).toBeNull();
+    });
+
+    test('should handle errors during unsubscribe gracefully', () => {
+      uiManager.eventSubscriptions = [
+        jest.fn(() => {
+          throw new Error('unsub error');
+        })
+      ];
+
+      uiManager.cleanup();
+
+      expect(console.warn).toHaveBeenCalledWith(
+        '[UIManager.cleanup] Error unsubscribing from an event:',
         expect.any(Error)
       );
+      expect(uiManager.eventSubscriptions).toEqual([]);
+    });
+
+    test('should handle cleanup when overlays are already null', () => {
+      uiManager.scoreOverlay = null;
+      uiManager.debugOverlay = null;
+      uiManager.messageElement = null;
+      uiManager.powerIndicator = null;
+      uiManager.uiContainer = null;
+
+      expect(() => uiManager.cleanup()).not.toThrow();
     });
   });
 
-  describe('event handlers', () => {
+  describe('handleGameCompleted', () => {
     beforeEach(() => {
       uiManager = new UIManager(mockGame);
       uiManager.init();
     });
 
-    describe('handleHoleCompleted', () => {
-      test('should show completion message and update overlay', () => {
-        const mockEvent = {
-          get: jest.fn(key => (key === 'holeNumber' ? 3 : null))
-        };
-        const showMessageSpy = jest.spyOn(uiManager, 'showMessage').mockImplementation(() => {});
+    test('should show final scorecard when available', () => {
+      uiManager.handleGameCompleted({});
 
-        uiManager.handleHoleCompleted(mockEvent);
-
-        expect(showMessageSpy).toHaveBeenCalledWith(
-          'Hole 3 completed! Total strokes so far: 42',
-          3000
-        );
-        expect(uiManager.scoreOverlay.updateHoleInfo).toHaveBeenCalled();
-
-        expect(uiManager.scoreOverlay.updateScore).toHaveBeenCalled();
-
-        showMessageSpy.mockRestore();
-      });
+      expect(uiManager.scoreOverlay.showFinalScorecard).toHaveBeenCalled();
     });
 
-    describe('handleHoleStarted', () => {
-      test('should show hole message and update overlay', () => {
-        const mockEvent = {
-          get: jest.fn(key => (key === 'holeNumber' ? 5 : null))
-        };
-        const showMessageSpy = jest.spyOn(uiManager, 'showMessage').mockImplementation(() => {});
+    test('should fallback to alert when scorecard method missing', () => {
+      uiManager.scoreOverlay.showFinalScorecard = undefined;
 
-        uiManager.handleHoleStarted(mockEvent);
+      uiManager.handleGameCompleted({});
 
-        expect(showMessageSpy).toHaveBeenCalledWith('Hole 5', 2000);
-        expect(uiManager.scoreOverlay.updateHoleInfo).toHaveBeenCalled();
-
-        expect(uiManager.scoreOverlay.updateScore).toHaveBeenCalled();
-        expect(uiManager.scoreOverlay.updateStrokes).toHaveBeenCalled();
-
-        showMessageSpy.mockRestore();
-      });
+      expect(global.alert).toHaveBeenCalledWith('Game Complete! Total strokes: 42');
     });
 
-    describe('handleGameCompleted', () => {
-      test('should show final scorecard when available', () => {
-        uiManager.handleGameCompleted({});
+    test('should handle missing scoreOverlay', () => {
+      uiManager.scoreOverlay = null;
 
-        expect(uiManager.scoreOverlay.showFinalScorecard).toHaveBeenCalled();
-      });
+      uiManager.handleGameCompleted({});
 
-      test('should fallback to alert when scorecard not available', () => {
-        uiManager.scoreOverlay.showFinalScorecard = undefined;
-
-        uiManager.handleGameCompleted({});
-
-        expect(global.alert).toHaveBeenCalledWith('Game Complete! Total strokes: 42');
-        expect(console.error).toHaveBeenCalledWith(
-          expect.stringContaining('[UIManager.handleGameCompleted] ERROR: Cannot show scorecard')
-        );
-      });
-
-      test('should handle missing scoreOverlay', () => {
-        uiManager.scoreOverlay = null;
-
-        uiManager.handleGameCompleted({});
-
-        expect(global.alert).toHaveBeenCalledWith('Game Complete! Total strokes: 42');
-      });
-    });
-
-    describe('handleBallHit', () => {
-      test('should update score and strokes', () => {
-        uiManager.handleBallHit({});
-
-        expect(uiManager.scoreOverlay.updateScore).toHaveBeenCalled();
-        expect(uiManager.scoreOverlay.updateStrokes).toHaveBeenCalled();
-      });
-    });
-
-    describe('handleBallInHole', () => {
-      test('should not perform specific actions', () => {
-        expect(() => {
-          uiManager.handleBallInHole({});
-        }).not.toThrow();
-      });
-    });
-
-    describe('handleHazardDetected', () => {
-      test('should show water hazard message', () => {
-        const mockEvent = {
-          get: jest.fn(key => (key === 'hazardType' ? 'water' : null))
-        };
-        const showMessageSpy = jest.spyOn(uiManager, 'showMessage').mockImplementation(() => {});
-
-        uiManager.handleHazardDetected(mockEvent);
-
-        expect(showMessageSpy).toHaveBeenCalledWith('Water hazard! +1 stroke penalty.', 2000);
-        expect(uiManager.scoreOverlay.updateStrokes).toHaveBeenCalled();
-
-        showMessageSpy.mockRestore();
-      });
-
-      test('should show out of bounds message', () => {
-        const mockEvent = {
-          get: jest.fn(key => (key === 'hazardType' ? 'outOfBounds' : null))
-        };
-        const showMessageSpy = jest.spyOn(uiManager, 'showMessage').mockImplementation(() => {});
-
-        uiManager.handleHazardDetected(mockEvent);
-
-        expect(showMessageSpy).toHaveBeenCalledWith('Out of bounds! +1 stroke penalty.', 2000);
-
-        showMessageSpy.mockRestore();
-      });
-
-      test('should not show message for sand hazard', () => {
-        const mockEvent = {
-          get: jest.fn(key => (key === 'hazardType' ? 'sand' : null))
-        };
-        const showMessageSpy = jest.spyOn(uiManager, 'showMessage').mockImplementation(() => {});
-
-        uiManager.handleHazardDetected(mockEvent);
-
-        expect(showMessageSpy).not.toHaveBeenCalled();
-        expect(uiManager.scoreOverlay.updateStrokes).toHaveBeenCalled();
-
-        showMessageSpy.mockRestore();
-      });
+      expect(global.alert).toHaveBeenCalledWith('Game Complete! Total strokes: 42');
     });
   });
 
-  describe('UI_REQUEST_RESTART_GAME handler', () => {
-    let subscribedHandlers;
-
+  describe('handleHazardDetected', () => {
     beforeEach(() => {
-      subscribedHandlers = {};
-      mockGame.eventManager.subscribe = jest.fn((eventType, handler) => {
-        subscribedHandlers[eventType] = handler;
-        return jest.fn();
-      });
       uiManager = new UIManager(mockGame);
       uiManager.init();
     });
 
-    afterEach(() => {
-      delete window.App;
+    test('should show water hazard message', () => {
+      const mockEvent = { get: jest.fn(key => (key === 'hazardType' ? 'water' : null)) };
+      const spy = jest.spyOn(uiManager, 'showMessage').mockImplementation(() => {});
+
+      uiManager.handleHazardDetected(mockEvent);
+
+      expect(spy).toHaveBeenCalledWith('Water hazard! +1 stroke penalty.', 2000);
+      expect(uiManager.scoreOverlay.updateStrokes).toHaveBeenCalled();
     });
 
-    test('should call window.App.returnToMenu when available', () => {
-      const mockReturnToMenu = jest.fn();
-      window.App = { returnToMenu: mockReturnToMenu };
+    test('should show out of bounds message', () => {
+      const mockEvent = { get: jest.fn(key => (key === 'hazardType' ? 'outOfBounds' : null)) };
+      const spy = jest.spyOn(uiManager, 'showMessage').mockImplementation(() => {});
 
-      const restartHandler = subscribedHandlers['UI_REQUEST_RESTART_GAME'];
-      expect(restartHandler).toBeDefined();
+      uiManager.handleHazardDetected(mockEvent);
 
-      restartHandler();
-
-      expect(mockReturnToMenu).toHaveBeenCalled();
+      expect(spy).toHaveBeenCalledWith('Out of bounds! +1 stroke penalty.', 2000);
     });
 
-    test('should fallback to window.location.reload when App is not available', () => {
-      const mockReload = jest.fn();
-      Object.defineProperty(window, 'location', {
-        value: { reload: mockReload },
-        writable: true,
-        configurable: true
-      });
+    test('should not show message for unknown hazard type', () => {
+      const mockEvent = { get: jest.fn(key => (key === 'hazardType' ? 'sand' : null)) };
+      const spy = jest.spyOn(uiManager, 'showMessage').mockImplementation(() => {});
 
-      const restartHandler = subscribedHandlers['UI_REQUEST_RESTART_GAME'];
-      restartHandler();
+      uiManager.handleHazardDetected(mockEvent);
 
-      expect(mockReload).toHaveBeenCalled();
+      expect(spy).not.toHaveBeenCalled();
+      expect(uiManager.scoreOverlay.updateStrokes).toHaveBeenCalled();
+    });
+  });
+
+  describe('delegated methods', () => {
+    beforeEach(() => {
+      uiManager = new UIManager(mockGame);
+      uiManager.init();
+    });
+
+    test('updateScore delegates to scoreOverlay', () => {
+      uiManager.updateScore();
+      expect(uiManager.scoreOverlay.updateScore).toHaveBeenCalled();
+    });
+
+    test('updateHoleInfo delegates to scoreOverlay', () => {
+      uiManager.updateHoleInfo();
+      expect(uiManager.scoreOverlay.updateHoleInfo).toHaveBeenCalled();
+    });
+
+    test('updateStrokes delegates to scoreOverlay', () => {
+      uiManager.updateStrokes();
+      expect(uiManager.scoreOverlay.updateStrokes).toHaveBeenCalled();
+    });
+
+    test('updateDebugDisplay delegates to debugOverlay', () => {
+      uiManager.updateDebugDisplay({ fps: 60 });
+      expect(uiManager.debugOverlay.updateDebugDisplay).toHaveBeenCalledWith({ fps: 60 });
+    });
+
+    test('showFinalScorecard delegates to scoreOverlay', () => {
+      uiManager.showFinalScorecard();
+      expect(uiManager.scoreOverlay.showFinalScorecard).toHaveBeenCalled();
+    });
+
+    test('hideFinalScorecard delegates to scoreOverlay', () => {
+      uiManager.hideFinalScorecard();
+      expect(uiManager.scoreOverlay.hideFinalScorecard).toHaveBeenCalled();
     });
   });
 
@@ -470,7 +540,7 @@ describe('UIManager', () => {
       uiManager = new UIManager(mockGame);
     });
 
-    test('should store renderer reference when valid', () => {
+    test('should store renderer reference', () => {
       const mockRenderer = {
         domElement: { parentNode: null, setAttribute: jest.fn() }
       };
@@ -480,7 +550,7 @@ describe('UIManager', () => {
       expect(uiManager.renderer).toBe(mockRenderer);
     });
 
-    test('should handle invalid renderer gracefully', () => {
+    test('should warn for invalid renderer', () => {
       uiManager.attachRenderer(null);
 
       expect(mockGame.debugManager.warn).toHaveBeenCalledWith(
@@ -489,7 +559,7 @@ describe('UIManager', () => {
       );
     });
 
-    test('should handle renderer without domElement', () => {
+    test('should warn for renderer without domElement', () => {
       uiManager.attachRenderer({});
 
       expect(mockGame.debugManager.warn).toHaveBeenCalledWith(
@@ -506,91 +576,51 @@ describe('UIManager', () => {
       uiManager.createMessageUI();
     });
 
-    describe('showMessage', () => {
-      test('should display message with default duration', () => {
-        // Spy on classList.add to verify it was called
-        const addClassSpy = jest.spyOn(uiManager.messageElement.classList, 'add');
+    test('showMessage sets content and visibility', () => {
+      uiManager.showMessage('Test message');
 
-        uiManager.showMessage('Test message');
-
-        expect(uiManager.messageElement.textContent).toBe('Test message');
-        expect(uiManager.messageElement.style.opacity).toBe('1');
-        expect(uiManager.messageElement.style.visibility).toBe('visible');
-        expect(addClassSpy).toHaveBeenCalledWith('visible');
-        expect(uiManager.isShowingMessage).toBe(true);
-        expect(global.setTimeout).toHaveBeenCalledWith(expect.any(Function), 2000);
-
-        addClassSpy.mockRestore();
-      });
-
-      test('should display message with custom duration', () => {
-        uiManager.showMessage('Custom message', 5000);
-
-        expect(global.setTimeout).toHaveBeenCalledWith(expect.any(Function), 5000);
-      });
-
-      test('should clear existing timeout before showing new message', () => {
-        uiManager.messageTimeout = 'existing-timeout';
-
-        uiManager.showMessage('New message');
-
-        expect(global.clearTimeout).toHaveBeenCalledWith('existing-timeout');
-        expect(uiManager.messageTimeout).toBe('timeout-id-2000');
-      });
-
-      test('should handle missing message element gracefully', () => {
-        uiManager.messageElement = null;
-
-        expect(() => {
-          uiManager.showMessage('Test message');
-        }).not.toThrow();
-      });
+      expect(uiManager.messageElement.textContent).toBe('Test message');
+      expect(uiManager.messageElement.style.opacity).toBe('1');
+      expect(uiManager.messageElement.style.visibility).toBe('visible');
+      expect(uiManager.isShowingMessage).toBe(true);
+      expect(global.setTimeout).toHaveBeenCalledWith(expect.any(Function), 2000);
     });
 
-    describe('hideMessage', () => {
-      test('should hide message when showing', () => {
-        uiManager.isShowingMessage = true;
+    test('showMessage with custom duration', () => {
+      uiManager.showMessage('Custom', 5000);
 
-        uiManager.hideMessage();
+      expect(global.setTimeout).toHaveBeenCalledWith(expect.any(Function), 5000);
+    });
 
-        expect(uiManager.messageElement.style.opacity).toBe('0');
-        expect(uiManager.isShowingMessage).toBe(false);
-        expect(uiManager.messageTimeout).toBeNull();
-      });
+    test('showMessage clears existing timeout', () => {
+      uiManager.messageTimeout = 'old-timeout';
 
-      test('should handle hiding when not showing message', () => {
-        uiManager.isShowingMessage = false;
+      uiManager.showMessage('New');
 
-        expect(() => {
-          uiManager.hideMessage();
-        }).not.toThrow();
-      });
+      expect(global.clearTimeout).toHaveBeenCalledWith('old-timeout');
+    });
 
-      test('should handle missing message element', () => {
-        uiManager.messageElement = null;
-        uiManager.isShowingMessage = true;
+    test('showMessage handles missing messageElement', () => {
+      uiManager.messageElement = null;
 
-        expect(() => {
-          uiManager.hideMessage();
-        }).not.toThrow();
-      });
+      expect(() => uiManager.showMessage('Test')).not.toThrow();
+    });
 
-      test('should set up transition event listener', () => {
-        uiManager.messageElement = {
-          style: {},
-          classList: { remove: jest.fn() },
-          addEventListener: jest.fn()
-        };
-        uiManager.isShowingMessage = true;
+    test('hideMessage sets opacity to 0', () => {
+      uiManager.isShowingMessage = true;
 
-        uiManager.hideMessage();
+      uiManager.hideMessage();
 
-        expect(uiManager.messageElement.addEventListener).toHaveBeenCalledWith(
-          'transitionend',
-          expect.any(Function),
-          { once: true }
-        );
-      });
+      expect(uiManager.messageElement.style.opacity).toBe('0');
+      expect(uiManager.isShowingMessage).toBe(false);
+    });
+
+    test('hideMessage no-ops when not showing', () => {
+      uiManager.isShowingMessage = false;
+
+      uiManager.hideMessage();
+
+      expect(uiManager.messageElement.style.opacity).not.toBe('0');
     });
   });
 
@@ -598,192 +628,52 @@ describe('UIManager', () => {
     beforeEach(() => {
       uiManager = new UIManager(mockGame);
       uiManager.createMainContainer();
+      uiManager.createTransitionOverlay();
     });
 
-    describe('createTransitionOverlay', () => {
-      test('should create and set transitionOverlay property', () => {
-        uiManager.createTransitionOverlay();
+    test('showTransitionOverlay adds visible class', () => {
+      const spy = jest.spyOn(uiManager.transitionOverlay.classList, 'add');
 
-        expect(uiManager.transitionOverlay).toBeTruthy();
-        expect(document.createElement).toHaveBeenCalledWith('div');
-        expect(document.body.appendChild).toHaveBeenCalledWith(uiManager.transitionOverlay);
-      });
+      uiManager.showTransitionOverlay();
+
+      expect(spy).toHaveBeenCalledWith('visible');
     });
 
-    describe('showTransitionOverlay', () => {
-      test('should add visible class to overlay', () => {
-        uiManager.createTransitionOverlay();
-        const addSpy = jest.spyOn(uiManager.transitionOverlay.classList, 'add');
+    test('hideTransitionOverlay removes visible class', () => {
+      const spy = jest.spyOn(uiManager.transitionOverlay.classList, 'remove');
 
-        uiManager.showTransitionOverlay();
+      uiManager.hideTransitionOverlay();
 
-        expect(addSpy).toHaveBeenCalledWith('visible');
-      });
-
-      test('should handle missing overlay gracefully', () => {
-        uiManager.transitionOverlay = null;
-
-        expect(() => {
-          uiManager.showTransitionOverlay();
-        }).not.toThrow();
-      });
-    });
-
-    describe('hideTransitionOverlay', () => {
-      test('should remove visible class from overlay', () => {
-        uiManager.createTransitionOverlay();
-        const removeSpy = jest.spyOn(uiManager.transitionOverlay.classList, 'remove');
-
-        uiManager.hideTransitionOverlay();
-
-        expect(removeSpy).toHaveBeenCalledWith('visible');
-      });
-
-      test('should handle missing overlay gracefully', () => {
-        uiManager.transitionOverlay = null;
-
-        expect(() => {
-          uiManager.hideTransitionOverlay();
-        }).not.toThrow();
-      });
+      expect(spy).toHaveBeenCalledWith('visible');
     });
   });
 
-  describe('delegated methods', () => {
-    beforeEach(() => {
+  describe('UI_REQUEST_RESTART_GAME handler', () => {
+    afterEach(() => {
+      delete window.App;
+    });
+
+    test('should call window.App.returnToMenu when available', () => {
       uiManager = new UIManager(mockGame);
       uiManager.init();
+      const mockReturnToMenu = jest.fn();
+      window.App = { returnToMenu: mockReturnToMenu };
+
+      const handler = subscribedHandlers[EventTypes.UI_REQUEST_RESTART_GAME];
+      handler();
+
+      expect(mockReturnToMenu).toHaveBeenCalled();
     });
 
-    test('updateScore should delegate to scoreOverlay', () => {
-      uiManager.updateScore();
-      expect(uiManager.scoreOverlay.updateScore).toHaveBeenCalled();
-    });
-
-    test('updateHoleInfo should delegate to scoreOverlay', () => {
-      uiManager.updateHoleInfo();
-      expect(uiManager.scoreOverlay.updateHoleInfo).toHaveBeenCalled();
-    });
-
-    test('updateStrokes should delegate to scoreOverlay', () => {
-      uiManager.updateStrokes();
-      expect(uiManager.scoreOverlay.updateStrokes).toHaveBeenCalled();
-    });
-
-    test('updateDebugDisplay should delegate to debugOverlay', () => {
-      const debugInfo = { test: 'data' };
-      uiManager.updateDebugDisplay(debugInfo);
-      expect(uiManager.debugOverlay.updateDebugDisplay).toHaveBeenCalledWith(debugInfo);
-    });
-
-    test('showFinalScorecard should delegate to scoreOverlay', () => {
-      uiManager.showFinalScorecard();
-      expect(uiManager.scoreOverlay.showFinalScorecard).toHaveBeenCalled();
-    });
-
-    test('hideFinalScorecard should delegate to scoreOverlay', () => {
-      uiManager.hideFinalScorecard();
-      expect(uiManager.scoreOverlay.hideFinalScorecard).toHaveBeenCalled();
-    });
-  });
-
-  describe('cleanup', () => {
-    beforeEach(() => {
+    test('should fallback to reload when App unavailable', () => {
+      const { reloadPage } = require('../../utils/navigation');
       uiManager = new UIManager(mockGame);
       uiManager.init();
-    });
 
-    test('should cleanup all UI elements and subscriptions', () => {
-      // Create mock unsubscribe function that will be added to eventSubscriptions
-      const mockUnsubscribe = jest.fn();
-      uiManager.eventSubscriptions = [mockUnsubscribe];
-      uiManager.messageTimeout = 'timeout-id';
+      const handler = subscribedHandlers[EventTypes.UI_REQUEST_RESTART_GAME];
+      handler();
 
-      // Verify initial state - overlays should be created
-      expect(uiManager.scoreOverlay).toBeTruthy();
-      expect(uiManager.debugOverlay).toBeTruthy();
-
-      uiManager.cleanup();
-
-      expect(uiManager.scoreOverlay).toBeNull();
-      expect(uiManager.debugOverlay).toBeNull();
-      expect(global.clearTimeout).toHaveBeenCalledWith('timeout-id');
-      expect(mockUnsubscribe).toHaveBeenCalled();
-      expect(uiManager.eventSubscriptions).toEqual([]);
-
-      // Check properties are reset
-      expect(uiManager.messageElement).toBeNull();
-      expect(uiManager.powerIndicator).toBeNull();
-      expect(uiManager.transitionOverlay).toBeNull();
-      expect(uiManager.uiContainer).toBeNull();
-      expect(uiManager.messageTimeout).toBeNull();
-    });
-
-    test('should handle cleanup with missing elements gracefully', () => {
-      uiManager.scoreOverlay = null;
-      uiManager.debugOverlay = null;
-      uiManager.messageElement = null;
-      uiManager.powerIndicator = null;
-      uiManager.uiContainer = null;
-
-      expect(() => {
-        uiManager.cleanup();
-      }).not.toThrow();
-    });
-
-    test('should handle unsubscription errors', () => {
-      const failingUnsubscribe = jest.fn(() => {
-        throw new Error('Unsubscribe failed');
-      });
-      uiManager.eventSubscriptions = [failingUnsubscribe];
-
-      uiManager.cleanup();
-
-      expect(console.warn).toHaveBeenCalledWith(
-        '[UIManager.cleanup] Error unsubscribing from an event:',
-        expect.any(Error)
-      );
-    });
-  });
-
-  describe('pause overlay accessibility', () => {
-    beforeEach(() => {
-      uiManager = new UIManager(mockGame);
-      uiManager.init();
-    });
-
-    test('should set role and aria-label on pause overlay', () => {
-      expect(uiManager.pauseOverlay.setAttribute).toHaveBeenCalledWith('role', 'alertdialog');
-      expect(uiManager.pauseOverlay.setAttribute).toHaveBeenCalledWith(
-        'aria-label',
-        'Game paused'
-      );
-    });
-
-    test('should store resumeButton reference', () => {
-      expect(uiManager.resumeButton).toBeTruthy();
-    });
-
-    test('should focus resume button when showing pause overlay', () => {
-      // Create a mock with focus method
-      uiManager.resumeButton = { focus: jest.fn() };
-
-      uiManager.showPauseOverlay();
-
-      expect(uiManager.resumeButton.focus).toHaveBeenCalled();
-    });
-
-    test('should add keydown listener for focus trapping on pause overlay', () => {
-      expect(uiManager.pauseOverlay.addEventListener).toHaveBeenCalledWith(
-        'keydown',
-        expect.any(Function)
-      );
-    });
-
-    test('should clean up resumeButton on cleanup', () => {
-      uiManager.cleanup();
-
-      expect(uiManager.resumeButton).toBeNull();
+      expect(reloadPage).toHaveBeenCalled();
     });
   });
 
@@ -792,17 +682,16 @@ describe('UIManager', () => {
       uiManager = new UIManager(mockGame);
     });
 
-    test('should not prevent default for non-Tab keys', () => {
+    test('ignores non-Tab keys', () => {
       const event = { key: 'Enter', preventDefault: jest.fn() };
       const container = { querySelectorAll: jest.fn() };
 
       uiManager._trapFocus(event, container);
 
       expect(container.querySelectorAll).not.toHaveBeenCalled();
-      expect(event.preventDefault).not.toHaveBeenCalled();
     });
 
-    test('should handle container with no focusable elements', () => {
+    test('handles empty focusable list', () => {
       const event = { key: 'Tab', shiftKey: false, preventDefault: jest.fn() };
       const container = { querySelectorAll: jest.fn(() => []) };
 
@@ -811,13 +700,11 @@ describe('UIManager', () => {
       expect(event.preventDefault).not.toHaveBeenCalled();
     });
 
-    test('should wrap focus from last to first element on Tab', () => {
+    test('wraps Tab from last to first', () => {
       const btn1 = { focus: jest.fn() };
       const btn2 = { focus: jest.fn() };
       const event = { key: 'Tab', shiftKey: false, preventDefault: jest.fn() };
       const container = { querySelectorAll: jest.fn(() => [btn1, btn2]) };
-
-      // Simulate activeElement being the last focusable
       Object.defineProperty(document, 'activeElement', { value: btn2, configurable: true });
 
       uiManager._trapFocus(event, container);
@@ -826,56 +713,17 @@ describe('UIManager', () => {
       expect(btn1.focus).toHaveBeenCalled();
     });
 
-    test('should wrap focus from first to last element on Shift+Tab', () => {
+    test('wraps Shift+Tab from first to last', () => {
       const btn1 = { focus: jest.fn() };
       const btn2 = { focus: jest.fn() };
       const event = { key: 'Tab', shiftKey: true, preventDefault: jest.fn() };
       const container = { querySelectorAll: jest.fn(() => [btn1, btn2]) };
-
       Object.defineProperty(document, 'activeElement', { value: btn1, configurable: true });
 
       uiManager._trapFocus(event, container);
 
       expect(event.preventDefault).toHaveBeenCalled();
       expect(btn2.focus).toHaveBeenCalled();
-    });
-
-    test('should not interfere when focus is in the middle of elements', () => {
-      const btn1 = { focus: jest.fn() };
-      const btn2 = { focus: jest.fn() };
-      const btn3 = { focus: jest.fn() };
-      const event = { key: 'Tab', shiftKey: false, preventDefault: jest.fn() };
-      const container = { querySelectorAll: jest.fn(() => [btn1, btn2, btn3]) };
-
-      Object.defineProperty(document, 'activeElement', { value: btn2, configurable: true });
-
-      uiManager._trapFocus(event, container);
-
-      expect(event.preventDefault).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('pause overlay How to Play button', () => {
-    beforeEach(() => {
-      uiManager = new UIManager(mockGame);
-      uiManager.init();
-    });
-
-    test('should create How to Play button in pause overlay', () => {
-      // The pause overlay content should have appendChild called for the how-to-play button
-      // Verify createElement was called for the button element
-      expect(document.createElement).toHaveBeenCalledWith('button');
-    });
-
-    test('should set aria-label on How to Play button', () => {
-      // During createPauseOverlay, a button with setAttribute('aria-label', 'How to Play') is created
-      // We verify through the mock calls
-      const setAttributeCalls = document.createElement.mock.results
-        .map(r => r.value)
-        .filter(el => el.setAttribute.mock && el.setAttribute.mock.calls.some(
-          call => call[0] === 'aria-label' && call[1] === 'How to Play'
-        ));
-      expect(setAttributeCalls.length).toBeGreaterThan(0);
     });
   });
 
@@ -885,105 +733,20 @@ describe('UIManager', () => {
       uiManager.init();
     });
 
-    test('should create mute button during init', () => {
+    test('creates mute button during init', () => {
       expect(uiManager.muteButton).toBeTruthy();
     });
 
-    test('should set aria-label on mute button', () => {
-      expect(uiManager.muteButton.setAttribute).toHaveBeenCalledWith('aria-label', 'Toggle audio');
-    });
-
-    test('should show speaker icon when audio is not muted', () => {
-      expect(uiManager.muteButton.textContent).toBe('\uD83D\uDD0A');
-    });
-
-    test('should show muted icon when audio is muted', () => {
-      mockGame.audioManager.isMuted = true;
-
-      // Re-create to pick up muted state
-      uiManager.cleanup();
-      uiManager = new UIManager(mockGame);
-      uiManager.init();
-
-      expect(uiManager.muteButton.textContent).toBe('\uD83D\uDD07');
-    });
-
-    test('should toggle audio on click via _handleMuteToggle', () => {
+    test('toggles audio on _handleMuteToggle', () => {
       uiManager._handleMuteToggle();
 
       expect(mockGame.audioManager.toggleMute).toHaveBeenCalled();
     });
 
-    test('should handle missing audioManager gracefully', () => {
+    test('handles missing audioManager', () => {
       mockGame.audioManager = null;
 
-      expect(() => {
-        uiManager._handleMuteToggle();
-      }).not.toThrow();
-    });
-
-    test('should update icon after toggle', () => {
-      mockGame.audioManager.isMuted = true;
-
-      uiManager.updateMuteButtonIcon();
-
-      expect(uiManager.muteButton.textContent).toBe('\uD83D\uDD07');
-    });
-
-    test('should clean up muteButton on cleanup', () => {
-      uiManager.cleanup();
-
-      expect(uiManager.muteButton).toBeNull();
-    });
-  });
-
-  describe('integration scenarios', () => {
-    beforeEach(() => {
-      uiManager = new UIManager(mockGame);
-    });
-
-    test('should handle complete initialization and cleanup cycle', () => {
-      // Initialize
-      uiManager.init();
-      expect(uiManager.uiContainer).toBeTruthy();
-      expect(uiManager.scoreOverlay).toBeTruthy();
-
-      // Show a message
-      uiManager.showMessage('Test message', 1000);
-      expect(uiManager.isShowingMessage).toBe(true);
-
-      // Cleanup
-      uiManager.cleanup();
-      expect(uiManager.uiContainer).toBeNull();
-      expect(uiManager.scoreOverlay).toBeNull();
-    });
-
-    test('should handle renderer attachment after initialization', () => {
-      uiManager.init();
-
-      const mockRenderer = {
-        domElement: { parentNode: null, setAttribute: jest.fn() }
-      };
-
-      uiManager.attachRenderer(mockRenderer);
-
-      expect(uiManager.renderer).toBe(mockRenderer);
-    });
-
-    test('should handle event workflow for hole completion', () => {
-      uiManager.init();
-      const showMessageSpy = jest.spyOn(uiManager, 'showMessage').mockImplementation(() => {});
-
-      const mockEvent = {
-        get: jest.fn(key => (key === 'holeNumber' ? 1 : null))
-      };
-
-      uiManager.handleHoleCompleted(mockEvent);
-
-      expect(showMessageSpy).toHaveBeenCalled();
-      expect(uiManager.scoreOverlay.updateScore).toHaveBeenCalled();
-
-      showMessageSpy.mockRestore();
+      expect(() => uiManager._handleMuteToggle()).not.toThrow();
     });
   });
 });

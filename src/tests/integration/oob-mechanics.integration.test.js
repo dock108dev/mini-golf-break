@@ -27,7 +27,7 @@ beforeAll(() => {
     x,
     y,
     z,
-    scale: s => ({ x: x * s, y: y * s, z: z * s }),
+    scale: s => ({ x: x * s, y: y * s, z: z * s })
   }));
 
   CANNON.Body.mockImplementation(() => ({
@@ -39,7 +39,7 @@ beforeAll(() => {
         this.x = nx;
         this.y = ny;
         this.z = nz;
-      }),
+      })
     },
     velocity: {
       x: 0,
@@ -49,17 +49,20 @@ beforeAll(() => {
         this.x = nx;
         this.y = ny;
         this.z = nz;
-      }),
+      })
     },
     quaternion: {
-      x: 0, y: 0, z: 0, w: 1,
+      x: 0,
+      y: 0,
+      z: 0,
+      w: 1,
       set: jest.fn(),
       setFromAxisAngle: jest.fn(),
-      copy: jest.fn(),
+      copy: jest.fn()
     },
     addShape: jest.fn(),
     addEventListener: jest.fn(),
-    userData: {},
+    userData: {}
   }));
 
   CANNON.Body.SLEEPING = 2;
@@ -68,7 +71,9 @@ beforeAll(() => {
 
   THREE.MeshStandardMaterial.mockImplementation(opts => {
     const mat = { color: 0xffffff, roughness: 0.3, metalness: 0.2, dispose: jest.fn() };
-    if (opts) Object.assign(mat, opts);
+    if (opts) {
+      Object.assign(mat, opts);
+    }
     return mat;
   });
 
@@ -99,7 +104,7 @@ function makeMockWorld() {
     addBody: jest.fn(),
     removeBody: jest.fn(),
     step: jest.fn(),
-    bumperMaterial: { name: 'bumper' },
+    bumperMaterial: { name: 'bumper' }
   };
 }
 
@@ -109,9 +114,11 @@ function makeMockGroup() {
     add: jest.fn(child => children.push(child)),
     remove: jest.fn(child => {
       const idx = children.indexOf(child);
-      if (idx !== -1) children.splice(idx, 1);
+      if (idx !== -1) {
+        children.splice(idx, 1);
+      }
     }),
-    children,
+    children
   };
 }
 
@@ -125,7 +132,7 @@ function makeMockBall(x = 0, z = 0) {
         this.x = nx;
         this.y = ny;
         this.z = nz;
-      }),
+      })
     },
     velocity: {
       x: 0,
@@ -135,12 +142,12 @@ function makeMockBall(x = 0, z = 0) {
         this.x = nx;
         this.y = ny;
         this.z = nz;
-      }),
+      })
     },
     mass: 0.45,
     sleepState: 0,
     applyForce: jest.fn(),
-    wakeUp: jest.fn(),
+    wakeUp: jest.fn()
   };
 }
 
@@ -152,7 +159,7 @@ function makeMockBall(x = 0, z = 0) {
 function makeHazardManager(ballBody, opts = {}) {
   const mockEventManager = {
     publish: jest.fn(),
-    subscribe: jest.fn(() => jest.fn()),
+    subscribe: jest.fn(() => jest.fn())
   };
 
   const mockGame = {
@@ -160,18 +167,18 @@ function makeHazardManager(ballBody, opts = {}) {
     ballManager: {
       ball: {
         mesh: {
-          position: ballBody.position,
-        },
-      },
+          position: ballBody.position
+        }
+      }
     },
     debugManager: {
       log: jest.fn(),
       warn: jest.fn(),
-      error: jest.fn(),
+      error: jest.fn()
     },
     uiManager: {
-      showMessage: jest.fn(),
-    },
+      showMessage: jest.fn()
+    }
   };
 
   const hm = new HazardManager(mockGame);
@@ -197,11 +204,16 @@ describe('PortalGate teleport to valid position does not trigger OOB', () => {
   });
 
   it('ball teleported to valid exit position is not detected as OOB', () => {
-    const portal = new PortalGate(world, group, {
-      entryPosition: new THREE.Vector3(-5, 0, 0),
-      exitPosition: new THREE.Vector3(5, 0, 0),
-      radius: 1.0,
-    }, SURFACE_HEIGHT);
+    const portal = new PortalGate(
+      world,
+      group,
+      {
+        entryPosition: new THREE.Vector3(-5, 0, 0),
+        exitPosition: new THREE.Vector3(5, 0, 0),
+        radius: 1.0
+      },
+      SURFACE_HEIGHT
+    );
 
     // Ball starts at the entry position
     const ball = makeMockBall(-5, 0);
@@ -228,11 +240,16 @@ describe('PortalGate teleport to valid position does not trigger OOB', () => {
   });
 
   it('ball position after teleport is within boundaries on the same frame', () => {
-    const portal = new PortalGate(world, group, {
-      entryPosition: new THREE.Vector3(0, 0, 0),
-      exitPosition: new THREE.Vector3(10, 0, -8),
-      radius: 0.8,
-    }, SURFACE_HEIGHT);
+    const portal = new PortalGate(
+      world,
+      group,
+      {
+        entryPosition: new THREE.Vector3(0, 0, 0),
+        exitPosition: new THREE.Vector3(10, 0, -8),
+        radius: 0.8
+      },
+      SURFACE_HEIGHT
+    );
 
     const ball = makeMockBall(0, 0);
     const { hazardManager } = makeHazardManager(ball);
@@ -245,11 +262,16 @@ describe('PortalGate teleport to valid position does not trigger OOB', () => {
   });
 
   it('multiple teleports within boundaries never trigger OOB', () => {
-    const portal = new PortalGate(world, group, {
-      entryPosition: new THREE.Vector3(-10, 0, -10),
-      exitPosition: new THREE.Vector3(10, 0, 10),
-      radius: 1.0,
-    }, SURFACE_HEIGHT);
+    const portal = new PortalGate(
+      world,
+      group,
+      {
+        entryPosition: new THREE.Vector3(-10, 0, -10),
+        exitPosition: new THREE.Vector3(10, 0, 10),
+        radius: 1.0
+      },
+      SURFACE_HEIGHT
+    );
 
     const ball = makeMockBall(-10, -10);
     const { hazardManager, mockEventManager } = makeHazardManager(ball);
@@ -291,11 +313,16 @@ describe('PortalGate with exit outside boundary triggers OOB', () => {
 
   it('ball teleported to exit position outside boundary triggers OOB on next check', () => {
     // Misconfigured portal: exit is beyond the ±50 boundary
-    const portal = new PortalGate(world, group, {
-      entryPosition: new THREE.Vector3(0, 0, 0),
-      exitPosition: new THREE.Vector3(60, 0, 0), // x=60 is outside maxX=50
-      radius: 1.0,
-    }, SURFACE_HEIGHT);
+    const portal = new PortalGate(
+      world,
+      group,
+      {
+        entryPosition: new THREE.Vector3(0, 0, 0),
+        exitPosition: new THREE.Vector3(60, 0, 0), // x=60 is outside maxX=50
+        radius: 1.0
+      },
+      SURFACE_HEIGHT
+    );
 
     const ball = makeMockBall(0, 0);
     const { hazardManager, mockEventManager } = makeHazardManager(ball);
@@ -320,18 +347,23 @@ describe('PortalGate with exit outside boundary triggers OOB', () => {
       EventTypes.HAZARD_DETECTED,
       expect.objectContaining({
         hazardType: 'outOfBounds',
-        penalty: 1,
+        penalty: 1
       }),
       hazardManager
     );
   });
 
   it('exit beyond negative Z boundary triggers OOB', () => {
-    const portal = new PortalGate(world, group, {
-      entryPosition: new THREE.Vector3(0, 0, 0),
-      exitPosition: new THREE.Vector3(0, 0, -55), // z=-55 outside minZ=-50
-      radius: 1.0,
-    }, SURFACE_HEIGHT);
+    const portal = new PortalGate(
+      world,
+      group,
+      {
+        entryPosition: new THREE.Vector3(0, 0, 0),
+        exitPosition: new THREE.Vector3(0, 0, -55), // z=-55 outside minZ=-50
+        radius: 1.0
+      },
+      SURFACE_HEIGHT
+    );
 
     const ball = makeMockBall(0, 0);
     const { hazardManager } = makeHazardManager(ball);
@@ -345,11 +377,16 @@ describe('PortalGate with exit outside boundary triggers OOB', () => {
   });
 
   it('OOB event includes last safe position for ball reset', () => {
-    const portal = new PortalGate(world, group, {
-      entryPosition: new THREE.Vector3(0, 0, 0),
-      exitPosition: new THREE.Vector3(100, 0, 100),
-      radius: 1.0,
-    }, SURFACE_HEIGHT);
+    const portal = new PortalGate(
+      world,
+      group,
+      {
+        entryPosition: new THREE.Vector3(0, 0, 0),
+        exitPosition: new THREE.Vector3(100, 0, 100),
+        radius: 1.0
+      },
+      SURFACE_HEIGHT
+    );
 
     const ball = makeMockBall(0, 0);
     const { hazardManager, mockEventManager } = makeHazardManager(ball);
@@ -387,12 +424,17 @@ describe('BoostStrip pushing ball past boundary triggers OOB', () => {
 
   it('ball pushed past boundary by boost strip triggers OOB with penalty', () => {
     // Boost strip near the boundary edge, pushing toward +X
-    const strip = new BoostStrip(world, group, {
-      position: new THREE.Vector3(48, 0, 0),
-      direction: new THREE.Vector3(1, 0, 0),
-      force: 20,
-      size: { width: 4, length: 4 },
-    }, SURFACE_HEIGHT);
+    const strip = new BoostStrip(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(48, 0, 0),
+        direction: new THREE.Vector3(1, 0, 0),
+        force: 20,
+        size: { width: 4, length: 4 }
+      },
+      SURFACE_HEIGHT
+    );
 
     // Ball starts at strip position (in the zone)
     const ball = makeMockBall(strip.triggerBody.position.x, strip.triggerBody.position.z);
@@ -422,7 +464,7 @@ describe('BoostStrip pushing ball past boundary triggers OOB', () => {
       EventTypes.HAZARD_DETECTED,
       expect.objectContaining({
         hazardType: 'outOfBounds',
-        penalty: 1,
+        penalty: 1
       }),
       hazardManager
     );
@@ -435,12 +477,17 @@ describe('BoostStrip pushing ball past boundary triggers OOB', () => {
   });
 
   it('boost strip force is applied before OOB detection in same frame', () => {
-    const strip = new BoostStrip(world, group, {
-      position: new THREE.Vector3(49, 0, 0),
-      direction: new THREE.Vector3(1, 0, 0),
-      force: 15,
-      size: { width: 3, length: 3 },
-    }, SURFACE_HEIGHT);
+    const strip = new BoostStrip(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(49, 0, 0),
+        direction: new THREE.Vector3(1, 0, 0),
+        force: 15,
+        size: { width: 3, length: 3 }
+      },
+      SURFACE_HEIGHT
+    );
 
     const ball = makeMockBall(strip.triggerBody.position.x, strip.triggerBody.position.z);
     const { hazardManager } = makeHazardManager(ball);
@@ -460,12 +507,17 @@ describe('BoostStrip pushing ball past boundary triggers OOB', () => {
   });
 
   it('ball boosted along Z axis past boundary also triggers OOB', () => {
-    const strip = new BoostStrip(world, group, {
-      position: new THREE.Vector3(0, 0, 48),
-      direction: new THREE.Vector3(0, 0, 1),
-      force: 25,
-      size: { width: 4, length: 4 },
-    }, SURFACE_HEIGHT);
+    const strip = new BoostStrip(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(0, 0, 48),
+        direction: new THREE.Vector3(0, 0, 1),
+        force: 25,
+        size: { width: 4, length: 4 }
+      },
+      SURFACE_HEIGHT
+    );
 
     const ball = makeMockBall(strip.triggerBody.position.x, strip.triggerBody.position.z);
     const { hazardManager, mockEventManager } = makeHazardManager(ball);
@@ -487,7 +539,7 @@ describe('BoostStrip pushing ball past boundary triggers OOB', () => {
       EventTypes.HAZARD_DETECTED,
       expect.objectContaining({
         hazardType: 'outOfBounds',
-        penalty: 1,
+        penalty: 1
       }),
       hazardManager
     );
@@ -508,11 +560,16 @@ describe('Ball OOB reset after SuctionZone uses last valid hit position', () => 
 
   it('OOB reset position is last valid hit position, not inside the suction zone', () => {
     // Suction zone at (10, 10) pulls ball toward it
-    const zone = new SuctionZone(world, group, {
-      position: new THREE.Vector3(10, 0, 10),
-      radius: 5,
-      force: 12,
-    }, SURFACE_HEIGHT);
+    const zone = new SuctionZone(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(10, 0, 10),
+        radius: 5,
+        force: 12
+      },
+      SURFACE_HEIGHT
+    );
 
     // Ball starts near the suction zone boundary (within radius)
     const ball = makeMockBall(12, 10);
@@ -559,11 +616,16 @@ describe('Ball OOB reset after SuctionZone uses last valid hit position', () => 
   });
 
   it('lastSafePosition is not updated while ball is in OOB territory', () => {
-    const zone = new SuctionZone(world, group, {
-      position: new THREE.Vector3(0, 0, 0),
-      radius: 5,
-      force: 10,
-    }, SURFACE_HEIGHT);
+    const zone = new SuctionZone(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(0, 0, 0),
+        radius: 5,
+        force: 10
+      },
+      SURFACE_HEIGHT
+    );
 
     const ball = makeMockBall(2, 0);
     const { hazardManager } = makeHazardManager(ball);
@@ -586,11 +648,16 @@ describe('Ball OOB reset after SuctionZone uses last valid hit position', () => 
 
   it('suction zone force is independent of OOB reset — force only applied while ball is in zone', () => {
     const zoneCenter = new THREE.Vector3(0, 0, 0);
-    const zone = new SuctionZone(world, group, {
-      position: zoneCenter,
-      radius: 4,
-      force: 8,
-    }, SURFACE_HEIGHT);
+    const zone = new SuctionZone(
+      world,
+      group,
+      {
+        position: zoneCenter,
+        radius: 4,
+        force: 8
+      },
+      SURFACE_HEIGHT
+    );
 
     // Ball starts inside zone
     const ball = makeMockBall(2, 0);

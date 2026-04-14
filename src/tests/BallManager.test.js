@@ -128,7 +128,8 @@ describe('BallManager Branch Coverage Tests', () => {
       scoringSystem: {
         addStroke: jest.fn(),
         addPenaltyStrokes: jest.fn(),
-        getTotalStrokes: jest.fn(() => 0)
+        getTotalStrokes: jest.fn(() => 0),
+        isAtLimit: jest.fn(() => false)
       },
       uiManager: {
         updateScore: jest.fn(),
@@ -216,7 +217,8 @@ describe('BallManager Branch Coverage Tests', () => {
       ballManager.handleHoleStarted({ type: 'HOLE_STARTED' });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        '[DEBUG]', '[BallManager.handleHoleStarted] No ball exists yet or startPosition invalid.'
+        '[DEBUG]',
+        '[BallManager.handleHoleStarted] No ball exists yet or startPosition invalid.'
       );
       consoleSpy.mockRestore();
     });
@@ -231,7 +233,8 @@ describe('BallManager Branch Coverage Tests', () => {
       ballManager.handleHoleStarted({ type: 'HOLE_STARTED' });
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        '[DEBUG]', '[BallManager.handleHoleStarted] No ball exists yet or startPosition invalid.'
+        '[DEBUG]',
+        '[BallManager.handleHoleStarted] No ball exists yet or startPosition invalid.'
       );
       consoleSpy.mockRestore();
     });
@@ -270,6 +273,30 @@ describe('BallManager Branch Coverage Tests', () => {
       expect(() => {
         ballManager.hitBall({ x: 1, y: 0, z: 0 }, 0.5);
       }).not.toThrow();
+    });
+
+    test('should not allow hitBall when stroke limit is reached', () => {
+      ballManager.init();
+      ballManager.createBall({ x: 0, y: 1, z: 0 });
+
+      mockGame.scoringSystem.isAtLimit.mockReturnValue(true);
+
+      ballManager.hitBall({ x: 1, y: 0, z: 0, clone: jest.fn(() => ({ x: 1, y: 0, z: 0 })) }, 0.5);
+
+      expect(mockGame.scoringSystem.addStroke).not.toHaveBeenCalled();
+      expect(mockGame.stateManager.setBallInMotion).not.toHaveBeenCalled();
+    });
+
+    test('should allow hitBall when stroke limit is not reached', () => {
+      ballManager.init();
+      ballManager.createBall({ x: 0, y: 1, z: 0 });
+
+      mockGame.scoringSystem.isAtLimit.mockReturnValue(false);
+
+      ballManager.hitBall({ x: 1, y: 0, z: 0, clone: jest.fn(() => ({ x: 1, y: 0, z: 0 })) }, 0.5);
+
+      expect(mockGame.scoringSystem.addStroke).toHaveBeenCalled();
+      expect(mockGame.stateManager.setBallInMotion).toHaveBeenCalledWith(true);
     });
 
     test('should handle cleanup with missing event subscriptions', () => {
@@ -688,7 +715,10 @@ describe('BallManager Branch Coverage Tests', () => {
         ballManager.removeBall();
 
         expect(mockGame.scene.remove).toHaveBeenCalledWith(ball.ballLight);
-        expect(consoleSpy).toHaveBeenCalledWith('[DEBUG]', '[BallManager] Removed ballLight from scene');
+        expect(consoleSpy).toHaveBeenCalledWith(
+          '[DEBUG]',
+          '[BallManager] Removed ballLight from scene'
+        );
 
         consoleSpy.mockRestore();
       } else {

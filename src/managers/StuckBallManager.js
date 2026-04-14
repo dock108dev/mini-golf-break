@@ -41,13 +41,15 @@ export class StuckBallManager {
     this.resetButton = document.createElement('button');
     this.resetButton.classList.add('stuck-reset-button');
     this.resetButton.textContent = 'Reset Ball';
-    this.resetButton.setAttribute('aria-label', 'Reset ball to last hit position with 1 stroke penalty');
+    this.resetButton.setAttribute(
+      'aria-label',
+      'Reset ball to last hit position with 1 stroke penalty'
+    );
     this.resetButton.addEventListener('click', () => this.handleResetClick());
 
     // Append to the UI container used by UIManager
     const container =
-      document.getElementById('ui-container') ||
-      document.getElementById('ui-overlay');
+      document.getElementById('ui-container') || document.getElementById('ui-overlay');
     if (container) {
       container.appendChild(this.resetButton);
     }
@@ -62,9 +64,7 @@ export class StuckBallManager {
     }
 
     const subscribe = (type, handler) => {
-      this.eventSubscriptions.push(
-        this.game.eventManager.subscribe(type, handler, this)
-      );
+      this.eventSubscriptions.push(this.game.eventManager.subscribe(type, handler, this));
     };
 
     // Any of these events mean the ball is no longer stuck
@@ -121,11 +121,7 @@ export class StuckBallManager {
     this.resetButton.classList.add('visible');
     this.isShowingResetButton = true;
 
-    this.game.eventManager?.publish(
-      EventTypes.BALL_STUCK,
-      { motionTime: this.motionTimer },
-      this
-    );
+    this.game.eventManager?.publish(EventTypes.BALL_STUCK, { motionTime: this.motionTimer }, this);
 
     debug.log(`[StuckBallManager] Ball stuck — motion time ${this.motionTimer.toFixed(1)}s`);
   }
@@ -178,7 +174,11 @@ export class StuckBallManager {
     this.resetButton = null;
 
     this.eventSubscriptions.forEach(unsub => {
-      try { unsub(); } catch (_e) { /* ignore */ }
+      try {
+        unsub();
+      } catch (_e) {
+        /* ignore */
+      }
     });
     this.eventSubscriptions = [];
   }

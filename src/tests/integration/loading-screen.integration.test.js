@@ -9,17 +9,17 @@ jest.mock('../../scenes/Game', () => ({
     initVisuals: jest.fn().mockResolvedValue(),
     startGame: jest.fn().mockResolvedValue(),
     enableGameInput: jest.fn(),
-    cleanup: jest.fn(),
-  })),
+    cleanup: jest.fn()
+  }))
 }));
 
 jest.mock('../../../public/style.css', () => {}, { virtual: true });
 jest.mock('../../utils/debug', () => ({
-  debug: { log: jest.fn() },
+  debug: { log: jest.fn() }
 }));
 jest.mock('../../utils/webglDetect', () => ({
   isWebGLAvailable: jest.fn(() => true),
-  showWebGLFallback: jest.fn(),
+  showWebGLFallback: jest.fn()
 }));
 
 import { Game } from '../../scenes/Game';
@@ -47,12 +47,15 @@ class App {
       if (loadingScreen) {
         const spinner = document.getElementById('loading-spinner');
         const loadingText = document.getElementById('loading-text');
-        if (spinner) spinner.remove();
-        if (loadingText) loadingText.remove();
+        if (spinner) {
+          spinner.remove();
+        }
+        if (loadingText) {
+          loadingText.remove();
+        }
         const errorMsg = document.createElement('p');
         errorMsg.className = 'loading-error';
-        errorMsg.textContent =
-          'Failed to load the game. Please refresh the page and try again.';
+        errorMsg.textContent = 'Failed to load the game. Please refresh the page and try again.';
         loadingScreen.appendChild(errorMsg);
       }
     }
@@ -95,7 +98,7 @@ describe('Loading Screen Integration Tests', () => {
       initVisuals: jest.fn().mockResolvedValue(),
       startGame: jest.fn().mockResolvedValue(),
       enableGameInput: jest.fn(),
-      cleanup: jest.fn(),
+      cleanup: jest.fn()
     };
     Game.mockImplementation(() => mockGame);
   });
@@ -144,9 +147,7 @@ describe('Loading Screen Integration Tests', () => {
 
     // Check that an error message element was appended to loading screen
     const children = loadingScreen.children || [];
-    const errorChild = children.find(
-      (c) => c.className === 'loading-error'
-    );
+    const errorChild = children.find(c => c.className === 'loading-error');
     expect(errorChild).toBeTruthy();
     expect(errorChild.textContent).toContain('Failed to load the game');
   });

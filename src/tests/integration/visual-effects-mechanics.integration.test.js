@@ -15,11 +15,23 @@ jest.mock('three', () => {
     this.z = z;
     this.clone = jest.fn(() => new mockVector3(this.x, this.y, this.z));
     this.copy = jest.fn(function (other) {
-      if (other) { this.x = other.x || 0; this.y = other.y || 0; this.z = other.z || 0; }
+      if (other) {
+        this.x = other.x || 0;
+        this.y = other.y || 0;
+        this.z = other.z || 0;
+      }
       return this;
     });
-    this.set = jest.fn(function (x, y, z) { this.x = x; this.y = y; this.z = z; return this; });
-    this.setY = jest.fn(function (v) { this.y = v; return this; });
+    this.set = jest.fn(function (x, y, z) {
+      this.x = x;
+      this.y = y;
+      this.z = z;
+      return this;
+    });
+    this.setY = jest.fn(function (v) {
+      this.y = v;
+      return this;
+    });
     this.normalize = jest.fn(() => this);
     this.multiplyScalar = jest.fn(() => this);
     this.subVectors = jest.fn(() => this);
@@ -32,19 +44,37 @@ jest.mock('three', () => {
     this.x = x;
     this.y = y;
     this.clone = jest.fn(() => new mockVector2(this.x, this.y));
-    this.subVectors = jest.fn((a, b) => { this.x = a.x - b.x; this.y = a.y - b.y; return this; });
+    this.subVectors = jest.fn((a, b) => {
+      this.x = a.x - b.x;
+      this.y = a.y - b.y;
+      return this;
+    });
     this.length = jest.fn(() => Math.sqrt(this.x * this.x + this.y * this.y));
     this.normalize = jest.fn(() => this);
-    this.multiplyScalar = jest.fn((s) => { this.x *= s; this.y *= s; return this; });
-    this.addVectors = jest.fn((a, b) => { this.x = a.x + b.x; this.y = a.y + b.y; return this; });
+    this.multiplyScalar = jest.fn(s => {
+      this.x *= s;
+      this.y *= s;
+      return this;
+    });
+    this.addVectors = jest.fn((a, b) => {
+      this.x = a.x + b.x;
+      this.y = a.y + b.y;
+      return this;
+    });
   });
 
   const mockBox2 = jest.fn(function () {
     this.min = { x: -5, y: -5 };
     this.max = { x: 5, y: 5 };
     this.setFromPoints = jest.fn();
-    this.getCenter = jest.fn(target => { target.x = 0; target.y = 0; });
-    this.getSize = jest.fn(target => { target.x = 10; target.y = 10; });
+    this.getCenter = jest.fn(target => {
+      target.x = 0;
+      target.y = 0;
+    });
+    this.getSize = jest.fn(target => {
+      target.x = 10;
+      target.y = 10;
+    });
   });
 
   const mockGeometry = () => ({
@@ -80,9 +110,21 @@ jest.mock('three', () => {
 
   const mockGroup = jest.fn(function () {
     this.position = {
-      x: 0, y: 0, z: 0,
-      copy: jest.fn(function (other) { if (other) { this.x = other.x || 0; this.y = other.y || 0; this.z = other.z || 0; } }),
-      set: jest.fn(function (x, y, z) { this.x = x; this.y = y; this.z = z; })
+      x: 0,
+      y: 0,
+      z: 0,
+      copy: jest.fn(function (other) {
+        if (other) {
+          this.x = other.x || 0;
+          this.y = other.y || 0;
+          this.z = other.z || 0;
+        }
+      }),
+      set: jest.fn(function (x, y, z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+      })
     };
     this.parent = null;
     this.add = jest.fn();
@@ -106,8 +148,11 @@ jest.mock('three', () => {
 
   const mockBufferGeometry = jest.fn(function () {
     this._attributes = {};
-    this.setAttribute = jest.fn((name, attr) => { this._attributes[name] = attr; });
-    this.getAttribute = jest.fn((name) => this._attributes[name]);
+    this.setFromPoints = jest.fn().mockReturnValue(this);
+    this.setAttribute = jest.fn((name, attr) => {
+      this._attributes[name] = attr;
+    });
+    this.getAttribute = jest.fn(name => this._attributes[name]);
     this.dispose = jest.fn();
   });
 
@@ -124,8 +169,14 @@ jest.mock('three', () => {
     Vector3: mockVector3,
     Vector2: mockVector2,
     Box2: mockBox2,
-    Shape: jest.fn(function () { this.holes = []; }),
-    ExtrudeGeometry: jest.fn(function () { this.dispose = jest.fn(); this.rotateX = jest.fn(); this.translate = jest.fn(); }),
+    Shape: jest.fn(function () {
+      this.holes = [];
+    }),
+    ExtrudeGeometry: jest.fn(function () {
+      this.dispose = jest.fn();
+      this.rotateX = jest.fn();
+      this.translate = jest.fn();
+    }),
     MeshStandardMaterial: mockMaterial,
     MeshPhongMaterial: mockMaterial,
     MeshBasicMaterial: mockMaterial,
@@ -134,6 +185,15 @@ jest.mock('three', () => {
     Points: mockPoints,
     PointsMaterial: mockPointsMaterial,
     BufferGeometry: mockBufferGeometry,
+    LineBasicMaterial: jest.fn(function () {
+      this.color = 0xffffff;
+      this.dispose = jest.fn();
+    }),
+    Line: jest.fn(function (geometry, material) {
+      this.geometry = geometry || { dispose: jest.fn() };
+      this.material = material || { dispose: jest.fn() };
+      this.position = { x: 0, y: 0, z: 0, set: jest.fn(), copy: jest.fn() };
+    }),
     BufferAttribute: mockBufferAttribute,
     Float32BufferAttribute: mockBufferAttribute,
     CylinderGeometry: jest.fn(mockGeometry),
@@ -142,7 +202,9 @@ jest.mock('three', () => {
     BoxGeometry: jest.fn(mockGeometry),
     RingGeometry: jest.fn(mockGeometry),
     SphereGeometry: jest.fn(mockGeometry),
-    Path: jest.fn(function () { return {}; })
+    Path: jest.fn(function () {
+      return {};
+    })
   };
 });
 
@@ -151,7 +213,7 @@ jest.mock('cannon-es', () => {
     this.x = x || 0;
     this.y = y || 0;
     this.z = z || 0;
-    this.scale = jest.fn((s) => new mockVec3(this.x * s, this.y * s, this.z * s));
+    this.scale = jest.fn(s => new mockVec3(this.x * s, this.y * s, this.z * s));
   });
 
   const mockBody = jest.fn(() => ({
@@ -195,7 +257,7 @@ jest.mock('three-csg-ts', () => ({
         }))
       }))
     })),
-    subtract: jest.fn((mesh1) => ({
+    subtract: jest.fn(mesh1 => ({
       position: { set: jest.fn() },
       geometry: { dispose: jest.fn() },
       material: { dispose: jest.fn() }
@@ -304,8 +366,12 @@ class MockForceFieldMechanic extends MechanicBase {
     this.meshes.push(mockMesh);
     this.bodies.push(mockBody);
 
-    if (group && group.add) group.add(mockMesh);
-    if (world && world.addBody) world.addBody(mockBody);
+    if (group && group.add) {
+      group.add(mockMesh);
+    }
+    if (world && world.addBody) {
+      world.addBody(mockBody);
+    }
   }
 
   update(dt, ballBody) {
@@ -438,9 +504,7 @@ describe('Visual effects compatibility with active mechanics (integration)', () 
   describe('rejection effect with BoostStrip-boosted ball', () => {
     it('triggerRejectionEffect fires correctly when ball has force applied by mechanic', async () => {
       const config = makeMinimalHoleConfig({
-        mechanics: [
-          { type: TEST_FORCE_FIELD_TYPE, position: { x: 0, y: 0, z: 0 }, force: 15 }
-        ]
+        mechanics: [{ type: TEST_FORCE_FIELD_TYPE, position: { x: 0, y: 0, z: 0 }, force: 15 }]
       });
 
       const hole = new HoleEntity(world, config, scene);
@@ -504,10 +568,7 @@ describe('Visual effects compatibility with active mechanics (integration)', () 
   describe('VisualEffectsManager does not animate mechanic meshes', () => {
     it('update() only processes its own effects array, not scene children', async () => {
       const config = makeMinimalHoleConfig({
-        mechanics: [
-          { type: TEST_FORCE_FIELD_TYPE },
-          { type: TEST_FORCE_FIELD_TYPE_B }
-        ]
+        mechanics: [{ type: TEST_FORCE_FIELD_TYPE }, { type: TEST_FORCE_FIELD_TYPE_B }]
       });
 
       const hole = new HoleEntity(world, config, scene);
@@ -590,10 +651,7 @@ describe('Visual effects compatibility with active mechanics (integration)', () 
   describe('destroying a hole with active visual effects and mechanics', () => {
     it('does not throw when destroying hole while VFX effects are active', async () => {
       const config = makeMinimalHoleConfig({
-        mechanics: [
-          { type: TEST_FORCE_FIELD_TYPE },
-          { type: TEST_FORCE_FIELD_TYPE_B }
-        ]
+        mechanics: [{ type: TEST_FORCE_FIELD_TYPE }, { type: TEST_FORCE_FIELD_TYPE_B }]
       });
 
       const hole = new HoleEntity(world, config, scene);
@@ -666,10 +724,7 @@ describe('Visual effects compatibility with active mechanics (integration)', () 
 
     it('simultaneous hole destroy and VFX update does not corrupt state', async () => {
       const config = makeMinimalHoleConfig({
-        mechanics: [
-          { type: TEST_FORCE_FIELD_TYPE },
-          { type: TEST_FORCE_FIELD_TYPE_B }
-        ]
+        mechanics: [{ type: TEST_FORCE_FIELD_TYPE }, { type: TEST_FORCE_FIELD_TYPE_B }]
       });
 
       const hole = new HoleEntity(world, config, scene);

@@ -32,7 +32,7 @@ beforeAll(() => {
       this.x = nx;
       this.y = ny;
       this.z = nz;
-    }),
+    })
   }));
 
   CANNON.Body.mockImplementation((opts = {}) => ({
@@ -44,7 +44,7 @@ beforeAll(() => {
         this.x = x;
         this.y = y;
         this.z = z;
-      }),
+      })
     },
     velocity: {
       x: 0,
@@ -54,7 +54,7 @@ beforeAll(() => {
         this.x = x;
         this.y = y;
         this.z = z;
-      }),
+      })
     },
     quaternion: {
       x: 0,
@@ -63,24 +63,26 @@ beforeAll(() => {
       w: 1,
       set: jest.fn(),
       setFromAxisAngle: jest.fn(),
-      copy: jest.fn(),
+      copy: jest.fn()
     },
     addShape: jest.fn(),
     addEventListener: jest.fn(),
     userData: {},
     type: opts.type || 0,
     mass: opts.mass || 0,
-    isTrigger: opts.isTrigger || false,
+    isTrigger: opts.isTrigger || false
   }));
 
   CANNON.Quaternion = jest.fn(() => ({
     setFromAxisAngle: jest.fn(),
-    copy: jest.fn(),
+    copy: jest.fn()
   }));
 
   THREE.MeshStandardMaterial.mockImplementation(opts => {
     const mat = { color: 0xffffff, roughness: 0.3, metalness: 0.2, dispose: jest.fn() };
-    if (opts) Object.assign(mat, opts);
+    if (opts) {
+      Object.assign(mat, opts);
+    }
     return mat;
   });
 
@@ -100,7 +102,7 @@ function makeMockWorld() {
     addBody: jest.fn(),
     removeBody: jest.fn(),
     step: jest.fn(),
-    bumperMaterial: {},
+    bumperMaterial: {}
   };
 }
 
@@ -110,9 +112,11 @@ function makeMockGroup() {
     add: jest.fn(child => children.push(child)),
     remove: jest.fn(child => {
       const idx = children.indexOf(child);
-      if (idx !== -1) children.splice(idx, 1);
+      if (idx !== -1) {
+        children.splice(idx, 1);
+      }
     }),
-    children,
+    children
   };
 }
 
@@ -127,7 +131,7 @@ function makeSleepingBall(x = 0, z = 0, mass = 0.45) {
     mass,
     sleepState: SLEEPING,
     applyForce: jest.fn(),
-    wakeUp: jest.fn(),
+    wakeUp: jest.fn()
   };
 }
 
@@ -139,7 +143,7 @@ function makeAwakeBall(x = 0, z = 0, mass = 0.45) {
     mass,
     sleepState: 0, // AWAKE
     applyForce: jest.fn(),
-    wakeUp: jest.fn(),
+    wakeUp: jest.fn()
   };
 }
 
@@ -152,7 +156,7 @@ describe('BoostStrip sleep/wake interaction', () => {
     position: new THREE.Vector3(0, 0, 0),
     direction: new THREE.Vector3(0, 0, -1),
     force: 10,
-    size: { width: 2, length: 4 },
+    size: { width: 2, length: 4 }
   };
 
   it('wakes sleeping ball inside zone and applies force on next update', () => {
@@ -161,10 +165,7 @@ describe('BoostStrip sleep/wake interaction', () => {
     const strip = new BoostStrip(world, group, config, SURFACE_HEIGHT);
 
     // Place sleeping ball at trigger body position (inside zone)
-    const ball = makeSleepingBall(
-      strip.triggerBody.position.x,
-      strip.triggerBody.position.z
-    );
+    const ball = makeSleepingBall(strip.triggerBody.position.x, strip.triggerBody.position.z);
 
     strip.update(0.016, ball);
 
@@ -190,10 +191,7 @@ describe('BoostStrip sleep/wake interaction', () => {
     const group = makeMockGroup();
     const strip = new BoostStrip(world, group, config, SURFACE_HEIGHT);
 
-    const ball = makeAwakeBall(
-      strip.triggerBody.position.x,
-      strip.triggerBody.position.z
-    );
+    const ball = makeAwakeBall(strip.triggerBody.position.x, strip.triggerBody.position.z);
 
     strip.update(0.016, ball);
 
@@ -210,7 +208,7 @@ describe('SuctionZone sleep/wake interaction', () => {
   const config = {
     position: new THREE.Vector3(0, 0, 0),
     radius: 5,
-    force: 6,
+    force: 6
   };
 
   it('wakes sleeping ball inside zone and pulls toward center', () => {
@@ -266,7 +264,7 @@ describe('LowGravityZone sleep/wake interaction', () => {
   const config = {
     position: new THREE.Vector3(0, 0, 0),
     radius: 5,
-    gravityMultiplier: 0.3,
+    gravityMultiplier: 0.3
   };
 
   it('does not wake sleeping ball (no force needed when stationary)', () => {
@@ -304,7 +302,7 @@ describe('PortalGate sleep/wake interaction', () => {
   const config = {
     entryPosition: new THREE.Vector3(-3, 0, 2),
     exitPosition: new THREE.Vector3(3, 0, -5),
-    radius: 0.6,
+    radius: 0.6
   };
 
   it('teleports sleeping ball and wakes it at the exit', () => {
@@ -314,11 +312,13 @@ describe('PortalGate sleep/wake interaction', () => {
 
     // Place sleeping ball at entry position
     const ball = makeSleepingBall(-3, 2);
-    ball.position.set = jest.fn(function (x, y, z) {
-      this.x = x;
-      this.y = y;
-      this.z = z;
-    }.bind(ball.position));
+    ball.position.set = jest.fn(
+      function (x, y, z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+      }.bind(ball.position)
+    );
 
     portal.update(0.016, ball);
 
@@ -338,11 +338,13 @@ describe('PortalGate sleep/wake interaction', () => {
     const portal = new PortalGate(world, group, config, SURFACE_HEIGHT);
 
     const ball = makeSleepingBall(-3, 2);
-    ball.position.set = jest.fn(function (x, y, z) {
-      this.x = x;
-      this.y = y;
-      this.z = z;
-    }.bind(ball.position));
+    ball.position.set = jest.fn(
+      function (x, y, z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+      }.bind(ball.position)
+    );
 
     portal.update(0.016, ball);
 
@@ -373,7 +375,7 @@ describe('MovingSweeper sleep/wake interaction', () => {
     pivot: new THREE.Vector3(0, 0, 0),
     armLength: 3,
     speed: 1.5,
-    size: { width: 3, height: 0.4, depth: 0.3 },
+    size: { width: 3, height: 0.4, depth: 0.3 }
   };
 
   it('uses KINEMATIC body type that wakes sleeping balls on collision', () => {
@@ -409,9 +411,6 @@ describe('MovingSweeper sleep/wake interaction', () => {
     const sweeper = new MovingSweeper(world, group, config, SURFACE_HEIGHT);
 
     // Sweeper should have a collide event listener registered
-    expect(sweeper.body.addEventListener).toHaveBeenCalledWith(
-      'collide',
-      expect.any(Function)
-    );
+    expect(sweeper.body.addEventListener).toHaveBeenCalledWith('collide', expect.any(Function));
   });
 });

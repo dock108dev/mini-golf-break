@@ -119,6 +119,6 @@ export class MechanicBase {
     }
     const dx = ballBody.position.x - triggerBody.position.x;
     const dz = ballBody.position.z - triggerBody.position.z;
-    return (dx * dx + dz * dz) <= (radius * radius);
+    return dx * dx + dz * dz <= radius * radius;
   }
 }

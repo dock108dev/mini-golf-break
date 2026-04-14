@@ -26,7 +26,7 @@ beforeAll(() => {
     x,
     y,
     z,
-    scale: s => ({ x: x * s, y: y * s, z: z * s }),
+    scale: s => ({ x: x * s, y: y * s, z: z * s })
   }));
 
   CANNON.Body.mockImplementation(() => ({
@@ -38,7 +38,7 @@ beforeAll(() => {
         this.x = x;
         this.y = y;
         this.z = z;
-      }),
+      })
     },
     velocity: {
       x: 0,
@@ -48,7 +48,7 @@ beforeAll(() => {
         this.x = x;
         this.y = y;
         this.z = z;
-      }),
+      })
     },
     quaternion: {
       x: 0,
@@ -57,11 +57,11 @@ beforeAll(() => {
       w: 1,
       set: jest.fn(),
       setFromAxisAngle: jest.fn(),
-      copy: jest.fn(),
+      copy: jest.fn()
     },
     addShape: jest.fn(),
     addEventListener: jest.fn(),
-    userData: {},
+    userData: {}
   }));
 
   CANNON.Body.SLEEPING = 2;
@@ -70,7 +70,9 @@ beforeAll(() => {
 
   THREE.MeshStandardMaterial.mockImplementation(opts => {
     const mat = { color: 0xffffff, roughness: 0.3, metalness: 0.2, dispose: jest.fn() };
-    if (opts) Object.assign(mat, opts);
+    if (opts) {
+      Object.assign(mat, opts);
+    }
     return mat;
   });
 
@@ -103,7 +105,7 @@ function makeMockWorld() {
     addBody: jest.fn(),
     removeBody: jest.fn(),
     step: jest.fn(),
-    bumperMaterial: { name: 'bumper' },
+    bumperMaterial: { name: 'bumper' }
   };
 }
 
@@ -113,9 +115,11 @@ function makeMockGroup() {
     add: jest.fn(child => children.push(child)),
     remove: jest.fn(child => {
       const idx = children.indexOf(child);
-      if (idx !== -1) children.splice(idx, 1);
+      if (idx !== -1) {
+        children.splice(idx, 1);
+      }
     }),
-    children,
+    children
   };
 }
 
@@ -129,14 +133,14 @@ function makeMockBall(x = 0, z = 0) {
         this.x = nx;
         this.y = ny;
         this.z = nz;
-      }),
+      })
     },
     velocity: { x: 0, y: 0, z: 0 },
     mass: 0.45,
     sleepState: 0, // AWAKE
     applyForce: jest.fn(),
     applyImpulse: jest.fn(),
-    wakeUp: jest.fn(),
+    wakeUp: jest.fn()
   };
 }
 
@@ -154,11 +158,16 @@ describe('PortalGate teleport does not affect stroke count', () => {
   });
 
   it('stroke count remains unchanged after portal teleport', () => {
-    const portal = new PortalGate(world, group, {
-      entryPosition: new THREE.Vector3(0, 0, 0),
-      exitPosition: new THREE.Vector3(10, 0, -8),
-      radius: 1.0,
-    }, SURFACE_HEIGHT);
+    const portal = new PortalGate(
+      world,
+      group,
+      {
+        entryPosition: new THREE.Vector3(0, 0, 0),
+        exitPosition: new THREE.Vector3(10, 0, -8),
+        radius: 1.0
+      },
+      SURFACE_HEIGHT
+    );
 
     // Simulate player hitting the ball (1 stroke)
     scoringSystem.addStroke();
@@ -177,11 +186,16 @@ describe('PortalGate teleport does not affect stroke count', () => {
   });
 
   it('multiple portal teleports do not add strokes', () => {
-    const portal = new PortalGate(world, group, {
-      entryPosition: new THREE.Vector3(0, 0, 0),
-      exitPosition: new THREE.Vector3(5, 0, 5),
-      radius: 1.0,
-    }, SURFACE_HEIGHT);
+    const portal = new PortalGate(
+      world,
+      group,
+      {
+        entryPosition: new THREE.Vector3(0, 0, 0),
+        exitPosition: new THREE.Vector3(5, 0, 5),
+        radius: 1.0
+      },
+      SURFACE_HEIGHT
+    );
 
     scoringSystem.addStroke();
 
@@ -221,11 +235,16 @@ describe('Ball reset from water hazard inside force field adds exactly 1 penalty
 
   it('water hazard penalty is exactly 1 stroke even with active force field', () => {
     // Set up a suction zone (force field)
-    const suction = new SuctionZone(world, group, {
-      position: new THREE.Vector3(0, 0, 0),
-      radius: 5,
-      force: 10,
-    }, SURFACE_HEIGHT);
+    const suction = new SuctionZone(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(0, 0, 0),
+        radius: 5,
+        force: 10
+      },
+      SURFACE_HEIGHT
+    );
 
     // Player hits ball (1 stroke)
     scoringSystem.addStroke();
@@ -248,12 +267,17 @@ describe('Ball reset from water hazard inside force field adds exactly 1 penalty
   });
 
   it('boost strip does not add strokes when ball enters water hazard zone', () => {
-    const boost = new BoostStrip(world, group, {
-      position: new THREE.Vector3(0, 0, 0),
-      direction: new THREE.Vector3(1, 0, 0),
-      force: 12,
-      size: { width: 3, length: 3 },
-    }, SURFACE_HEIGHT);
+    const boost = new BoostStrip(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(0, 0, 0),
+        direction: new THREE.Vector3(1, 0, 0),
+        force: 12,
+        size: { width: 3, length: 3 }
+      },
+      SURFACE_HEIGHT
+    );
 
     // Player hits ball
     scoringSystem.addStroke();
@@ -287,12 +311,17 @@ describe('MovingSweeper collision does not add a stroke', () => {
   });
 
   it('sweeper deflecting ball does not increment stroke count', () => {
-    const sweeper = new MovingSweeper(world, group, {
-      pivot: new THREE.Vector3(0, 0, 0),
-      armLength: 4,
-      speed: 2.0,
-      size: { width: 4, height: 0.4, depth: 0.3 },
-    }, SURFACE_HEIGHT);
+    const sweeper = new MovingSweeper(
+      world,
+      group,
+      {
+        pivot: new THREE.Vector3(0, 0, 0),
+        armLength: 4,
+        speed: 2.0,
+        size: { width: 4, height: 0.4, depth: 0.3 }
+      },
+      SURFACE_HEIGHT
+    );
 
     // Player hits ball (1 stroke)
     scoringSystem.addStroke();
@@ -309,12 +338,17 @@ describe('MovingSweeper collision does not add a stroke', () => {
   });
 
   it('multiple sweeper collisions across frames do not add strokes', () => {
-    const sweeper = new MovingSweeper(world, group, {
-      pivot: new THREE.Vector3(0, 0, 0),
-      armLength: 3,
-      speed: Math.PI,
-      size: { width: 3, height: 0.4, depth: 0.3 },
-    }, SURFACE_HEIGHT);
+    const sweeper = new MovingSweeper(
+      world,
+      group,
+      {
+        pivot: new THREE.Vector3(0, 0, 0),
+        armLength: 3,
+        speed: Math.PI,
+        size: { width: 3, height: 0.4, depth: 0.3 }
+      },
+      SURFACE_HEIGHT
+    );
 
     // Player hits ball twice (2 strokes)
     scoringSystem.addStroke();
@@ -347,13 +381,18 @@ describe('TimedHazard activating and hitting a stopped ball does not add a strok
   });
 
   it('timed hazard activating on awake ball does not add a stroke', () => {
-    const hazard = new TimedHazard(world, group, {
-      position: new THREE.Vector3(0, 0, 0),
-      size: { width: 3, length: 3 },
-      onDuration: 2,
-      offDuration: 2,
-      hazardType: 'water',
-    }, SURFACE_HEIGHT);
+    const hazard = new TimedHazard(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(0, 0, 0),
+        size: { width: 3, length: 3 },
+        onDuration: 2,
+        offDuration: 2,
+        hazardType: 'water'
+      },
+      SURFACE_HEIGHT
+    );
 
     // Player hits ball (1 stroke)
     scoringSystem.addStroke();
@@ -371,13 +410,18 @@ describe('TimedHazard activating and hitting a stopped ball does not add a strok
   });
 
   it('timed hazard cycling on/off does not accumulate strokes', () => {
-    const hazard = new TimedHazard(world, group, {
-      position: new THREE.Vector3(0, 0, 0),
-      size: { width: 4, length: 4 },
-      onDuration: 1,
-      offDuration: 1,
-      hazardType: 'water',
-    }, SURFACE_HEIGHT);
+    const hazard = new TimedHazard(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(0, 0, 0),
+        size: { width: 4, length: 4 },
+        onDuration: 1,
+        offDuration: 1,
+        hazardType: 'water'
+      },
+      SURFACE_HEIGHT
+    );
 
     scoringSystem.addStroke();
     const ball = makeMockBall(0, 0);
@@ -392,13 +436,18 @@ describe('TimedHazard activating and hitting a stopped ball does not add a strok
   });
 
   it('timed hazard does not affect sleeping ball stroke count', () => {
-    const hazard = new TimedHazard(world, group, {
-      position: new THREE.Vector3(0, 0, 0),
-      size: { width: 3, length: 3 },
-      onDuration: 2,
-      offDuration: 1,
-      hazardType: 'water',
-    }, SURFACE_HEIGHT);
+    const hazard = new TimedHazard(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(0, 0, 0),
+        size: { width: 3, length: 3 },
+        onDuration: 2,
+        offDuration: 1,
+        hazardType: 'water'
+      },
+      SURFACE_HEIGHT
+    );
 
     scoringSystem.addStroke();
 
@@ -428,11 +477,16 @@ describe('Hole completion with active mechanics records correct stroke count', (
   });
 
   it('records correct stroke count after portal teleport and hole completion', () => {
-    const portal = new PortalGate(world, group, {
-      entryPosition: new THREE.Vector3(0, 0, 0),
-      exitPosition: new THREE.Vector3(8, 0, -6),
-      radius: 1.0,
-    }, SURFACE_HEIGHT);
+    const portal = new PortalGate(
+      world,
+      group,
+      {
+        entryPosition: new THREE.Vector3(0, 0, 0),
+        exitPosition: new THREE.Vector3(8, 0, -6),
+        radius: 1.0
+      },
+      SURFACE_HEIGHT
+    );
 
     // Player takes 3 strokes, with a portal teleport after the 2nd
     scoringSystem.addStroke();
@@ -451,26 +505,41 @@ describe('Hole completion with active mechanics records correct stroke count', (
   });
 
   it('records correct stroke count with multiple mechanics active', () => {
-    const sweeper = new MovingSweeper(world, group, {
-      pivot: new THREE.Vector3(0, 0, 0),
-      armLength: 4,
-      speed: 2.0,
-      size: { width: 4, height: 0.4, depth: 0.3 },
-    }, SURFACE_HEIGHT);
+    const sweeper = new MovingSweeper(
+      world,
+      group,
+      {
+        pivot: new THREE.Vector3(0, 0, 0),
+        armLength: 4,
+        speed: 2.0,
+        size: { width: 4, height: 0.4, depth: 0.3 }
+      },
+      SURFACE_HEIGHT
+    );
 
-    const suction = new SuctionZone(world, group, {
-      position: new THREE.Vector3(3, 0, 3),
-      radius: 5,
-      force: 8,
-    }, SURFACE_HEIGHT);
+    const suction = new SuctionZone(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(3, 0, 3),
+        radius: 5,
+        force: 8
+      },
+      SURFACE_HEIGHT
+    );
 
-    const hazard = new TimedHazard(world, group, {
-      position: new THREE.Vector3(-2, 0, -2),
-      size: { width: 2, length: 2 },
-      onDuration: 2,
-      offDuration: 2,
-      hazardType: 'water',
-    }, SURFACE_HEIGHT);
+    const hazard = new TimedHazard(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(-2, 0, -2),
+        size: { width: 2, length: 2 },
+        onDuration: 2,
+        offDuration: 2,
+        hazardType: 'water'
+      },
+      SURFACE_HEIGHT
+    );
 
     const ball = makeMockBall(3, 3);
 
@@ -503,11 +572,16 @@ describe('Hole completion with active mechanics records correct stroke count', (
 
   it('records correct scores across multiple holes with mechanics', () => {
     // Hole 1: 2 strokes with portal
-    const portal = new PortalGate(world, group, {
-      entryPosition: new THREE.Vector3(0, 0, 0),
-      exitPosition: new THREE.Vector3(5, 0, 5),
-      radius: 1.0,
-    }, SURFACE_HEIGHT);
+    const portal = new PortalGate(
+      world,
+      group,
+      {
+        entryPosition: new THREE.Vector3(0, 0, 0),
+        exitPosition: new THREE.Vector3(5, 0, 5),
+        radius: 1.0
+      },
+      SURFACE_HEIGHT
+    );
 
     scoringSystem.addStroke();
     const ball = makeMockBall(0, 0);
@@ -517,19 +591,29 @@ describe('Hole completion with active mechanics records correct stroke count', (
     scoringSystem.resetCurrentStrokes();
 
     // Hole 2: 3 strokes with sweeper and force field
-    const sweeper = new MovingSweeper(world, group, {
-      pivot: new THREE.Vector3(0, 0, 0),
-      armLength: 3,
-      speed: 1.5,
-      size: { width: 3, height: 0.4, depth: 0.3 },
-    }, SURFACE_HEIGHT);
+    const sweeper = new MovingSweeper(
+      world,
+      group,
+      {
+        pivot: new THREE.Vector3(0, 0, 0),
+        armLength: 3,
+        speed: 1.5,
+        size: { width: 3, height: 0.4, depth: 0.3 }
+      },
+      SURFACE_HEIGHT
+    );
 
-    const boost = new BoostStrip(world, group, {
-      position: new THREE.Vector3(2, 0, 0),
-      direction: new THREE.Vector3(1, 0, 0),
-      force: 10,
-      size: { width: 2, length: 2 },
-    }, SURFACE_HEIGHT);
+    const boost = new BoostStrip(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(2, 0, 0),
+        direction: new THREE.Vector3(1, 0, 0),
+        force: 10,
+        size: { width: 2, length: 2 }
+      },
+      SURFACE_HEIGHT
+    );
 
     for (let stroke = 0; stroke < 3; stroke++) {
       scoringSystem.addStroke();
@@ -549,13 +633,18 @@ describe('Hole completion with active mechanics records correct stroke count', (
   });
 
   it('water penalty stroke counted correctly alongside timed hazard impulse', () => {
-    const hazard = new TimedHazard(world, group, {
-      position: new THREE.Vector3(0, 0, 0),
-      size: { width: 3, length: 3 },
-      onDuration: 2,
-      offDuration: 2,
-      hazardType: 'water',
-    }, SURFACE_HEIGHT);
+    const hazard = new TimedHazard(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(0, 0, 0),
+        size: { width: 3, length: 3 },
+        onDuration: 2,
+        offDuration: 2,
+        hazardType: 'water'
+      },
+      SURFACE_HEIGHT
+    );
 
     const ball = makeMockBall(0, 0);
 

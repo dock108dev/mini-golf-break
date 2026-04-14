@@ -22,7 +22,7 @@ beforeAll(() => {
         this.x = x;
         this.y = y;
         this.z = z;
-      }),
+      })
     },
     velocity: {
       x: 0,
@@ -32,12 +32,12 @@ beforeAll(() => {
         this.x = x;
         this.y = y;
         this.z = z;
-      }),
+      })
     },
     quaternion: { x: 0, y: 0, z: 0, w: 1, set: jest.fn() },
     addShape: jest.fn(),
     wakeUp: jest.fn(),
-    userData: {},
+    userData: {}
   }));
 
   THREE.Mesh.mockImplementation(() => {
@@ -50,13 +50,13 @@ beforeAll(() => {
           this.x = x;
           this.y = y;
           this.z = z;
-        }),
+        })
       },
       rotation: { x: 0, y: 0, z: 0 },
       quaternion: { x: 0, y: 0, z: 0, w: 1, copy: jest.fn() },
       castShadow: false,
       geometry: { dispose: jest.fn() },
-      material: { dispose: jest.fn() },
+      material: { dispose: jest.fn() }
     };
     mesh.parent = null;
     return mesh;
@@ -64,7 +64,9 @@ beforeAll(() => {
 
   THREE.MeshStandardMaterial.mockImplementation(opts => {
     const mat = { color: 0xffffff, dispose: jest.fn() };
-    if (opts) Object.assign(mat, opts);
+    if (opts) {
+      Object.assign(mat, opts);
+    }
     return mat;
   });
 
@@ -79,7 +81,7 @@ beforeAll(() => {
 function makeMockWorld() {
   return {
     addBody: jest.fn(),
-    removeBody: jest.fn(),
+    removeBody: jest.fn()
   };
 }
 
@@ -89,9 +91,11 @@ function makeMockGroup() {
     add: jest.fn(child => children.push(child)),
     remove: jest.fn(child => {
       const idx = children.indexOf(child);
-      if (idx !== -1) children.splice(idx, 1);
+      if (idx !== -1) {
+        children.splice(idx, 1);
+      }
     }),
-    children,
+    children
   };
 }
 
@@ -100,7 +104,7 @@ function makeConfig(overrides = {}) {
     entryPosition: { x: -3, y: 0, z: 2 },
     exitPosition: { x: 3, y: 0, z: -5 },
     radius: 0.6,
-    ...overrides,
+    ...overrides
   };
 }
 
@@ -162,7 +166,12 @@ describe('PortalGate', () => {
     });
 
     it('uses default radius when not specified', () => {
-      const portal = new PortalGate(world, group, { entryPosition: { x: 0, y: 0, z: 0 }, exitPosition: { x: 1, y: 0, z: 1 } }, surfaceHeight);
+      const portal = new PortalGate(
+        world,
+        group,
+        { entryPosition: { x: 0, y: 0, z: 0 }, exitPosition: { x: 1, y: 0, z: 1 } },
+        surfaceHeight
+      );
 
       expect(portal.radius).toBe(0.6);
     });
@@ -203,17 +212,22 @@ describe('PortalGate', () => {
       expect(THREE.MeshStandardMaterial).toHaveBeenCalledWith(
         expect.objectContaining({
           emissive: 0xff0000,
-          emissiveIntensity: 0.6,
+          emissiveIntensity: 0.6
         })
       );
     });
 
     it('uses default color when not specified', () => {
-      const portal = new PortalGate(world, group, { entryPosition: { x: 0, y: 0, z: 0 }, exitPosition: { x: 1, y: 0, z: 1 } }, surfaceHeight);
+      const portal = new PortalGate(
+        world,
+        group,
+        { entryPosition: { x: 0, y: 0, z: 0 }, exitPosition: { x: 1, y: 0, z: 1 } },
+        surfaceHeight
+      );
 
       expect(THREE.MeshStandardMaterial).toHaveBeenCalledWith(
         expect.objectContaining({
-          color: 0x8800ff,
+          color: 0x8800ff
         })
       );
     });

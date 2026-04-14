@@ -25,7 +25,7 @@ beforeAll(() => {
     x,
     y,
     z,
-    scale: s => ({ x: x * s, y: y * s, z: z * s }),
+    scale: s => ({ x: x * s, y: y * s, z: z * s })
   }));
 
   CANNON.Body.mockImplementation(() => ({
@@ -37,7 +37,7 @@ beforeAll(() => {
         this.x = nx;
         this.y = ny;
         this.z = nz;
-      }),
+      })
     },
     velocity: {
       x: 0,
@@ -47,7 +47,7 @@ beforeAll(() => {
         this.x = nx;
         this.y = ny;
         this.z = nz;
-      }),
+      })
     },
     quaternion: {
       x: 0,
@@ -56,11 +56,11 @@ beforeAll(() => {
       w: 1,
       set: jest.fn(),
       setFromAxisAngle: jest.fn(),
-      copy: jest.fn(),
+      copy: jest.fn()
     },
     addShape: jest.fn(),
     addEventListener: jest.fn(),
-    userData: {},
+    userData: {}
   }));
 
   CANNON.Body.SLEEPING = 2;
@@ -69,7 +69,9 @@ beforeAll(() => {
 
   THREE.MeshStandardMaterial.mockImplementation(opts => {
     const mat = { color: 0xffffff, roughness: 0.3, metalness: 0.2, dispose: jest.fn() };
-    if (opts) Object.assign(mat, opts);
+    if (opts) {
+      Object.assign(mat, opts);
+    }
     return mat;
   });
 
@@ -102,7 +104,7 @@ function makeMockWorld() {
     addBody: jest.fn(),
     removeBody: jest.fn(),
     step: jest.fn(),
-    bumperMaterial: { name: 'bumper' },
+    bumperMaterial: { name: 'bumper' }
   };
 }
 
@@ -112,9 +114,11 @@ function makeMockGroup() {
     add: jest.fn(child => children.push(child)),
     remove: jest.fn(child => {
       const idx = children.indexOf(child);
-      if (idx !== -1) children.splice(idx, 1);
+      if (idx !== -1) {
+        children.splice(idx, 1);
+      }
     }),
-    children,
+    children
   };
 }
 
@@ -134,7 +138,7 @@ function makeResetBall(x, z, { sleeping = false } = {}) {
         this.x = nx;
         this.y = ny;
         this.z = nz;
-      }),
+      })
     },
     velocity: {
       x: 0,
@@ -144,13 +148,13 @@ function makeResetBall(x, z, { sleeping = false } = {}) {
         this.x = nx;
         this.y = ny;
         this.z = nz;
-      }),
+      })
     },
     mass: 0.45,
     sleepState: sleeping ? CANNON.Body.SLEEPING : 0,
     applyForce: jest.fn(),
     applyImpulse: jest.fn(),
-    wakeUp: jest.fn(),
+    wakeUp: jest.fn()
   };
 }
 
@@ -168,11 +172,16 @@ describe('Ball reset into PortalGate entry zone', () => {
   beforeEach(() => {
     world = makeMockWorld();
     group = makeMockGroup();
-    portal = new PortalGate(world, group, {
-      entryPosition: entryPos,
-      exitPosition: exitPos,
-      radius: portalRadius,
-    }, SURFACE_HEIGHT);
+    portal = new PortalGate(
+      world,
+      group,
+      {
+        entryPosition: entryPos,
+        exitPosition: exitPos,
+        radius: portalRadius
+      },
+      SURFACE_HEIGHT
+    );
   });
 
   it('does not trigger teleport when cooldown is active after a prior teleport', () => {
@@ -237,11 +246,16 @@ describe('Ball reset into SuctionZone', () => {
   beforeEach(() => {
     world = makeMockWorld();
     group = makeMockGroup();
-    zone = new SuctionZone(world, group, {
-      position: zoneCenter,
-      radius: zoneRadius,
-      force: zoneForce,
-    }, SURFACE_HEIGHT);
+    zone = new SuctionZone(
+      world,
+      group,
+      {
+        position: zoneCenter,
+        radius: zoneRadius,
+        force: zoneForce
+      },
+      SURFACE_HEIGHT
+    );
   });
 
   it('applies bounded force to a reset ball inside the zone', () => {
@@ -308,12 +322,17 @@ describe('Ball reset into BoostStrip zone', () => {
   beforeEach(() => {
     world = makeMockWorld();
     group = makeMockGroup();
-    strip = new BoostStrip(world, group, {
-      position: stripPos,
-      direction: new THREE.Vector3(1, 0, 0),
-      force: stripForce,
-      size: { width: 2, length: 3 },
-    }, SURFACE_HEIGHT);
+    strip = new BoostStrip(
+      world,
+      group,
+      {
+        position: stripPos,
+        direction: new THREE.Vector3(1, 0, 0),
+        force: stripForce,
+        size: { width: 2, length: 3 }
+      },
+      SURFACE_HEIGHT
+    );
   });
 
   it('applies force on update when ball is inside the strip zone', () => {
@@ -379,12 +398,17 @@ describe('Ball reset while MovingSweeper is active', () => {
   beforeEach(() => {
     world = makeMockWorld();
     group = makeMockGroup();
-    sweeper = new MovingSweeper(world, group, {
-      pivot: pivotPos,
-      armLength,
-      speed: 2.0,
-      size: { width: armLength, height: 0.4, depth: 0.3 },
-    }, SURFACE_HEIGHT);
+    sweeper = new MovingSweeper(
+      world,
+      group,
+      {
+        pivot: pivotPos,
+        armLength,
+        speed: 2.0,
+        size: { width: armLength, height: 0.4, depth: 0.3 }
+      },
+      SURFACE_HEIGHT
+    );
   });
 
   it('sweeper does not directly modify ball position on update', () => {
@@ -478,17 +502,27 @@ describe('AIMING state after ball reset', () => {
     const group = makeMockGroup();
 
     // Create multiple active mechanics
-    const portal = new PortalGate(world, group, {
-      entryPosition: new THREE.Vector3(10, 0, 10),
-      exitPosition: new THREE.Vector3(-5, 0, -5),
-      radius: 0.6,
-    }, SURFACE_HEIGHT);
+    const portal = new PortalGate(
+      world,
+      group,
+      {
+        entryPosition: new THREE.Vector3(10, 0, 10),
+        exitPosition: new THREE.Vector3(-5, 0, -5),
+        radius: 0.6
+      },
+      SURFACE_HEIGHT
+    );
 
-    const zone = new SuctionZone(world, group, {
-      position: new THREE.Vector3(20, 0, 20),
-      radius: 3,
-      force: 5,
-    }, SURFACE_HEIGHT);
+    const zone = new SuctionZone(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(20, 0, 20),
+        radius: 3,
+        force: 5
+      },
+      SURFACE_HEIGHT
+    );
 
     // Ball reset at position away from all mechanics
     const ball = makeResetBall(0, 0);
@@ -519,31 +553,51 @@ describe('Multiple active mechanics during ball reset', () => {
   });
 
   it('ball reset away from all mechanic zones is completely unaffected', () => {
-    const portal = new PortalGate(world, group, {
-      entryPosition: new THREE.Vector3(-10, 0, -10),
-      exitPosition: new THREE.Vector3(10, 0, 10),
-      radius: 0.6,
-    }, SURFACE_HEIGHT);
+    const portal = new PortalGate(
+      world,
+      group,
+      {
+        entryPosition: new THREE.Vector3(-10, 0, -10),
+        exitPosition: new THREE.Vector3(10, 0, 10),
+        radius: 0.6
+      },
+      SURFACE_HEIGHT
+    );
 
-    const suction = new SuctionZone(world, group, {
-      position: new THREE.Vector3(15, 0, 15),
-      radius: 3,
-      force: 8,
-    }, SURFACE_HEIGHT);
+    const suction = new SuctionZone(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(15, 0, 15),
+        radius: 3,
+        force: 8
+      },
+      SURFACE_HEIGHT
+    );
 
-    const boost = new BoostStrip(world, group, {
-      position: new THREE.Vector3(-15, 0, -15),
-      direction: new THREE.Vector3(1, 0, 0),
-      force: 10,
-      size: { width: 2, length: 2 },
-    }, SURFACE_HEIGHT);
+    const boost = new BoostStrip(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(-15, 0, -15),
+        direction: new THREE.Vector3(1, 0, 0),
+        force: 10,
+        size: { width: 2, length: 2 }
+      },
+      SURFACE_HEIGHT
+    );
 
-    const sweeper = new MovingSweeper(world, group, {
-      pivot: new THREE.Vector3(20, 0, 20),
-      armLength: 3,
-      speed: 1.5,
-      size: { width: 3, height: 0.4, depth: 0.3 },
-    }, SURFACE_HEIGHT);
+    const sweeper = new MovingSweeper(
+      world,
+      group,
+      {
+        pivot: new THREE.Vector3(20, 0, 20),
+        armLength: 3,
+        speed: 1.5,
+        size: { width: 3, height: 0.4, depth: 0.3 }
+      },
+      SURFACE_HEIGHT
+    );
 
     // Ball reset at origin — far from all mechanics
     const ball = makeResetBall(0, 0);

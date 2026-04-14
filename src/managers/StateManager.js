@@ -190,6 +190,14 @@ export class StateManager {
     if (this.game.scoringSystem) {
       this.game.scoringSystem.resetCurrentStrokes();
       debug.log('[StateManager] Called scoringSystem.resetCurrentStrokes()');
+
+      // Set max strokes for the new hole
+      if (this.game.course) {
+        const config = this.game.course.getCurrentHoleConfig();
+        if (config) {
+          this.game.scoringSystem.setMaxStrokes(config.par, config.maxStrokes);
+        }
+      }
     } else {
       console.warn('[StateManager] ScoringSystem not found, cannot reset strokes.');
     }
@@ -216,6 +224,109 @@ export class StateManager {
     // --- End Publish ---
 
     return this;
+  }
+
+  /**
+   * Skip directly to a specific hole by index (1-based).
+   * Performs a full hole transition: unloads current, loads target, repositions ball.
+   * @param {number} holeNumber - 1-based hole number to skip to
+   * @returns {Promise<boolean>} - True if transition succeeded
+   */
+  async skipToHole(holeNumber) {
+    const totalHoles = this.game.course.getTotalHoles();
+
+    if (!Number.isInteger(holeNumber) || holeNumber < 1 || holeNumber > totalHoles) {
+      console.warn(
+        `[StateManager.skipToHole] Invalid hole number ${holeNumber} (range: 1-${totalHoles})`
+      );
+      return false;
+    }
+
+    debug.log(`[StateManager.skipToHole] Skipping to hole ${holeNumber}`);
+
+    try {
+      this.game.uiManager?.showTransitionOverlay();
+      await this.game.holeTransitionManager.unloadCurrentHole();
+      await this._resetPhysicsForSkip();
+
+      const success = await this.game.course.createCourse(holeNumber);
+      if (!success) {
+        console.error(`[StateManager.skipToHole] Failed to create hole ${holeNumber}`);
+        return false;
+      }
+
+      this._applySkipState(holeNumber);
+      this._setupSkipManagers();
+      this._updateSkipUI(holeNumber);
+
+      this.setGameState(GameState.AIMING);
+
+      this.game.eventManager?.publish(EventTypes.HOLE_STARTED, { holeNumber }, this);
+
+      debug.log(`[StateManager.skipToHole] Successfully skipped to hole ${holeNumber}`);
+      return true;
+    } catch (error) {
+      console.error('[StateManager.skipToHole] Error during skip:', error);
+      this.game.uiManager?.hideTransitionOverlay();
+      return false;
+    }
+  }
+
+  /** @private Reset physics world for skip-to-hole. */
+  async _resetPhysicsForSkip() {
+    if (!this.game.physicsManager?.resetWorld) {
+      return;
+    }
+    const newWorld = await this.game.physicsManager.resetWorld();
+    if (newWorld?.world && this.game.cannonDebugRenderer) {
+      this.game.cannonDebugRenderer.clearMeshes();
+      this.game.cannonDebugRenderer.world = newWorld.world;
+    }
+  }
+
+  /** @private Apply state changes after hole is created for skip. */
+  _applySkipState(holeNumber) {
+    this.state.currentHoleNumber = holeNumber;
+    this.state.holeCompleted = false;
+    this.state.ballInMotion = false;
+
+    if (this.game.scoringSystem) {
+      this.game.scoringSystem.resetCurrentStrokes();
+      const config = this.game.course.getCurrentHoleConfig();
+      if (config) {
+        this.game.scoringSystem.setMaxStrokes(config.par, config.maxStrokes);
+      }
+    }
+  }
+
+  /** @private Set up managers for the newly loaded hole after skip. */
+  _setupSkipManagers() {
+    this.game.holeCompletionManager?.resetGracePeriod();
+
+    const holeConfig = this.game.course?.getCurrentHoleConfig();
+    if (holeConfig && this.game.hazardManager) {
+      this.game.hazardManager.setHoleBounds(holeConfig);
+    }
+
+    const startPosition = this.game.course.getHoleStartPosition();
+    if (startPosition) {
+      this.game.ballManager?.createBall(startPosition);
+    }
+
+    this.game.inputController?.enableInput();
+    this.game.cameraController?.positionCameraForHole();
+  }
+
+  /** @private Update UI after skip-to-hole transition. */
+  _updateSkipUI(holeNumber) {
+    if (!this.game.uiManager) {
+      return;
+    }
+    this.game.uiManager.updateHoleInfo(holeNumber);
+    this.game.uiManager.showMessage(`Hole ${holeNumber}`);
+    this.game.uiManager.updateScore();
+    this.game.uiManager.updateStrokes();
+    this.game.uiManager.hideTransitionOverlay();
   }
 
   /**

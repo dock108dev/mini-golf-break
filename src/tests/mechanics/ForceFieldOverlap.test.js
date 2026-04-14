@@ -22,7 +22,7 @@ beforeAll(() => {
     x,
     y,
     z,
-    scale: s => ({ x: x * s, y: y * s, z: z * s }),
+    scale: s => ({ x: x * s, y: y * s, z: z * s })
   }));
 
   CANNON.Body.mockImplementation(() => ({
@@ -34,17 +34,19 @@ beforeAll(() => {
         this.x = x;
         this.y = y;
         this.z = z;
-      }),
+      })
     },
     velocity: { x: 0, y: 0, z: 0, set: jest.fn() },
     quaternion: { x: 0, y: 0, z: 0, w: 1, set: jest.fn(), setFromAxisAngle: jest.fn() },
     addShape: jest.fn(),
-    userData: {},
+    userData: {}
   }));
 
   THREE.MeshStandardMaterial.mockImplementation(opts => {
     const mat = { color: 0xffffff, roughness: 0.3, metalness: 0.2, dispose: jest.fn() };
-    if (opts) Object.assign(mat, opts);
+    if (opts) {
+      Object.assign(mat, opts);
+    }
     return mat;
   });
 
@@ -60,7 +62,7 @@ function makeMockWorld() {
   return {
     addBody: jest.fn(),
     removeBody: jest.fn(),
-    step: jest.fn(),
+    step: jest.fn()
   };
 }
 
@@ -70,9 +72,11 @@ function makeMockGroup() {
     add: jest.fn(child => children.push(child)),
     remove: jest.fn(child => {
       const idx = children.indexOf(child);
-      if (idx !== -1) children.splice(idx, 1);
+      if (idx !== -1) {
+        children.splice(idx, 1);
+      }
     }),
-    children,
+    children
   };
 }
 
@@ -83,7 +87,7 @@ function makeMockBall(x = 0, z = 0, mass = 0.45) {
     quaternion: { x: 0, y: 0, z: 0, w: 1 },
     mass,
     sleepState: 0, // AWAKE
-    applyForce: jest.fn(),
+    applyForce: jest.fn()
   };
 }
 
@@ -108,22 +112,19 @@ describe('Force field overlap and stacking', () => {
         position: new THREE.Vector3(0, 0, 0),
         direction: new THREE.Vector3(1, 0, 0),
         force: 10,
-        size: { width: 4, length: 4 },
+        size: { width: 4, length: 4 }
       };
       const lowGravConfig = {
         position: new THREE.Vector3(0, 0, 0),
         radius: 5,
-        gravityMultiplier: 0.3,
+        gravityMultiplier: 0.3
       };
 
       const boost = new BoostStrip(world, group, boostConfig, SURFACE_HEIGHT);
       const lowGrav = new LowGravityZone(world, group, lowGravConfig, SURFACE_HEIGHT);
 
       // Place ball at the center of both zones
-      const ball = makeMockBall(
-        boost.triggerBody.position.x,
-        boost.triggerBody.position.z
-      );
+      const ball = makeMockBall(boost.triggerBody.position.x, boost.triggerBody.position.z);
 
       boost.update(0.016, ball);
       lowGrav.update(0.016, ball);
@@ -148,22 +149,19 @@ describe('Force field overlap and stacking', () => {
         position: new THREE.Vector3(0, 0, 0),
         direction: new THREE.Vector3(0, 0, -1),
         force: 15,
-        size: { width: 6, length: 6 },
+        size: { width: 6, length: 6 }
       };
       const lowGravConfig = {
         position: new THREE.Vector3(0, 0, 0),
         radius: 5,
-        gravityMultiplier: 0.5,
+        gravityMultiplier: 0.5
       };
 
       const boost = new BoostStrip(world, group, boostConfig, SURFACE_HEIGHT);
       const lowGrav = new LowGravityZone(world, group, lowGravConfig, SURFACE_HEIGHT);
 
       // Ball in overlap zone
-      const ballOverlap = makeMockBall(
-        boost.triggerBody.position.x,
-        boost.triggerBody.position.z
-      );
+      const ballOverlap = makeMockBall(boost.triggerBody.position.x, boost.triggerBody.position.z);
       boost.update(0.016, ballOverlap);
       lowGrav.update(0.016, ballOverlap);
 
@@ -196,12 +194,12 @@ describe('Force field overlap and stacking', () => {
       const suctionConfig = {
         position: new THREE.Vector3(0, 0, 0),
         radius: 5,
-        force: 8,
+        force: 8
       };
       const bowlConfig = {
         position: new THREE.Vector3(0, 0, 0),
         radius: 5,
-        force: 4,
+        force: 4
       };
 
       const suction = new SuctionZone(world, group, suctionConfig, SURFACE_HEIGHT);
@@ -229,17 +227,17 @@ describe('Force field overlap and stacking', () => {
         position: new THREE.Vector3(0, 0, 0),
         direction: new THREE.Vector3(1, 0, 0),
         force: 5,
-        size: { width: 6, length: 6 },
+        size: { width: 6, length: 6 }
       };
       const suctionConfig = {
         position: new THREE.Vector3(0, 0, 0),
         radius: 5,
-        force: 3,
+        force: 3
       };
       const lowGravConfig = {
         position: new THREE.Vector3(0, 0, 0),
         radius: 5,
-        gravityMultiplier: 0.2,
+        gravityMultiplier: 0.2
       };
 
       const boost = new BoostStrip(world, group, boostConfig, SURFACE_HEIGHT);
@@ -280,25 +278,32 @@ describe('Force field transitions', () => {
   describe('ball moving between adjacent fields', () => {
     it('receives exactly one force when in only one zone at a time', () => {
       // Two BoostStrips side by side with no overlap
-      const boostA = new BoostStrip(world, group, {
-        position: new THREE.Vector3(-5, 0, 0),
-        direction: new THREE.Vector3(1, 0, 0),
-        force: 10,
-        size: { width: 2, length: 2 },
-      }, SURFACE_HEIGHT);
+      const boostA = new BoostStrip(
+        world,
+        group,
+        {
+          position: new THREE.Vector3(-5, 0, 0),
+          direction: new THREE.Vector3(1, 0, 0),
+          force: 10,
+          size: { width: 2, length: 2 }
+        },
+        SURFACE_HEIGHT
+      );
 
-      const boostB = new BoostStrip(world, group, {
-        position: new THREE.Vector3(5, 0, 0),
-        direction: new THREE.Vector3(0, 0, -1),
-        force: 8,
-        size: { width: 2, length: 2 },
-      }, SURFACE_HEIGHT);
+      const boostB = new BoostStrip(
+        world,
+        group,
+        {
+          position: new THREE.Vector3(5, 0, 0),
+          direction: new THREE.Vector3(0, 0, -1),
+          force: 8,
+          size: { width: 2, length: 2 }
+        },
+        SURFACE_HEIGHT
+      );
 
       // Ball in zone A only
-      const ball = makeMockBall(
-        boostA.triggerBody.position.x,
-        boostA.triggerBody.position.z
-      );
+      const ball = makeMockBall(boostA.triggerBody.position.x, boostA.triggerBody.position.z);
 
       boostA.update(0.016, ball);
       boostB.update(0.016, ball);
@@ -310,17 +315,27 @@ describe('Force field transitions', () => {
 
     it('no frame gap when ball transitions between adjacent zones', () => {
       // Two LowGravityZones that are touching/slightly overlapping
-      const zoneA = new LowGravityZone(world, group, {
-        position: new THREE.Vector3(-3, 0, 0),
-        radius: 4,
-        gravityMultiplier: 0.3,
-      }, SURFACE_HEIGHT);
+      const zoneA = new LowGravityZone(
+        world,
+        group,
+        {
+          position: new THREE.Vector3(-3, 0, 0),
+          radius: 4,
+          gravityMultiplier: 0.3
+        },
+        SURFACE_HEIGHT
+      );
 
-      const zoneB = new LowGravityZone(world, group, {
-        position: new THREE.Vector3(3, 0, 0),
-        radius: 4,
-        gravityMultiplier: 0.5,
-      }, SURFACE_HEIGHT);
+      const zoneB = new LowGravityZone(
+        world,
+        group,
+        {
+          position: new THREE.Vector3(3, 0, 0),
+          radius: 4,
+          gravityMultiplier: 0.5
+        },
+        SURFACE_HEIGHT
+      );
 
       // Ball at the boundary between the two zones (x=0, within both radii)
       const ball = makeMockBall(0, 0);
@@ -337,11 +352,16 @@ describe('Force field transitions', () => {
 
     it('no double-application within a single update cycle', () => {
       // A single force field should only apply force once per update call
-      const zone = new SuctionZone(world, group, {
-        position: new THREE.Vector3(0, 0, 0),
-        radius: 5,
-        force: 10,
-      }, SURFACE_HEIGHT);
+      const zone = new SuctionZone(
+        world,
+        group,
+        {
+          position: new THREE.Vector3(0, 0, 0),
+          radius: 5,
+          force: 10
+        },
+        SURFACE_HEIGHT
+      );
 
       const ball = makeMockBall(2, 0);
 
@@ -371,18 +391,20 @@ describe('Force field exit behavior', () => {
 
   describe('BoostStrip exit', () => {
     it('stops applying force immediately when ball leaves zone', () => {
-      const strip = new BoostStrip(world, group, {
-        position: new THREE.Vector3(0, 0, 0),
-        direction: new THREE.Vector3(1, 0, 0),
-        force: 10,
-        size: { width: 2, length: 2 },
-      }, SURFACE_HEIGHT);
+      const strip = new BoostStrip(
+        world,
+        group,
+        {
+          position: new THREE.Vector3(0, 0, 0),
+          direction: new THREE.Vector3(1, 0, 0),
+          force: 10,
+          size: { width: 2, length: 2 }
+        },
+        SURFACE_HEIGHT
+      );
 
       // Frame 1: ball inside zone
-      const ball = makeMockBall(
-        strip.triggerBody.position.x,
-        strip.triggerBody.position.z
-      );
+      const ball = makeMockBall(strip.triggerBody.position.x, strip.triggerBody.position.z);
       strip.update(0.016, ball);
       expect(ball.applyForce).toHaveBeenCalledTimes(1);
 
@@ -398,11 +420,16 @@ describe('Force field exit behavior', () => {
 
   describe('SuctionZone exit', () => {
     it('stops applying force immediately when ball leaves zone', () => {
-      const zone = new SuctionZone(world, group, {
-        position: new THREE.Vector3(0, 0, 0),
-        radius: 5,
-        force: 10,
-      }, SURFACE_HEIGHT);
+      const zone = new SuctionZone(
+        world,
+        group,
+        {
+          position: new THREE.Vector3(0, 0, 0),
+          radius: 5,
+          force: 10
+        },
+        SURFACE_HEIGHT
+      );
 
       const ball = makeMockBall(3, 0);
 
@@ -419,11 +446,16 @@ describe('Force field exit behavior', () => {
 
   describe('LowGravityZone exit', () => {
     it('stops applying counter-gravity immediately when ball leaves zone', () => {
-      const zone = new LowGravityZone(world, group, {
-        position: new THREE.Vector3(0, 0, 0),
-        radius: 3,
-        gravityMultiplier: 0.3,
-      }, SURFACE_HEIGHT);
+      const zone = new LowGravityZone(
+        world,
+        group,
+        {
+          position: new THREE.Vector3(0, 0, 0),
+          radius: 3,
+          gravityMultiplier: 0.3
+        },
+        SURFACE_HEIGHT
+      );
 
       const ball = makeMockBall(1, 0);
 
@@ -443,11 +475,16 @@ describe('Force field exit behavior', () => {
 
   describe('BowlContour exit', () => {
     it('stops applying force immediately when ball leaves zone', () => {
-      const bowl = new BowlContour(world, group, {
-        position: new THREE.Vector3(0, 0, 0),
-        radius: 4,
-        force: 5,
-      }, SURFACE_HEIGHT);
+      const bowl = new BowlContour(
+        world,
+        group,
+        {
+          position: new THREE.Vector3(0, 0, 0),
+          radius: 4,
+          force: 5
+        },
+        SURFACE_HEIGHT
+      );
 
       const ball = makeMockBall(2, 0);
 
@@ -464,11 +501,16 @@ describe('Force field exit behavior', () => {
 
   describe('no lingering state after exit', () => {
     it('force field has no persistent effect after ball leaves and re-enters', () => {
-      const zone = new LowGravityZone(world, group, {
-        position: new THREE.Vector3(0, 0, 0),
-        radius: 5,
-        gravityMultiplier: 0.3,
-      }, SURFACE_HEIGHT);
+      const zone = new LowGravityZone(
+        world,
+        group,
+        {
+          position: new THREE.Vector3(0, 0, 0),
+          radius: 5,
+          gravityMultiplier: 0.3
+        },
+        SURFACE_HEIGHT
+      );
 
       // Enter
       const ball = makeMockBall(1, 0);
@@ -503,24 +545,39 @@ describe('Force field visual mesh independence', () => {
   });
 
   it('overlapping force fields create separate visual meshes', () => {
-    const boost = new BoostStrip(world, group, {
-      position: new THREE.Vector3(0, 0, 0),
-      direction: new THREE.Vector3(1, 0, 0),
-      force: 10,
-      size: { width: 4, length: 4 },
-    }, SURFACE_HEIGHT);
+    const boost = new BoostStrip(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(0, 0, 0),
+        direction: new THREE.Vector3(1, 0, 0),
+        force: 10,
+        size: { width: 4, length: 4 }
+      },
+      SURFACE_HEIGHT
+    );
 
-    const lowGrav = new LowGravityZone(world, group, {
-      position: new THREE.Vector3(0, 0, 0),
-      radius: 5,
-      gravityMultiplier: 0.3,
-    }, SURFACE_HEIGHT);
+    const lowGrav = new LowGravityZone(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(0, 0, 0),
+        radius: 5,
+        gravityMultiplier: 0.3
+      },
+      SURFACE_HEIGHT
+    );
 
-    const suction = new SuctionZone(world, group, {
-      position: new THREE.Vector3(0, 0, 0),
-      radius: 4,
-      force: 6,
-    }, SURFACE_HEIGHT);
+    const suction = new SuctionZone(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(0, 0, 0),
+        radius: 4,
+        force: 6
+      },
+      SURFACE_HEIGHT
+    );
 
     // Each mechanic has its own independent mesh
     expect(boost.meshes).toHaveLength(1);
@@ -537,18 +594,28 @@ describe('Force field visual mesh independence', () => {
   });
 
   it('destroying one field does not affect another overlapping field', () => {
-    const boost = new BoostStrip(world, group, {
-      position: new THREE.Vector3(0, 0, 0),
-      direction: new THREE.Vector3(1, 0, 0),
-      force: 10,
-      size: { width: 4, length: 4 },
-    }, SURFACE_HEIGHT);
+    const boost = new BoostStrip(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(0, 0, 0),
+        direction: new THREE.Vector3(1, 0, 0),
+        force: 10,
+        size: { width: 4, length: 4 }
+      },
+      SURFACE_HEIGHT
+    );
 
-    const lowGrav = new LowGravityZone(world, group, {
-      position: new THREE.Vector3(0, 0, 0),
-      radius: 5,
-      gravityMultiplier: 0.3,
-    }, SURFACE_HEIGHT);
+    const lowGrav = new LowGravityZone(
+      world,
+      group,
+      {
+        position: new THREE.Vector3(0, 0, 0),
+        radius: 5,
+        gravityMultiplier: 0.3
+      },
+      SURFACE_HEIGHT
+    );
 
     // Destroy boost — lowGrav should still work
     boost.destroy();

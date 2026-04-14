@@ -31,7 +31,7 @@ beforeAll(() => {
     x,
     y,
     z,
-    scale: s => ({ x: x * s, y: y * s, z: z * s }),
+    scale: s => ({ x: x * s, y: y * s, z: z * s })
   }));
 
   CANNON.Body.mockImplementation(() => ({
@@ -43,17 +43,19 @@ beforeAll(() => {
         this.x = x;
         this.y = y;
         this.z = z;
-      }),
+      })
     },
     velocity: { x: 0, y: 0, z: 0, set: jest.fn() },
     quaternion: { x: 0, y: 0, z: 0, w: 1, set: jest.fn(), setFromAxisAngle: jest.fn() },
     addShape: jest.fn(),
-    userData: {},
+    userData: {}
   }));
 
   THREE.MeshStandardMaterial.mockImplementation(opts => {
     const mat = { color: 0xffffff, roughness: 0.3, metalness: 0.2, dispose: jest.fn() };
-    if (opts) Object.assign(mat, opts);
+    if (opts) {
+      Object.assign(mat, opts);
+    }
     return mat;
   });
 
@@ -69,7 +71,7 @@ function makeMockWorld() {
   return {
     addBody: jest.fn(),
     removeBody: jest.fn(),
-    step: jest.fn(),
+    step: jest.fn()
   };
 }
 
@@ -79,9 +81,11 @@ function makeMockGroup() {
     add: jest.fn(child => children.push(child)),
     remove: jest.fn(child => {
       const idx = children.indexOf(child);
-      if (idx !== -1) children.splice(idx, 1);
+      if (idx !== -1) {
+        children.splice(idx, 1);
+      }
     }),
-    children,
+    children
   };
 }
 
@@ -99,7 +103,7 @@ function makeMockBall(x = 0, z = 0, mass = 0.45) {
     sleepState: 0, // AWAKE
     linearDamping: 0.85, // default ball damping
     applyForce: jest.fn(),
-    wakeUp: jest.fn(),
+    wakeUp: jest.fn()
   };
 }
 
@@ -123,7 +127,7 @@ describe('SuctionZone and sand trap overlap', () => {
     const suctionConfig = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      force: 8,
+      force: 8
     };
     const suction = new SuctionZone(world, group, suctionConfig, SURFACE_HEIGHT);
 
@@ -153,7 +157,7 @@ describe('SuctionZone and sand trap overlap', () => {
     const suctionConfig = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      force: 10,
+      force: 10
     };
     const suction = new SuctionZone(world, group, suctionConfig, SURFACE_HEIGHT);
 
@@ -194,15 +198,12 @@ describe('BoostStrip and water hazard overlap', () => {
       position: new THREE.Vector3(0, 0, 0),
       direction: new THREE.Vector3(1, 0, 0),
       force: 15,
-      size: { width: 4, length: 4 },
+      size: { width: 4, length: 4 }
     };
     const boost = new BoostStrip(world, group, boostConfig, SURFACE_HEIGHT);
 
     // Ball starts in the boost strip zone
-    const ball = makeMockBall(
-      boost.triggerBody.position.x,
-      boost.triggerBody.position.z
-    );
+    const ball = makeMockBall(boost.triggerBody.position.x, boost.triggerBody.position.z);
 
     // Frame 1: Boost applies force to the ball
     boost.update(DT, ball);
@@ -234,15 +235,12 @@ describe('BoostStrip and water hazard overlap', () => {
       position: new THREE.Vector3(0, 0, 0),
       direction: new THREE.Vector3(0, 0, -1),
       force: 12,
-      size: { width: 6, length: 6 },
+      size: { width: 6, length: 6 }
     };
     const boost = new BoostStrip(world, group, boostConfig, SURFACE_HEIGHT);
 
     // Ball inside both boost strip and hypothetical water zone
-    const ball = makeMockBall(
-      boost.triggerBody.position.x,
-      boost.triggerBody.position.z
-    );
+    const ball = makeMockBall(boost.triggerBody.position.x, boost.triggerBody.position.z);
 
     // The boost strip mechanic doesn't check for water — it only checks zone overlap
     boost.update(DT, ball);
@@ -270,7 +268,7 @@ describe('LowGravityZone and sand trap overlap', () => {
     const lowGravConfig = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      gravityMultiplier: 0.3,
+      gravityMultiplier: 0.3
     };
     const lowGrav = new LowGravityZone(world, group, lowGravConfig, SURFACE_HEIGHT);
 
@@ -296,7 +294,7 @@ describe('LowGravityZone and sand trap overlap', () => {
     const lowGravConfig = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      gravityMultiplier: 0.5,
+      gravityMultiplier: 0.5
     };
 
     const lowGrav = new LowGravityZone(world, group, lowGravConfig, SURFACE_HEIGHT);
@@ -321,7 +319,7 @@ describe('LowGravityZone and sand trap overlap', () => {
     const lowGravConfig = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      gravityMultiplier: 0.3,
+      gravityMultiplier: 0.3
     };
     const lowGrav = new LowGravityZone(world, group, lowGravConfig, SURFACE_HEIGHT);
 
@@ -371,17 +369,17 @@ describe('Force field and hazard update order', () => {
       position: new THREE.Vector3(0, 0, 0),
       direction: new THREE.Vector3(1, 0, 0),
       force: 10,
-      size: { width: 6, length: 6 },
+      size: { width: 6, length: 6 }
     };
     const suctionConfig = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      force: 8,
+      force: 8
     };
     const lowGravConfig = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      gravityMultiplier: 0.3,
+      gravityMultiplier: 0.3
     };
 
     const boost = new BoostStrip(world, group, boostConfig, SURFACE_HEIGHT);
@@ -424,14 +422,11 @@ describe('Force field and hazard update order', () => {
       position: new THREE.Vector3(0, 0, 0),
       direction: new THREE.Vector3(1, 0, 0),
       force: 10,
-      size: { width: 8, length: 8 },
+      size: { width: 8, length: 8 }
     };
     const boost = new BoostStrip(world, group, boostConfig, SURFACE_HEIGHT);
 
-    const ball = makeMockBall(
-      boost.triggerBody.position.x,
-      boost.triggerBody.position.z
-    );
+    const ball = makeMockBall(boost.triggerBody.position.x, boost.triggerBody.position.z);
 
     // Frame 1: Ball on normal ground in boost zone
     ball.linearDamping = 0.85;

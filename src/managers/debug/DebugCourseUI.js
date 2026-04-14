@@ -1,5 +1,6 @@
 import { debug } from '../../utils/debug';
-import { DEBUG_CONFIG } from '../DebugManager'; // Need config for keys
+import { DEBUG_CONFIG } from '../DebugManager';
+import { isIsolationMode, setIsolationMode, isDevHarnessActive } from '../../utils/devHoleHarness';
 
 /**
  * DebugCourseUI - Manages the UI overlay and input for course debugging.
@@ -88,6 +89,11 @@ export class DebugCourseUI {
         `;
     this.courseDebugUI.appendChild(keyInfo);
 
+    // Add hole selector dropdown (dev harness)
+    if (isDevHarnessActive()) {
+      this.createHoleDropdown();
+    }
+
     document.body.appendChild(this.courseDebugUI);
 
     // Add listener for key presses
@@ -123,7 +129,9 @@ export class DebugCourseUI {
    */
   handleKeyPress(e) {
     // IMPORTANT: Only process keys if the main debug mode is enabled
-    if (!this.debugManager.enabled) {return;}
+    if (!this.debugManager.enabled) {
+      return;
+    }
 
     const courseDebugConfig = DEBUG_CONFIG.courseDebug;
 
@@ -147,7 +155,9 @@ export class DebugCourseUI {
    * Update the displayed information in the course debug UI.
    */
   updateDisplay() {
-    if (!this.courseDebugUI) {return;}
+    if (!this.courseDebugUI) {
+      return;
+    }
 
     // Show/hide based on main debug manager state
     this.courseDebugUI.style.display = this.debugManager.enabled ? 'block' : 'none';
@@ -163,8 +173,85 @@ export class DebugCourseUI {
       if (holeElement) {
         holeElement.textContent = `Current Hole: ${state.currentHole}`;
       }
-      // debug.log('[DebugCourseUI] Updated display.'); // Can be noisy
+      if (this.holeDropdown) {
+        this.holeDropdown.value = state.currentHole;
+      }
     }
+  }
+
+  /**
+   * Create hole selector dropdown and isolation toggle for dev harness.
+   */
+  createHoleDropdown() {
+    const container = document.createElement('div');
+    container.style.marginTop = '8px';
+    container.style.borderTop = '1px solid #00FF00';
+    container.style.paddingTop = '6px';
+
+    const label = document.createElement('div');
+    label.style.fontSize = '11px';
+    label.style.marginBottom = '4px';
+    label.textContent = 'SKIP TO HOLE:';
+    container.appendChild(label);
+
+    this.holeDropdown = document.createElement('select');
+    this.holeDropdown.id = 'dev-hole-select';
+    this.holeDropdown.style.cssText =
+      'width: 100%; background: #111; color: #0f0; border: 1px solid #0f0; ' +
+      'font-family: monospace; font-size: 12px; padding: 2px;';
+
+    this.populateHoleDropdown();
+
+    this.holeDropdown.addEventListener('change', () => {
+      const holeNumber = parseInt(this.holeDropdown.value, 10);
+      if (holeNumber > 0 && this.game.stateManager) {
+        debug.log(`[DebugCourseUI] Dropdown: skipping to hole ${holeNumber}`);
+        this.game.stateManager.skipToHole(holeNumber);
+      }
+    });
+    container.appendChild(this.holeDropdown);
+
+    const isolateLabel = document.createElement('label');
+    isolateLabel.style.cssText =
+      'display: flex; align-items: center; gap: 4px; margin-top: 4px; font-size: 11px;';
+
+    this.isolateCheckbox = document.createElement('input');
+    this.isolateCheckbox.type = 'checkbox';
+    this.isolateCheckbox.checked = isIsolationMode();
+    this.isolateCheckbox.addEventListener('change', () => {
+      setIsolationMode(this.isolateCheckbox.checked);
+      debug.log(`[DebugCourseUI] Isolation mode: ${this.isolateCheckbox.checked}`);
+    });
+    isolateLabel.appendChild(this.isolateCheckbox);
+    isolateLabel.appendChild(document.createTextNode('Isolation mode'));
+    container.appendChild(isolateLabel);
+
+    this.courseDebugUI.appendChild(container);
+  }
+
+  /**
+   * Populate hole dropdown with hole names from course configs.
+   */
+  populateHoleDropdown() {
+    if (!this.holeDropdown) {
+      return;
+    }
+    this.holeDropdown.innerHTML = '';
+
+    const configs = this.game.course?.holeConfigs;
+    if (!configs) {
+      return;
+    }
+
+    for (let i = 0; i < configs.length; i++) {
+      const opt = document.createElement('option');
+      opt.value = i + 1;
+      opt.textContent = configs[i].description || `Hole ${i + 1}`;
+      this.holeDropdown.appendChild(opt);
+    }
+
+    const currentHole = this.game.stateManager?.getCurrentHoleNumber() || 1;
+    this.holeDropdown.value = currentHole;
   }
 
   /**

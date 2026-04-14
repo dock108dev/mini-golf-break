@@ -6,11 +6,11 @@ import { HoleCompletionManager } from '../../managers/HoleCompletionManager';
 import { EventTypes } from '../../events/EventTypes';
 import { GameState } from '../../states/GameState';
 
-// Mock dependencies
 jest.mock('../../events/EventTypes', () => ({
   EventTypes: {
-    BALL_IN_HOLE: 'BALL_IN_HOLE',
-    HOLE_COMPLETED: 'HOLE_COMPLETED'
+    BALL_IN_HOLE: 'ball:in_hole',
+    HOLE_COMPLETED: 'hole:completed',
+    STROKE_LIMIT_REACHED: 'scoring:stroke_limit_reached'
   }
 }));
 
@@ -20,536 +20,467 @@ jest.mock('../../states/GameState', () => ({
   }
 }));
 
+function createMockGame(overrides = {}) {
+  const mockHoleMesh = {
+    material: { opacity: 1, transparent: false },
+    scale: { set: jest.fn() }
+  };
+
+  return {
+    eventManager: {
+      subscribe: jest.fn(),
+      publish: jest.fn()
+    },
+    stateManager: {
+      getCurrentHoleNumber: jest.fn(() => 1),
+      isHoleCompleted: jest.fn(() => false),
+      setHoleCompleted: jest.fn(),
+      setGameState: jest.fn()
+    },
+    course: {
+      getTotalHoles: jest.fn(() => 9),
+      getCurrentHoleMesh: jest.fn(() => mockHoleMesh),
+      getHolePar: jest.fn(() => 3)
+    },
+    ballManager: {
+      ball: {
+        handleHoleSuccess: jest.fn()
+      }
+    },
+    audioManager: {
+      playSound: jest.fn()
+    },
+    uiManager: {
+      showMessage: jest.fn(),
+      updateScore: jest.fn(),
+      updateHoleNumber: jest.fn(),
+      updatePar: jest.fn()
+    },
+    debugManager: {
+      log: jest.fn()
+    },
+    holeTransitionManager: {
+      transitionToNextHole: jest.fn()
+    },
+    scene: {
+      remove: jest.fn()
+    },
+    scoringSystem: {
+      getTotalStrokes: jest.fn(() => 3)
+    },
+    ...overrides
+  };
+}
+
 describe('HoleCompletionManager', () => {
   let mockGame;
-  let holeCompletionManager;
+  let manager;
 
   beforeEach(() => {
-    // Mock game object
-    mockGame = {
-      eventManager: {
-        subscribe: jest.fn(),
-        publish: jest.fn()
-      },
-      stateManager: {
-        getCurrentHoleNumber: jest.fn(() => 1),
-        isHoleCompleted: jest.fn(() => false),
-        setHoleCompleted: jest.fn(),
-        setGameState: jest.fn()
-      },
-      course: {
-        getTotalHoles: jest.fn(() => 18),
-        getCurrentHoleMesh: jest.fn(() => mockHoleMesh),
-        getHolePar: jest.fn(() => 3)
-      },
-      ballManager: {
-        ball: {
-          handleHoleSuccess: jest.fn()
-        }
-      },
-      audioManager: {
-        playSound: jest.fn()
-      },
-      uiManager: {
-        showMessage: jest.fn(),
-        updateScore: jest.fn(),
-        updateHoleNumber: jest.fn(),
-        updatePar: jest.fn()
-      },
-      debugManager: {
-        log: jest.fn()
-      },
-      holeTransitionManager: {
-        transitionToNextHole: jest.fn()
-      },
-      scene: {
-        remove: jest.fn()
-      },
-      scoringSystem: {
-        getTotalStrokes: jest.fn(() => 15)
-      }
-    };
-
-    // Mock hole mesh
-    const mockHoleMesh = {
-      material: {
-        opacity: 1,
-        transparent: false
-      },
-      scale: {
-        set: jest.fn()
-      }
-    };
-
-    // Mock console methods
-    console.log = jest.fn();
-    console.warn = jest.fn();
-    console.error = jest.fn();
-
-    // Mock setTimeout
-    global.setTimeout = jest.fn((fn, timeout) => {
-      return 'timeout-id-' + timeout;
-    });
-
-    // Mock Date.now with incrementing time to avoid infinite loops
-    let mockTime = 1000000;
-    global.Date.now = jest.fn(() => {
-      mockTime += 100; // Increment time each call
-      return mockTime;
-    });
-
-    // Mock requestAnimationFrame - don't execute the callback to avoid infinite loops
-    global.requestAnimationFrame = jest.fn(fn => {
-      return 'raf-id';
-    });
+    jest.useFakeTimers();
+    mockGame = createMockGame();
+    manager = new HoleCompletionManager(mockGame);
   });
 
   afterEach(() => {
-    jest.clearAllMocks();
+    jest.useRealTimers();
+    jest.restoreAllMocks();
   });
 
   describe('constructor', () => {
-    test('should initialize with game reference', () => {
-      holeCompletionManager = new HoleCompletionManager(mockGame);
-
-      expect(holeCompletionManager.game).toBe(mockGame);
-    });
-
-    test('should initialize with default values', () => {
-      holeCompletionManager = new HoleCompletionManager(mockGame);
-
-      expect(holeCompletionManager.completionDelay).toBe(1500);
-      expect(holeCompletionManager.detectionGracePeriod).toBe(2000);
-      expect(holeCompletionManager.holeCreationTime).toBeGreaterThan(1000000);
-      expect(holeCompletionManager.isTransitioning).toBe(false);
+    test('should store game reference and set defaults', () => {
+      expect(manager.game).toBe(mockGame);
+      expect(manager.completionDelay).toBe(1500);
+      expect(manager.detectionGracePeriod).toBe(2000);
+      expect(manager.isTransitioning).toBe(false);
     });
   });
 
   describe('init', () => {
-    beforeEach(() => {
-      holeCompletionManager = new HoleCompletionManager(mockGame);
-    });
+    test('should subscribe to events and reset grace period', () => {
+      const result = manager.init();
 
-    test('should setup event listeners and reset grace period', () => {
-      const setupEventListenersSpy = jest
-        .spyOn(holeCompletionManager, 'setupEventListeners')
-        .mockImplementation(() => {});
-      const resetGracePeriodSpy = jest
-        .spyOn(holeCompletionManager, 'resetGracePeriod')
-        .mockImplementation(() => {});
-
-      const result = holeCompletionManager.init();
-
-      expect(setupEventListenersSpy).toHaveBeenCalled();
-      expect(resetGracePeriodSpy).toHaveBeenCalled();
-      expect(result).toBe(holeCompletionManager); // Returns self for chaining
-
-      setupEventListenersSpy.mockRestore();
-      resetGracePeriodSpy.mockRestore();
+      expect(mockGame.eventManager.subscribe).toHaveBeenCalledWith(
+        EventTypes.BALL_IN_HOLE,
+        manager.handleBallInHole,
+        manager
+      );
+      expect(mockGame.eventManager.subscribe).toHaveBeenCalledWith(
+        EventTypes.STROKE_LIMIT_REACHED,
+        manager.handleStrokeLimitReached,
+        manager
+      );
+      expect(result).toBe(manager);
     });
   });
 
   describe('setupEventListeners', () => {
-    beforeEach(() => {
-      holeCompletionManager = new HoleCompletionManager(mockGame);
-    });
-
     test('should subscribe to BALL_IN_HOLE event', () => {
-      holeCompletionManager.setupEventListeners();
+      manager.setupEventListeners();
 
       expect(mockGame.eventManager.subscribe).toHaveBeenCalledWith(
         EventTypes.BALL_IN_HOLE,
-        holeCompletionManager.handleBallInHole,
-        holeCompletionManager
+        manager.handleBallInHole,
+        manager
+      );
+    });
+
+    test('should subscribe to STROKE_LIMIT_REACHED event', () => {
+      manager.setupEventListeners();
+
+      expect(mockGame.eventManager.subscribe).toHaveBeenCalledWith(
+        EventTypes.STROKE_LIMIT_REACHED,
+        manager.handleStrokeLimitReached,
+        manager
       );
     });
   });
 
   describe('resetGracePeriod', () => {
-    beforeEach(() => {
-      holeCompletionManager = new HoleCompletionManager(mockGame);
-    });
+    test('should reset transition state and update creation time', () => {
+      manager.isTransitioning = true;
+      const timeBefore = manager.holeCreationTime;
 
-    test('should reset grace period and transition state', () => {
-      holeCompletionManager.isTransitioning = true;
-      const timeBefore = holeCompletionManager.holeCreationTime;
+      jest.advanceTimersByTime(100);
+      manager.resetGracePeriod();
 
-      holeCompletionManager.resetGracePeriod();
-
-      expect(holeCompletionManager.holeCreationTime).toBeGreaterThan(timeBefore);
-      expect(holeCompletionManager.isTransitioning).toBe(false);
-      expect(mockGame.debugManager.log).toHaveBeenCalledWith(
-        expect.stringContaining('[DEBUG] Hole detection grace period reset at')
-      );
+      expect(manager.isTransitioning).toBe(false);
+      expect(manager.holeCreationTime).toBeGreaterThanOrEqual(timeBefore);
     });
   });
 
-  describe('handleBallInHole', () => {
-    beforeEach(() => {
-      holeCompletionManager = new HoleCompletionManager(mockGame);
-    });
-
-    test('should complete hole on first non-final hole', () => {
+  describe('handleBallInHole — valid completion', () => {
+    test('should complete hole when ball enters cup (low speed scenario)', () => {
       mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(3);
-      mockGame.course.getTotalHoles.mockReturnValue(18);
+      mockGame.scoringSystem.getTotalStrokes.mockReturnValue(4);
 
-      holeCompletionManager.handleBallInHole();
+      manager.handleBallInHole();
 
-      expect(console.log).toHaveBeenCalledWith(
-        '[DEBUG]', '[HoleCompletionManager] Ball in hole for hole 3 of 18'
-      );
-      expect(holeCompletionManager.isTransitioning).toBe(true);
+      expect(manager.isTransitioning).toBe(true);
+      expect(mockGame.stateManager.setHoleCompleted).toHaveBeenCalledWith(true);
       expect(mockGame.audioManager.playSound).toHaveBeenCalledWith('success', 0.7);
       expect(mockGame.ballManager.ball.handleHoleSuccess).toHaveBeenCalled();
-      expect(mockGame.stateManager.setHoleCompleted).toHaveBeenCalledWith(true);
-      expect(global.setTimeout).toHaveBeenCalledWith(expect.any(Function), 500);
-      expect(global.setTimeout).toHaveBeenCalledWith(expect.any(Function), 1500);
     });
 
-    test('should complete game on final hole', () => {
-      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(18);
-      mockGame.course.getTotalHoles.mockReturnValue(18);
-
-      holeCompletionManager.handleBallInHole();
-
-      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[HoleCompletionManager] Final hole 18 completed');
-      expect(mockGame.stateManager.setGameState).toHaveBeenCalledWith(GameState.GAME_COMPLETED);
-      expect(holeCompletionManager.isTransitioning).toBe(false);
-    });
-
-    test('should ignore event when hole already completed', () => {
-      mockGame.stateManager.isHoleCompleted.mockReturnValue(true);
-
-      holeCompletionManager.handleBallInHole();
-
-      expect(console.log).toHaveBeenCalledWith(
-        '[DEBUG]', '[HoleCompletionManager] Hole already completed or transitioning, ignoring ball in hole event'
-      );
-      expect(mockGame.audioManager.playSound).not.toHaveBeenCalled();
-    });
-
-    test('should ignore event when already transitioning', () => {
-      holeCompletionManager.isTransitioning = true;
-
-      holeCompletionManager.handleBallInHole();
-
-      expect(console.log).toHaveBeenCalledWith(
-        '[DEBUG]', '[HoleCompletionManager] Hole already completed or transitioning, ignoring ball in hole event'
-      );
-      expect(mockGame.audioManager.playSound).not.toHaveBeenCalled();
-    });
-
-    test('should handle missing ball manager gracefully', () => {
-      mockGame.ballManager = null;
-
-      expect(() => {
-        holeCompletionManager.handleBallInHole();
-      }).not.toThrow();
-
-      expect(mockGame.stateManager.setHoleCompleted).toHaveBeenCalledWith(true);
-    });
-
-    test('should handle missing audio manager gracefully', () => {
-      mockGame.audioManager = null;
-
-      expect(() => {
-        holeCompletionManager.handleBallInHole();
-      }).not.toThrow();
-
-      expect(mockGame.stateManager.setHoleCompleted).toHaveBeenCalledWith(true);
-    });
-
-    test('should handle errors during immediate feedback actions', () => {
-      mockGame.ballManager.ball.handleHoleSuccess.mockImplementation(() => {
-        throw new Error('Ball success handler failed');
-      });
-
-      holeCompletionManager.handleBallInHole();
-
-      expect(console.error).toHaveBeenCalledWith(
-        '[HoleCompletionManager] Error during immediate feedback actions:',
-        expect.any(Error)
-      );
-      expect(mockGame.stateManager.setHoleCompleted).toHaveBeenCalledWith(true);
-    });
-
-    test('should call updateScore with correct parameters', () => {
-      const updateScoreSpy = jest
-        .spyOn(holeCompletionManager, 'updateScore')
-        .mockImplementation(() => {});
+    test('should publish HOLE_COMPLETED with correct holeNumber and totalStrokes', () => {
       mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(5);
-      mockGame.scoringSystem.getTotalStrokes.mockReturnValue(23);
+      mockGame.scoringSystem.getTotalStrokes.mockReturnValue(12);
 
-      holeCompletionManager.handleBallInHole();
+      manager.handleBallInHole();
 
-      expect(updateScoreSpy).toHaveBeenCalledWith(5, 23);
+      expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
+        EventTypes.HOLE_COMPLETED,
+        { holeNumber: 5, totalStrokes: 12 },
+        manager
+      );
+    });
 
-      updateScoreSpy.mockRestore();
+    test('should schedule UI message and transition with delays', () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(2);
+
+      manager.handleBallInHole();
+
+      jest.advanceTimersByTime(500);
+      expect(mockGame.uiManager.showMessage).toHaveBeenCalledWith('Great Shot!', 2000);
+
+      jest.advanceTimersByTime(1000);
+      expect(mockGame.holeTransitionManager.transitionToNextHole).toHaveBeenCalled();
+      expect(manager.isTransitioning).toBe(false);
     });
   });
 
-  describe('showCompletionEffects', () => {
-    beforeEach(() => {
-      holeCompletionManager = new HoleCompletionManager(mockGame);
+  describe('handleBallInHole — no duplicate completion', () => {
+    test('should ignore when hole is already completed', () => {
+      mockGame.stateManager.isHoleCompleted.mockReturnValue(true);
+
+      manager.handleBallInHole();
+
+      expect(mockGame.audioManager.playSound).not.toHaveBeenCalled();
+      expect(mockGame.stateManager.setHoleCompleted).not.toHaveBeenCalled();
+      expect(mockGame.eventManager.publish).not.toHaveBeenCalled();
     });
 
-    test('should animate hole disappearing', () => {
-      const mockHole = {
-        material: {
-          opacity: 1,
-          transparent: false
-        },
-        scale: {
-          set: jest.fn()
-        }
-      };
-      mockGame.course.getCurrentHoleMesh.mockReturnValue(mockHole);
+    test('should ignore when already transitioning', () => {
+      manager.isTransitioning = true;
 
-      holeCompletionManager.showCompletionEffects();
+      manager.handleBallInHole();
 
-      // Verify that animation starts
-      expect(global.requestAnimationFrame).toHaveBeenCalled();
-      expect(mockHole.material.transparent).toBe(true);
-
-      // Since we don't execute the callback, we can't test the final state
-      // But we can verify the animation setup was called
+      expect(mockGame.audioManager.playSound).not.toHaveBeenCalled();
+      expect(mockGame.stateManager.setHoleCompleted).not.toHaveBeenCalled();
+      expect(mockGame.eventManager.publish).not.toHaveBeenCalled();
     });
 
-    test('should handle missing hole mesh gracefully', () => {
-      mockGame.course.getCurrentHoleMesh.mockReturnValue(null);
+    test('should not re-emit after first completion', () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(3);
 
-      expect(() => {
-        holeCompletionManager.showCompletionEffects();
-      }).not.toThrow();
+      manager.handleBallInHole();
 
-      expect(mockGame.scene.remove).not.toHaveBeenCalled();
+      expect(mockGame.eventManager.publish).toHaveBeenCalledTimes(1);
+
+      mockGame.stateManager.isHoleCompleted.mockReturnValue(true);
+      manager.handleBallInHole();
+
+      expect(mockGame.eventManager.publish).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('handleBallInHole — final hole (game completion)', () => {
+    test('should set GAME_COMPLETED state on final hole', () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(9);
+      mockGame.course.getTotalHoles.mockReturnValue(9);
+
+      manager.handleBallInHole();
+
+      expect(mockGame.stateManager.setGameState).toHaveBeenCalledWith(GameState.GAME_COMPLETED);
+      expect(manager.isTransitioning).toBe(false);
     });
 
-    test('should handle hole without material gracefully', () => {
-      const mockHole = {
-        material: null,
-        scale: {
-          set: jest.fn()
-        }
-      };
-      mockGame.course.getCurrentHoleMesh.mockReturnValue(mockHole);
+    test('should not schedule transition on final hole', () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(9);
+      mockGame.course.getTotalHoles.mockReturnValue(9);
 
-      expect(() => {
-        holeCompletionManager.showCompletionEffects();
-      }).not.toThrow();
+      manager.handleBallInHole();
 
-      // Verify animation setup is called even without material
-      expect(global.requestAnimationFrame).toHaveBeenCalled();
+      jest.advanceTimersByTime(2000);
+      expect(mockGame.holeTransitionManager.transitionToNextHole).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('handleBallInHole — hole-in-one', () => {
+    test('should complete with 1 stroke and emit correct payload', () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(1);
+      mockGame.scoringSystem.getTotalStrokes.mockReturnValue(1);
+
+      manager.handleBallInHole();
+
+      expect(mockGame.stateManager.setHoleCompleted).toHaveBeenCalledWith(true);
+      expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
+        EventTypes.HOLE_COMPLETED,
+        { holeNumber: 1, totalStrokes: 1 },
+        manager
+      );
+    });
+  });
+
+  describe('handleBallInHole — error resilience', () => {
+    test('should handle missing ball manager', () => {
+      mockGame.ballManager = null;
+
+      expect(() => manager.handleBallInHole()).not.toThrow();
+      expect(mockGame.stateManager.setHoleCompleted).toHaveBeenCalledWith(true);
+    });
+
+    test('should handle missing audio manager', () => {
+      mockGame.audioManager = null;
+
+      expect(() => manager.handleBallInHole()).not.toThrow();
+      expect(mockGame.stateManager.setHoleCompleted).toHaveBeenCalledWith(true);
+    });
+
+    test('should catch errors in immediate feedback actions', () => {
+      mockGame.ballManager.ball.handleHoleSuccess.mockImplementation(() => {
+        throw new Error('feedback error');
+      });
+
+      manager.handleBallInHole();
+
+      expect(mockGame.stateManager.setHoleCompleted).toHaveBeenCalledWith(true);
+    });
+  });
+
+  describe('handleStrokeLimitReached', () => {
+    test('should mark hole completed and show max strokes message', () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(4);
+      mockGame.scoringSystem.getTotalStrokes.mockReturnValue(10);
+
+      manager.handleStrokeLimitReached();
+
+      expect(manager.isTransitioning).toBe(true);
+      expect(mockGame.uiManager.showMessage).toHaveBeenCalledWith('Max strokes reached', 2000);
+      expect(mockGame.stateManager.setHoleCompleted).toHaveBeenCalledWith(true);
+    });
+
+    test('should publish HOLE_COMPLETED with correct payload', () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(7);
+      mockGame.scoringSystem.getTotalStrokes.mockReturnValue(10);
+
+      manager.handleStrokeLimitReached();
+
+      expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
+        EventTypes.HOLE_COMPLETED,
+        { holeNumber: 7, totalStrokes: 10 },
+        manager
+      );
+    });
+
+    test('should transition to next hole after delay', () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(3);
+
+      manager.handleStrokeLimitReached();
+
+      jest.advanceTimersByTime(1500);
+      expect(mockGame.holeTransitionManager.transitionToNextHole).toHaveBeenCalled();
+      expect(manager.isTransitioning).toBe(false);
+    });
+
+    test('should set GAME_COMPLETED on final hole stroke limit', () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(9);
+      mockGame.course.getTotalHoles.mockReturnValue(9);
+
+      manager.handleStrokeLimitReached();
+
+      expect(mockGame.stateManager.setGameState).toHaveBeenCalledWith(GameState.GAME_COMPLETED);
+      expect(manager.isTransitioning).toBe(false);
+    });
+
+    test('should ignore when hole already completed', () => {
+      mockGame.stateManager.isHoleCompleted.mockReturnValue(true);
+
+      manager.handleStrokeLimitReached();
+
+      expect(mockGame.stateManager.setHoleCompleted).not.toHaveBeenCalled();
+    });
+
+    test('should ignore when already transitioning', () => {
+      manager.isTransitioning = true;
+
+      manager.handleStrokeLimitReached();
+
+      expect(mockGame.stateManager.setHoleCompleted).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('resetCompletionState — reset enables re-completion', () => {
+    test('should reset all completion state properties', () => {
+      manager.isHoleComplete = true;
+      manager.completionTime = 5000;
+      manager.strokes = 10;
+      manager.currentPar = 4;
+
+      manager.resetCompletionState();
+
+      expect(manager.isHoleComplete).toBe(false);
+      expect(manager.completionTime).toBe(0);
+      expect(manager.strokes).toBe(0);
+      expect(manager.currentPar).toBe(0);
+    });
+
+    test('should allow new completion after reset via onHoleTransition', () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(1);
+
+      manager.handleBallInHole();
+      expect(mockGame.eventManager.publish).toHaveBeenCalledTimes(1);
+
+      manager.isTransitioning = false;
+      mockGame.stateManager.isHoleCompleted.mockReturnValue(false);
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(2);
+      mockGame.scoringSystem.getTotalStrokes.mockReturnValue(5);
+
+      manager.onHoleTransition(1, 2);
+      manager.resetGracePeriod();
+
+      manager.handleBallInHole();
+
+      expect(mockGame.eventManager.publish).toHaveBeenCalledTimes(2);
+      expect(mockGame.eventManager.publish).toHaveBeenLastCalledWith(
+        EventTypes.HOLE_COMPLETED,
+        { holeNumber: 2, totalStrokes: 5 },
+        manager
+      );
     });
   });
 
   describe('updateScore', () => {
-    beforeEach(() => {
-      holeCompletionManager = new HoleCompletionManager(mockGame);
-    });
-
-    test('should publish hole completed event and update UI', () => {
-      holeCompletionManager.updateScore(7, 34);
+    test('should publish HOLE_COMPLETED event and update UI', () => {
+      manager.updateScore(7, 34);
 
       expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
         EventTypes.HOLE_COMPLETED,
-        {
-          holeNumber: 7,
-          totalStrokes: 34
-        },
-        holeCompletionManager
+        { holeNumber: 7, totalStrokes: 34 },
+        manager
       );
       expect(mockGame.uiManager.updateScore).toHaveBeenCalled();
     });
   });
 
-  describe('cleanup', () => {
-    beforeEach(() => {
-      holeCompletionManager = new HoleCompletionManager(mockGame);
-    });
-
-    test('should complete without errors', () => {
-      expect(() => {
-        holeCompletionManager.cleanup();
-      }).not.toThrow();
-    });
-  });
-
   describe('onHoleTransition', () => {
-    beforeEach(() => {
-      holeCompletionManager = new HoleCompletionManager(mockGame);
-    });
+    test('should reset state and update UI for new hole', () => {
+      manager.onHoleTransition(3, 4);
 
-    test('should handle hole transition correctly', () => {
-      const resetCompletionStateSpy = jest
-        .spyOn(holeCompletionManager, 'resetCompletionState')
-        .mockImplementation(() => {});
-
-      holeCompletionManager.onHoleTransition(3, 4);
-
-      expect(console.log).toHaveBeenCalledWith(
-        '[DEBUG]', '[HoleCompletionManager] Handling transition from hole 3 to 4'
-      );
-      expect(resetCompletionStateSpy).toHaveBeenCalled();
-      expect(holeCompletionManager.currentHoleNumber).toBe(4);
+      expect(manager.isHoleComplete).toBe(false);
+      expect(manager.strokes).toBe(0);
+      expect(manager.currentHoleNumber).toBe(4);
       expect(mockGame.course.getHolePar).toHaveBeenCalledWith(4);
-      expect(holeCompletionManager.currentPar).toBe(3);
       expect(mockGame.uiManager.updateHoleNumber).toHaveBeenCalledWith(4);
       expect(mockGame.uiManager.updatePar).toHaveBeenCalledWith(3);
-      expect(console.log).toHaveBeenCalledWith(
-        '[DEBUG]', '[HoleCompletionManager] Transition to hole 4 complete'
-      );
-
-      resetCompletionStateSpy.mockRestore();
     });
 
-    test('should handle missing course gracefully', () => {
+    test('should handle missing course', () => {
       mockGame.course = null;
-      const resetCompletionStateSpy = jest
-        .spyOn(holeCompletionManager, 'resetCompletionState')
-        .mockImplementation(() => {});
 
-      expect(() => {
-        holeCompletionManager.onHoleTransition(1, 2);
-      }).not.toThrow();
-
-      expect(resetCompletionStateSpy).toHaveBeenCalled();
-      expect(holeCompletionManager.currentHoleNumber).toBe(2);
-
-      resetCompletionStateSpy.mockRestore();
+      expect(() => manager.onHoleTransition(1, 2)).not.toThrow();
+      expect(manager.currentHoleNumber).toBe(2);
     });
 
-    test('should handle missing UI manager gracefully', () => {
+    test('should handle missing UI manager', () => {
       mockGame.uiManager = null;
-      const resetCompletionStateSpy = jest
-        .spyOn(holeCompletionManager, 'resetCompletionState')
-        .mockImplementation(() => {});
 
-      expect(() => {
-        holeCompletionManager.onHoleTransition(2, 3);
-      }).not.toThrow();
-
-      expect(resetCompletionStateSpy).toHaveBeenCalled();
-
-      resetCompletionStateSpy.mockRestore();
+      expect(() => manager.onHoleTransition(2, 3)).not.toThrow();
     });
   });
 
-  describe('resetCompletionState', () => {
-    beforeEach(() => {
-      holeCompletionManager = new HoleCompletionManager(mockGame);
+  describe('showCompletionEffects', () => {
+    test('should start animation on valid hole mesh', () => {
+      const mockHole = {
+        material: { opacity: 1, transparent: false },
+        scale: { set: jest.fn() }
+      };
+      mockGame.course.getCurrentHoleMesh.mockReturnValue(mockHole);
+
+      manager.showCompletionEffects();
+
+      expect(mockHole.material.transparent).toBe(true);
     });
 
-    test('should reset completion state properties', () => {
-      holeCompletionManager.isHoleComplete = true;
-      holeCompletionManager.completionTime = 5000;
-      holeCompletionManager.strokes = 10;
-      holeCompletionManager.currentPar = 4;
+    test('should handle null hole mesh', () => {
+      mockGame.course.getCurrentHoleMesh.mockReturnValue(null);
 
-      holeCompletionManager.resetCompletionState();
+      expect(() => manager.showCompletionEffects()).not.toThrow();
+      expect(mockGame.scene.remove).not.toHaveBeenCalled();
+    });
+  });
 
-      expect(holeCompletionManager.isHoleComplete).toBe(false);
-      expect(holeCompletionManager.completionTime).toBe(0);
-      expect(holeCompletionManager.strokes).toBe(0);
-      expect(holeCompletionManager.currentPar).toBe(0);
+  describe('cleanup', () => {
+    test('should complete without errors', () => {
+      expect(() => manager.cleanup()).not.toThrow();
     });
   });
 
   describe('update', () => {
-    beforeEach(() => {
-      holeCompletionManager = new HoleCompletionManager(mockGame);
-    });
-
-    test('should accept delta time parameter without errors', () => {
-      expect(() => {
-        holeCompletionManager.update(0.016);
-      }).not.toThrow();
-    });
-
-    test('should handle missing delta time', () => {
-      expect(() => {
-        holeCompletionManager.update();
-      }).not.toThrow();
+    test('should accept delta time without errors', () => {
+      expect(() => manager.update(0.016)).not.toThrow();
     });
   });
 
-  describe('integration scenarios', () => {
-    beforeEach(() => {
-      holeCompletionManager = new HoleCompletionManager(mockGame);
+  describe('transition timeout guard', () => {
+    test('should skip transition if isTransitioning was cleared before timeout fires', () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(2);
+
+      manager.handleBallInHole();
+      manager.isTransitioning = false;
+
+      jest.advanceTimersByTime(1500);
+      expect(mockGame.holeTransitionManager.transitionToNextHole).not.toHaveBeenCalled();
     });
 
-    test('should handle complete hole workflow', () => {
-      // Initialize manager
-      holeCompletionManager.init();
+    test('should skip stroke-limit transition if isTransitioning was cleared', () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(3);
 
-      // Simulate ball in hole for mid-game hole
-      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(5);
-      mockGame.course.getTotalHoles.mockReturnValue(9);
+      manager.handleStrokeLimitReached();
+      manager.isTransitioning = false;
 
-      holeCompletionManager.handleBallInHole();
-
-      expect(mockGame.eventManager.subscribe).toHaveBeenCalledWith(
-        EventTypes.BALL_IN_HOLE,
-        holeCompletionManager.handleBallInHole,
-        holeCompletionManager
-      );
-      expect(mockGame.stateManager.setHoleCompleted).toHaveBeenCalledWith(true);
-      expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
-        EventTypes.HOLE_COMPLETED,
-        {
-          holeNumber: 5,
-          totalStrokes: 15
-        },
-        holeCompletionManager
-      );
-    });
-
-    test('should handle game completion workflow', () => {
-      holeCompletionManager.init();
-
-      // Simulate ball in hole for final hole
-      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(9);
-      mockGame.course.getTotalHoles.mockReturnValue(9);
-
-      holeCompletionManager.handleBallInHole();
-
-      expect(mockGame.stateManager.setGameState).toHaveBeenCalledWith(GameState.GAME_COMPLETED);
-      expect(holeCompletionManager.isTransitioning).toBe(false);
-    });
-
-    test('should handle hole transition with state reset', () => {
-      holeCompletionManager.init();
-
-      // Set some state
-      holeCompletionManager.isHoleComplete = true;
-      holeCompletionManager.strokes = 5;
-
-      // Perform transition
-      holeCompletionManager.onHoleTransition(2, 3);
-
-      // Verify state was reset
-      expect(holeCompletionManager.isHoleComplete).toBe(false);
-      expect(holeCompletionManager.strokes).toBe(0);
-      expect(holeCompletionManager.currentHoleNumber).toBe(3);
-    });
-
-    test('should handle completion effects animation', () => {
-      const mockHole = {
-        material: {
-          opacity: 1,
-          transparent: false
-        },
-        scale: {
-          set: jest.fn()
-        }
-      };
-      mockGame.course.getCurrentHoleMesh.mockReturnValue(mockHole);
-
-      holeCompletionManager.showCompletionEffects();
-
-      // Verify animation setup
-      expect(mockHole.material.transparent).toBe(true);
-      expect(global.requestAnimationFrame).toHaveBeenCalled();
+      jest.advanceTimersByTime(1500);
+      expect(mockGame.holeTransitionManager.transitionToNextHole).not.toHaveBeenCalled();
     });
   });
 });

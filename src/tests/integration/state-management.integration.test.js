@@ -283,5 +283,4 @@ describe('State Management Integration', () => {
     expect(stateManager.isBallInMotion()).toBe(false);
     expect(stateManager.isHoleCompleted()).toBe(false);
   });
-
 });

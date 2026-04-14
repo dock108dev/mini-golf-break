@@ -5,7 +5,17 @@
 import { defaultTheme } from '../../themes/defaultTheme';
 import { spaceTheme } from '../../themes/spaceTheme';
 
-const REQUIRED_KEYS = ['green', 'wall', 'bumper', 'sand', 'water', 'tee', 'rim', 'holeInterior', 'background'];
+const REQUIRED_KEYS = [
+  'green',
+  'wall',
+  'bumper',
+  'sand',
+  'water',
+  'tee',
+  'rim',
+  'holeInterior',
+  'background'
+];
 
 describe('Theme System', () => {
   describe('defaultTheme', () => {

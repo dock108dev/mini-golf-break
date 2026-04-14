@@ -181,14 +181,19 @@ module.exports = (env, argv) => {
       chunkIds: 'deterministic',
     };
 
-    // Performance hints optimized for mobile/iOS
+    // Performance hints optimized for mobile/iOS — enforces 400KB main bundle limit
     config.performance = {
-      hints: 'warning',
-      maxAssetSize: 800000, // 800kb (Three.js is large but split)
-      maxEntrypointSize: 400000, // 400kb for main entrypoint
-      assetFilter: (assetFilename) => {
-        // Ignore large assets that are split or cached separately
-        return !assetFilename.endsWith('.png') && !assetFilename.endsWith('.jpg');
+      hints: 'error',
+      maxAssetSize: 800000,
+      maxEntrypointSize: 409600,
+      assetFilter: assetFilename => {
+        if (/\.(png|jpg|jpeg)$/.test(assetFilename)) {
+          return false;
+        }
+        if (/^(three|cannon|vendors)\.\w+\.js$/.test(assetFilename)) {
+          return false;
+        }
+        return true;
       }
     };
 
@@ -196,6 +201,14 @@ module.exports = (env, argv) => {
     config.optimization.concatenateModules = true; // Enable module concatenation
     config.optimization.flagIncludedChunks = true;
     config.optimization.providedExports = true;
+  }
+
+  if (!isProduction) {
+    config.performance = {
+      hints: 'warning',
+      maxAssetSize: 800000,
+      maxEntrypointSize: 409600
+    };
   }
 
   // Bundle analyzer for development

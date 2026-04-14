@@ -124,9 +124,7 @@ export class DebugErrorOverlay {
     setTimeout(() => {
       if (errorElement.parentNode === this.errorOverlay) {
         errorElement.remove();
-        debug.log(
-          `[DebugErrorOverlay] Auto-removed error message: ${message.substring(0, 50)}...`
-        );
+        debug.log(`[DebugErrorOverlay] Auto-removed error message: ${message.substring(0, 50)}...`);
         // Optionally hide overlay if no more errors are present
         this.hideIfEmpty();
       }

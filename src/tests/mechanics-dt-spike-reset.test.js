@@ -31,7 +31,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  global.requestAnimationFrame = jest.fn((cb) => {
+  global.requestAnimationFrame = jest.fn(cb => {
     animationFrameCallback = cb;
     return 1;
   });
@@ -58,14 +58,14 @@ function createMockGame() {
       beginFrame: jest.fn(),
       endFrame: jest.fn(),
       startTimer: jest.fn(),
-      endTimer: jest.fn(),
+      endTimer: jest.fn()
     },
     ballManager: { update: jest.fn() },
     hazardManager: { update: jest.fn() },
     cameraController: { update: jest.fn() },
     cannonDebugRenderer: { update: jest.fn() },
     visualEffectsManager: { update: jest.fn() },
-    debugManager: { log: jest.fn(), enabled: false },
+    debugManager: { log: jest.fn(), enabled: false }
   };
 }
 
@@ -73,14 +73,14 @@ function createMockWorld() {
   return {
     addBody: jest.fn(),
     removeBody: jest.fn(),
-    bumperMaterial: {},
+    bumperMaterial: {}
   };
 }
 
 function createMockGroup() {
   return {
     add: jest.fn(),
-    remove: jest.fn(),
+    remove: jest.fn()
   };
 }
 
@@ -172,21 +172,27 @@ describe('TimedHazard onDtSpike', () => {
       addShape: jest.fn(),
       applyImpulse: jest.fn(),
       sleepState: 0,
-      userData: {},
+      userData: {}
     }));
 
     CANNON.Vec3.mockImplementation((x, y, z) => ({ x: x || 0, y: y || 0, z: z || 0 }));
 
     THREE.Mesh.mockImplementation(() => ({
       position: {
-        x: 0, y: 0, z: 0,
-        set: jest.fn(function (x, y, z) { this.x = x; this.y = y; this.z = z; }),
+        x: 0,
+        y: 0,
+        z: 0,
+        set: jest.fn(function (x, y, z) {
+          this.x = x;
+          this.y = y;
+          this.z = z;
+        })
       },
       rotation: { x: 0, y: 0, z: 0 },
       visible: true,
       geometry: { dispose: jest.fn() },
       material: { dispose: jest.fn() },
-      parent: null,
+      parent: null
     }));
   });
 
@@ -195,7 +201,7 @@ describe('TimedHazard onDtSpike', () => {
       position: new THREE.Vector3(0, 0, 0),
       size: { width: 2, length: 2 },
       onDuration: 2,
-      offDuration: 2,
+      offDuration: 2
     };
     const hazard = new TimedHazard(world, group, config, 0.2);
 
@@ -218,7 +224,7 @@ describe('TimedHazard onDtSpike', () => {
       position: new THREE.Vector3(0, 0, 0),
       size: { width: 2, length: 2 },
       onDuration: 1,
-      offDuration: 1,
+      offDuration: 1
     };
     const hazard = new TimedHazard(world, group, config, 0.2);
 
@@ -252,13 +258,19 @@ describe('TimedGate onDtSpike', () => {
 
     CANNON.Body.mockImplementation(() => ({
       position: {
-        x: 0, y: 0, z: 0,
-        set: jest.fn(function (x, y, z) { this.x = x; this.y = y; this.z = z; }),
+        x: 0,
+        y: 0,
+        z: 0,
+        set: jest.fn(function (x, y, z) {
+          this.x = x;
+          this.y = y;
+          this.z = z;
+        })
       },
       velocity: { x: 0, y: 0, z: 0 },
       quaternion: { x: 0, y: 0, z: 0, w: 1, set: jest.fn() },
       addShape: jest.fn(),
-      userData: {},
+      userData: {}
     }));
 
     CANNON.Vec3.mockImplementation((x, y, z) => ({ x: x || 0, y: y || 0, z: z || 0 }));
@@ -266,15 +278,21 @@ describe('TimedGate onDtSpike', () => {
 
     THREE.Mesh.mockImplementation(() => ({
       position: {
-        x: 0, y: 0, z: 0,
-        set: jest.fn(function (x, y, z) { this.x = x; this.y = y; this.z = z; }),
+        x: 0,
+        y: 0,
+        z: 0,
+        set: jest.fn(function (x, y, z) {
+          this.x = x;
+          this.y = y;
+          this.z = z;
+        })
       },
       rotation: { x: 0, y: 0, z: 0 },
       castShadow: false,
       visible: true,
       geometry: { dispose: jest.fn() },
       material: { dispose: jest.fn() },
-      parent: null,
+      parent: null
     }));
   });
 
@@ -283,7 +301,7 @@ describe('TimedGate onDtSpike', () => {
       position: new THREE.Vector3(0, 0, 0),
       size: { width: 2, height: 1, depth: 0.2 },
       openDuration: 2,
-      closedDuration: 3,
+      closedDuration: 3
     };
     const gate = new TimedGate(world, group, config, 0.2);
 
@@ -308,7 +326,7 @@ describe('TimedGate onDtSpike', () => {
       position: new THREE.Vector3(0, 0, 0),
       size: { width: 2, height: 1, depth: 0.2 },
       openDuration: 1,
-      closedDuration: 1,
+      closedDuration: 1
     };
     const gate = new TimedGate(world, group, config, 0.2);
 
@@ -343,7 +361,7 @@ describe('PortalGate onDtSpike', () => {
       quaternion: { x: 0, y: 0, z: 0, w: 1 },
       addShape: jest.fn(),
       userData: {},
-      wakeUp: jest.fn(),
+      wakeUp: jest.fn()
     }));
 
     CANNON.Vec3.mockImplementation((x, y, z) => ({ x: x || 0, y: y || 0, z: z || 0 }));
@@ -353,7 +371,7 @@ describe('PortalGate onDtSpike', () => {
     const config = {
       entryPosition: new THREE.Vector3(-3, 0, 2),
       exitPosition: new THREE.Vector3(3, 0, -5),
-      radius: 0.6,
+      radius: 0.6
     };
     const portal = new PortalGate(world, group, config, 0.2);
 
@@ -368,7 +386,7 @@ describe('PortalGate onDtSpike', () => {
     const config = {
       entryPosition: new THREE.Vector3(0, 0, 0),
       exitPosition: new THREE.Vector3(5, 0, 5),
-      radius: 1.0,
+      radius: 1.0
     };
     const portal = new PortalGate(world, group, config, 0.2);
 
@@ -378,10 +396,16 @@ describe('PortalGate onDtSpike', () => {
     // With cooldown active, ball at entry should NOT teleport
     const ballBody = {
       position: {
-        x: 0, y: 0.2, z: 0,
-        set: jest.fn(function (x, y, z) { this.x = x; this.y = y; this.z = z; }),
+        x: 0,
+        y: 0.2,
+        z: 0,
+        set: jest.fn(function (x, y, z) {
+          this.x = x;
+          this.y = y;
+          this.z = z;
+        })
       },
-      wakeUp: jest.fn(),
+      wakeUp: jest.fn()
     };
     portal.update(1 / 60, ballBody);
     // Cooldown was active, ball should not have been teleported
@@ -414,24 +438,36 @@ describe('MovingSweeper onDtSpike and elapsed-time angle', () => {
 
     CANNON.Body.mockImplementation(() => ({
       position: {
-        x: 0, y: 0, z: 0,
-        set: jest.fn(function (x, y, z) { this.x = x; this.y = y; this.z = z; }),
+        x: 0,
+        y: 0,
+        z: 0,
+        set: jest.fn(function (x, y, z) {
+          this.x = x;
+          this.y = y;
+          this.z = z;
+        })
       },
       velocity: { x: 0, y: 0, z: 0, set: jest.fn() },
       quaternion: {
-        x: 0, y: 0, z: 0, w: 1,
+        x: 0,
+        y: 0,
+        z: 0,
+        w: 1,
         set: jest.fn(),
         setFromAxisAngle: jest.fn(),
-        copy: jest.fn(),
+        copy: jest.fn()
       },
       addShape: jest.fn(),
       addEventListener: jest.fn(),
-      userData: {},
+      userData: {}
     }));
 
     CANNON.Quaternion = jest.fn(() => ({
-      x: 0, y: 0, z: 0, w: 1,
-      setFromAxisAngle: jest.fn(),
+      x: 0,
+      y: 0,
+      z: 0,
+      w: 1,
+      setFromAxisAngle: jest.fn()
     }));
 
     CANNON.Vec3.mockImplementation((x, y, z) => ({ x: x || 0, y: y || 0, z: z || 0 }));
@@ -439,14 +475,20 @@ describe('MovingSweeper onDtSpike and elapsed-time angle', () => {
 
     THREE.Mesh.mockImplementation(() => ({
       position: {
-        x: 0, y: 0, z: 0,
-        set: jest.fn(function (x, y, z) { this.x = x; this.y = y; this.z = z; }),
+        x: 0,
+        y: 0,
+        z: 0,
+        set: jest.fn(function (x, y, z) {
+          this.x = x;
+          this.y = y;
+          this.z = z;
+        })
       },
       rotation: { x: 0, y: 0, z: 0 },
       castShadow: false,
       geometry: { dispose: jest.fn() },
       material: { dispose: jest.fn() },
-      parent: null,
+      parent: null
     }));
   });
 
@@ -455,7 +497,7 @@ describe('MovingSweeper onDtSpike and elapsed-time angle', () => {
       pivot: new THREE.Vector3(0, 0, 0),
       armLength: 4,
       speed: 1.5,
-      phase: 0.5,
+      phase: 0.5
     };
     const sweeper = new MovingSweeper(world, group, config, 0.2);
 
@@ -475,7 +517,7 @@ describe('MovingSweeper onDtSpike and elapsed-time angle', () => {
       pivot: new THREE.Vector3(0, 0, 0),
       armLength: 4,
       speed: 2.0,
-      phase: 0,
+      phase: 0
     };
     const sweeper = new MovingSweeper(world, group, config, 0.2);
 
@@ -506,7 +548,7 @@ describe('MovingSweeper onDtSpike and elapsed-time angle', () => {
     const config = {
       pivot: new THREE.Vector3(2, 0, 3),
       armLength: 3,
-      speed: 1.0,
+      speed: 1.0
     };
     const sweeper = new MovingSweeper(world, group, config, 0.2);
 
@@ -538,23 +580,27 @@ describe('HoleEntity dtWasClamped threading', () => {
       _failed: false,
       onDtSpike: jest.fn(),
       update: jest.fn(),
-      config: { type: 'test' },
+      config: { type: 'test' }
     };
 
     // Minimal HoleEntity-like object to test the update logic
     const holeEntity = {
       mechanics: [mockMechanic],
-      update: function (dt, ballBody, options) {
-        if (!this.mechanics) return;
+      update(dt, ballBody, options) {
+        if (!this.mechanics) {
+          return;
+        }
         const dtWasClamped = options?.dtWasClamped || false;
         for (const mechanic of this.mechanics) {
-          if (mechanic._failed) continue;
+          if (mechanic._failed) {
+            continue;
+          }
           if (dtWasClamped && typeof mechanic.onDtSpike === 'function') {
             mechanic.onDtSpike();
           }
           mechanic.update(dt, ballBody);
         }
-      },
+      }
     };
 
     // Normal frame — onDtSpike should NOT be called
@@ -580,28 +626,32 @@ describe('HoleEntity dtWasClamped threading', () => {
     const failedMechanic = {
       _failed: true,
       onDtSpike: jest.fn(),
-      update: jest.fn(),
+      update: jest.fn()
     };
     const activeMechanic = {
       _failed: false,
       onDtSpike: jest.fn(),
       update: jest.fn(),
-      config: { type: 'test' },
+      config: { type: 'test' }
     };
 
     const holeEntity = {
       mechanics: [failedMechanic, activeMechanic],
-      update: function (dt, ballBody, options) {
-        if (!this.mechanics) return;
+      update(dt, ballBody, options) {
+        if (!this.mechanics) {
+          return;
+        }
         const dtWasClamped = options?.dtWasClamped || false;
         for (const mechanic of this.mechanics) {
-          if (mechanic._failed) continue;
+          if (mechanic._failed) {
+            continue;
+          }
           if (dtWasClamped && typeof mechanic.onDtSpike === 'function') {
             mechanic.onDtSpike();
           }
           mechanic.update(dt, ballBody);
         }
-      },
+      }
     };
 
     holeEntity.update(1 / 30, null, { dtWasClamped: true });
@@ -617,22 +667,26 @@ describe('HoleEntity dtWasClamped threading', () => {
       _failed: false,
       onDtSpike: jest.fn(),
       update: jest.fn(),
-      config: { type: 'test' },
+      config: { type: 'test' }
     };
 
     const holeEntity = {
       mechanics: [mockMechanic],
-      update: function (dt, ballBody, options) {
-        if (!this.mechanics) return;
+      update(dt, ballBody, options) {
+        if (!this.mechanics) {
+          return;
+        }
         const dtWasClamped = options?.dtWasClamped || false;
         for (const mechanic of this.mechanics) {
-          if (mechanic._failed) continue;
+          if (mechanic._failed) {
+            continue;
+          }
           if (dtWasClamped && typeof mechanic.onDtSpike === 'function') {
             mechanic.onDtSpike();
           }
           mechanic.update(dt, ballBody);
         }
-      },
+      }
     };
 
     // No options parameter at all
@@ -652,16 +706,16 @@ describe('CoursesManager dtWasClamped threading', () => {
     const coursesManager = {
       game: {
         ballManager: { ball: { body: {} } },
-        gameLoopManager: { dtWasClamped: true },
+        gameLoopManager: { dtWasClamped: true }
       },
       currentHoleEntity: { update: mockUpdate },
-      update: function (dt) {
+      update(dt) {
         if (this.currentHoleEntity?.update) {
           const ballBody = this.game?.ballManager?.ball?.body || null;
           const dtWasClamped = this.game?.gameLoopManager?.dtWasClamped || false;
           this.currentHoleEntity.update(dt, ballBody, { dtWasClamped });
         }
-      },
+      }
     };
 
     coursesManager.update(1 / 30);
@@ -673,16 +727,16 @@ describe('CoursesManager dtWasClamped threading', () => {
     const coursesManager = {
       game: {
         ballManager: { ball: { body: {} } },
-        gameLoopManager: { dtWasClamped: false },
+        gameLoopManager: { dtWasClamped: false }
       },
       currentHoleEntity: { update: mockUpdate },
-      update: function (dt) {
+      update(dt) {
         if (this.currentHoleEntity?.update) {
           const ballBody = this.game?.ballManager?.ball?.body || null;
           const dtWasClamped = this.game?.gameLoopManager?.dtWasClamped || false;
           this.currentHoleEntity.update(dt, ballBody, { dtWasClamped });
         }
-      },
+      }
     };
 
     coursesManager.update(1 / 60);
@@ -694,13 +748,13 @@ describe('CoursesManager dtWasClamped threading', () => {
     const coursesManager = {
       game: { ballManager: null },
       currentHoleEntity: { update: mockUpdate },
-      update: function (dt) {
+      update(dt) {
         if (this.currentHoleEntity?.update) {
           const ballBody = this.game?.ballManager?.ball?.body || null;
           const dtWasClamped = this.game?.gameLoopManager?.dtWasClamped || false;
           this.currentHoleEntity.update(dt, ballBody, { dtWasClamped });
         }
-      },
+      }
     };
 
     coursesManager.update(1 / 60);

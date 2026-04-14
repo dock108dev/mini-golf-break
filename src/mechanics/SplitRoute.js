@@ -67,6 +67,9 @@ class SplitRoute extends MechanicBase {
   }
 }
 
-registerMechanic('split_route', (world, group, config, sh, theme) => new SplitRoute(world, group, config, sh, theme));
+registerMechanic(
+  'split_route',
+  (world, group, config, sh, theme) => new SplitRoute(world, group, config, sh, theme)
+);
 
 export { SplitRoute };

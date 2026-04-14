@@ -31,7 +31,9 @@ describe('Mechanics mock smoke test', () => {
       }
 
       update(dt, ballBody) {
-        if (!ballBody) return;
+        if (!ballBody) {
+          return;
+        }
         const force = new CANNON.Vec3(1, 0, 0);
         ballBody.applyForce(force, new CANNON.Vec3(0, 0, 0));
       }

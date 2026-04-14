@@ -2,7 +2,7 @@
  * Tests for mechanics barrel import and registry completeness
  * ISSUE-029
  *
- * Verifies that importing src/mechanics/index.js registers all 12 mechanic
+ * Verifies that importing src/mechanics/index.js registers all 13 mechanic
  * types with MechanicRegistry, and that each type can create a valid instance.
  */
 
@@ -23,20 +23,38 @@ beforeAll(() => {
     set: jest.fn().mockReturnThis(),
     normalize: jest.fn().mockReturnValue({ x: 0, y: 0, z: 0 }),
     distanceTo: jest.fn().mockReturnValue(0),
-    vsub: jest.fn().mockReturnValue({ x: 0, y: 0, z: 0, normalize: jest.fn().mockReturnValue({ x: 0, y: 0, z: 0, scale: jest.fn().mockReturnValue({ x: 0, y: 0, z: 0 }) }) }),
+    vsub: jest.fn().mockReturnValue({
+      x: 0,
+      y: 0,
+      z: 0,
+      normalize: jest.fn().mockReturnValue({
+        x: 0,
+        y: 0,
+        z: 0,
+        scale: jest.fn().mockReturnValue({ x: 0, y: 0, z: 0 })
+      })
+    })
   }));
 
   CANNON.Body.mockImplementation(() => ({
     position: { x: 0, y: 0, z: 0, set: jest.fn(), copy: jest.fn() },
     velocity: { x: 0, y: 0, z: 0, set: jest.fn(), copy: jest.fn() },
-    quaternion: { x: 0, y: 0, z: 0, w: 1, setFromEuler: jest.fn(), copy: jest.fn(), setFromAxisAngle: jest.fn() },
+    quaternion: {
+      x: 0,
+      y: 0,
+      z: 0,
+      w: 1,
+      setFromEuler: jest.fn(),
+      copy: jest.fn(),
+      setFromAxisAngle: jest.fn()
+    },
     userData: {},
     addShape: jest.fn(),
     addEventListener: jest.fn(),
     removeEventListener: jest.fn(),
     type: 1,
     sleepState: 0,
-    applyImpulse: jest.fn(),
+    applyImpulse: jest.fn()
   }));
 
   CANNON.Body.KINEMATIC = 4;
@@ -48,15 +66,21 @@ beforeAll(() => {
 
   if (CANNON.Quaternion && typeof CANNON.Quaternion.mockImplementation === 'function') {
     CANNON.Quaternion.mockImplementation(() => ({
-      x: 0, y: 0, z: 0, w: 1,
+      x: 0,
+      y: 0,
+      z: 0,
+      w: 1,
       setFromAxisAngle: jest.fn(),
-      copy: jest.fn(),
+      copy: jest.fn()
     }));
   } else {
     CANNON.Quaternion = jest.fn(() => ({
-      x: 0, y: 0, z: 0, w: 1,
+      x: 0,
+      y: 0,
+      z: 0,
+      w: 1,
       setFromAxisAngle: jest.fn(),
-      copy: jest.fn(),
+      copy: jest.fn()
     }));
   }
 
@@ -70,7 +94,7 @@ beforeAll(() => {
     multiplyScalar: jest.fn().mockReturnThis(),
     subVectors: jest.fn().mockReturnThis(),
     length: jest.fn().mockReturnValue(0),
-    clone: jest.fn().mockReturnValue({ x, y, z }),
+    clone: jest.fn().mockReturnValue({ x, y, z })
   }));
 
   const makeMockMaterial = () => {
@@ -81,7 +105,7 @@ beforeAll(() => {
       opacity: 1,
       emissive: { set: jest.fn() },
       side: 0,
-      clone: jest.fn(),
+      clone: jest.fn()
     };
     mat.clone.mockReturnValue({ ...mat, clone: jest.fn() });
     return mat;
@@ -95,12 +119,17 @@ beforeAll(() => {
     translate: jest.fn().mockReturnThis(),
     rotateX: jest.fn().mockReturnThis(),
     rotateY: jest.fn().mockReturnThis(),
-    rotateZ: jest.fn().mockReturnThis(),
+    rotateZ: jest.fn().mockReturnThis()
   });
 
   const geomNames = [
-    'BoxGeometry', 'CylinderGeometry', 'SphereGeometry',
-    'RingGeometry', 'TorusGeometry', 'PlaneGeometry', 'CircleGeometry',
+    'BoxGeometry',
+    'CylinderGeometry',
+    'SphereGeometry',
+    'RingGeometry',
+    'TorusGeometry',
+    'PlaneGeometry',
+    'CircleGeometry'
   ];
   for (const name of geomNames) {
     if (THREE[name] && typeof THREE[name].mockImplementation === 'function') {
@@ -119,7 +148,7 @@ beforeAll(() => {
     parent: null,
     visible: true,
     castShadow: false,
-    receiveShadow: false,
+    receiveShadow: false
   }));
 
   THREE.Group.mockImplementation(() => {
@@ -127,16 +156,13 @@ beforeAll(() => {
     return {
       add: jest.fn(child => children.push(child)),
       remove: jest.fn(),
-      children,
+      children
     };
   });
 });
 
 // Import barrel AFTER mocks are enhanced
-import {
-  createMechanic,
-  getRegisteredTypes,
-} from '../../mechanics/index';
+import { createMechanic, getRegisteredTypes } from '../../mechanics/index';
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -146,7 +172,7 @@ function makeMockWorld() {
   return {
     addBody: jest.fn(),
     removeBody: jest.fn(),
-    step: jest.fn(),
+    step: jest.fn()
   };
 }
 
@@ -155,7 +181,7 @@ function makeMockGroup() {
   return {
     add: jest.fn(child => children.push(child)),
     remove: jest.fn(),
-    children,
+    children
   };
 }
 
@@ -172,6 +198,10 @@ const EXPECTED_TYPES = [
   'split_route',
   'ricochet_bumpers',
   'elevated_green',
+  'laser_grid',
+  'disappearing_platform',
+  'gravity_funnel',
+  'multi_level_ramp'
 ];
 
 // Minimal configs that satisfy each mechanic's constructor
@@ -180,75 +210,93 @@ const MECHANIC_CONFIGS = {
     pivot: { x: 0, y: 0, z: 0 },
     armLength: 3,
     speed: 1,
-    size: { x: 0.5, y: 0.3, z: 2 },
+    size: { x: 0.5, y: 0.3, z: 2 }
   },
   boost_strip: {
     position: { x: 0, y: 0, z: 0 },
     direction: { x: 1, y: 0, z: 0 },
     force: 5,
-    size: { x: 2, y: 0.1, z: 1 },
+    size: { x: 2, y: 0.1, z: 1 }
   },
   suction_zone: {
     position: { x: 0, y: 0, z: 0 },
     radius: 2,
-    force: 3,
+    force: 3
   },
   low_gravity_zone: {
     position: { x: 0, y: 0, z: 0 },
     radius: 2,
-    gravityMultiplier: 0.3,
+    gravityMultiplier: 0.3
   },
   bowl_contour: {
     position: { x: 0, y: 0, z: 0 },
     radius: 3,
-    force: 2,
+    force: 2
   },
   portal_gate: {
     entryPosition: { x: -2, y: 0, z: 0 },
     exitPosition: { x: 2, y: 0, z: 0 },
-    radius: 0.5,
+    radius: 0.5
   },
   timed_hazard: {
     position: { x: 0, y: 0, z: 0 },
     size: { x: 1, y: 0.1, z: 1 },
     onDuration: 2,
     offDuration: 1,
-    hazardType: 'fire',
+    hazardType: 'fire'
   },
   timed_gate: {
     position: { x: 0, y: 0, z: 0 },
     size: { x: 2, y: 1, z: 0.3 },
     openDuration: 2,
-    closedDuration: 2,
+    closedDuration: 2
   },
   bank_wall: {
-    segments: [
-      { start: { x: -2, z: 0 }, end: { x: 2, z: 0 } },
-    ],
-    height: 0.5,
+    segments: [{ start: { x: -2, z: 0 }, end: { x: 2, z: 0 } }],
+    height: 0.5
   },
   split_route: {
-    walls: [
-      { start: { x: 0, z: -3 }, end: { x: 0, z: 3 } },
-    ],
-    height: 0.5,
+    walls: [{ start: { x: 0, z: -3 }, end: { x: 0, z: 3 } }],
+    height: 0.5
   },
   ricochet_bumpers: {
     bumpers: [
-      { position: { x: 0, y: 0, z: 0 }, radius: 0.5, geometry: 'cylinder', restitution: 1.0 },
-    ],
+      { position: { x: 0, y: 0, z: 0 }, radius: 0.5, geometry: 'cylinder', restitution: 1.0 }
+    ]
   },
   elevated_green: {
     region: [
       { x: -2, y: -2 },
       { x: 2, y: -2 },
       { x: 2, y: 2 },
-      { x: -2, y: 2 },
+      { x: -2, y: 2 }
     ],
     elevation: 1,
     rampStart: { x: -2, z: 0 },
-    rampEnd: { x: -1, z: 0 },
+    rampEnd: { x: -1, z: 0 }
   },
+  laser_grid: {
+    beams: [{ start: [0, 0, 0], end: [2, 0, 0] }],
+    onDuration: 2,
+    offDuration: 2
+  },
+  disappearing_platform: {
+    platforms: [
+      { position: [0, 0, 0], size: [2, 0.15, 2], onDuration: 3, offDuration: 2, offset: 0 }
+    ],
+    hazardBelowY: -1
+  },
+  gravity_funnel: {
+    position: [0, 0, 0],
+    radius: 3,
+    exitPoint: [0, 0, -5],
+    force: 2.0
+  },
+  multi_level_ramp: {
+    startPosition: [0, 0, 0],
+    endPosition: [0, 1, -4],
+    width: 1.2
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -256,9 +304,9 @@ const MECHANIC_CONFIGS = {
 // ---------------------------------------------------------------------------
 
 describe('Mechanics barrel import (index.js)', () => {
-  test('all 12 mechanic types are registered', () => {
+  test('all 15 mechanic types are registered', () => {
     const registered = getRegisteredTypes();
-    expect(registered).toHaveLength(12);
+    expect(registered).toHaveLength(16);
 
     for (const type of EXPECTED_TYPES) {
       expect(registered).toContain(type);
@@ -276,7 +324,7 @@ describe('Mechanics barrel import (index.js)', () => {
     const world = makeMockWorld();
     const surfaceHeight = 0.2;
 
-    test.each(EXPECTED_TYPES)('%s', (type) => {
+    test.each(EXPECTED_TYPES)('%s', type => {
       const group = makeMockGroup();
       const config = MECHANIC_CONFIGS[type];
       const instance = createMechanic(type, world, group, config, surfaceHeight);

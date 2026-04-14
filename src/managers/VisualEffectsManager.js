@@ -39,11 +39,13 @@ export class VisualEffectsManager {
       colors[i * 3 + 2] = 0;
 
       // Random outward velocity
-      velocities.push(new THREE.Vector3(
-        (Math.random() - 0.5) * 4,
-        Math.random() * 3 + 1,
-        (Math.random() - 0.5) * 4
-      ));
+      velocities.push(
+        new THREE.Vector3(
+          (Math.random() - 0.5) * 4,
+          Math.random() * 3 + 1,
+          (Math.random() - 0.5) * 4
+        )
+      );
     }
 
     const geometry = new THREE.BufferGeometry();

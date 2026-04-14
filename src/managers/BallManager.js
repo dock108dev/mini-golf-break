@@ -217,10 +217,10 @@ export class BallManager {
       const positionClone = this.ball.mesh.position.clone
         ? this.ball.mesh.position.clone()
         : {
-          x: this.ball.mesh.position.x,
-          y: this.ball.mesh.position.y,
-          z: this.ball.mesh.position.z
-        };
+            x: this.ball.mesh.position.x,
+            y: this.ball.mesh.position.y,
+            z: this.ball.mesh.position.z
+          };
       this.game.eventManager.publish(
         EventTypes.BALL_CREATED,
         { ball: this.ball, position: positionClone },
@@ -357,6 +357,10 @@ export class BallManager {
    */
   hitBall(direction, power) {
     if (!this.ball) {
+      return;
+    }
+
+    if (this.game.scoringSystem && this.game.scoringSystem.isAtLimit()) {
       return;
     }
 

@@ -90,6 +90,9 @@ class BoostStrip extends MechanicBase {
   }
 }
 
-registerMechanic('boost_strip', (world, group, config, sh, theme) => new BoostStrip(world, group, config, sh, theme));
+registerMechanic(
+  'boost_strip',
+  (world, group, config, sh, theme) => new BoostStrip(world, group, config, sh, theme)
+);
 
 export { BoostStrip };

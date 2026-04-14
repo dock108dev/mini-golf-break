@@ -34,7 +34,7 @@ beforeAll(() => {
         this.x = x;
         this.y = y;
         this.z = z;
-      }),
+      })
     },
     velocity: {
       x: 0,
@@ -44,7 +44,7 @@ beforeAll(() => {
         this.x = x;
         this.y = y;
         this.z = z;
-      }),
+      })
     },
     quaternion: {
       x: 0,
@@ -53,7 +53,7 @@ beforeAll(() => {
       w: 1,
       set: jest.fn(),
       setFromAxisAngle: jest.fn(),
-      copy: jest.fn(),
+      copy: jest.fn()
     },
     addShape: jest.fn(),
     applyForce: jest.fn(),
@@ -61,7 +61,7 @@ beforeAll(() => {
     wakeUp: jest.fn(),
     addEventListener: jest.fn(),
     sleepState: 0,
-    userData: {},
+    userData: {}
   }));
 
   CANNON.Quaternion = jest.fn(() => ({
@@ -69,7 +69,7 @@ beforeAll(() => {
     y: 0,
     z: 0,
     w: 1,
-    setFromAxisAngle: jest.fn(),
+    setFromAxisAngle: jest.fn()
   }));
 
   CANNON.Vec3.mockImplementation((x, y, z) => ({
@@ -78,7 +78,7 @@ beforeAll(() => {
     z: z || 0,
     scale: jest.fn(function (s) {
       return { x: this.x * s, y: this.y * s, z: this.z * s };
-    }),
+    })
   }));
   CANNON.Box.mockImplementation(() => ({}));
 
@@ -92,14 +92,14 @@ beforeAll(() => {
           this.x = x;
           this.y = y;
           this.z = z;
-        }),
+        })
       },
       rotation: { x: 0, y: 0, z: 0 },
       quaternion: { x: 0, y: 0, z: 0, w: 1, copy: jest.fn() },
       castShadow: false,
       visible: true,
       geometry: { dispose: jest.fn() },
-      material: { dispose: jest.fn() },
+      material: { dispose: jest.fn() }
     };
     mesh.parent = null;
     return mesh;
@@ -107,7 +107,9 @@ beforeAll(() => {
 
   THREE.MeshStandardMaterial.mockImplementation(opts => {
     const mat = { color: 0xffffff, dispose: jest.fn() };
-    if (opts) Object.assign(mat, opts);
+    if (opts) {
+      Object.assign(mat, opts);
+    }
     return mat;
   });
 
@@ -126,7 +128,7 @@ function makeMockWorld() {
   return {
     addBody: jest.fn(),
     removeBody: jest.fn(),
-    bumperMaterial: { id: 'bumper' },
+    bumperMaterial: { id: 'bumper' }
   };
 }
 
@@ -136,9 +138,11 @@ function makeMockGroup() {
     add: jest.fn(child => children.push(child)),
     remove: jest.fn(child => {
       const idx = children.indexOf(child);
-      if (idx !== -1) children.splice(idx, 1);
+      if (idx !== -1) {
+        children.splice(idx, 1);
+      }
     }),
-    children,
+    children
   };
 }
 
@@ -159,13 +163,10 @@ function makeBallBody(x = 0, y = 0.5, z = 0) {
  *
  * Returns { preState, postState } snapshots.
  */
-function simulatePauseResume(mechanic, {
-  dt = 0.016,
-  prePauseFrames = 10,
-  postResumeFrames = 1,
-  ballBody = null,
-  captureState,
-}) {
+function simulatePauseResume(
+  mechanic,
+  { dt = 0.016, prePauseFrames = 10, postResumeFrames = 1, ballBody = null, captureState }
+) {
   // Run pre-pause frames
   for (let i = 0; i < prePauseFrames; i++) {
     mechanic.update(dt, ballBody);
@@ -198,11 +199,16 @@ describe('Pause/Resume: MovingSweeper', () => {
   });
 
   it('angle does not change while game is paused (no update calls)', () => {
-    const sweeper = new MovingSweeper(world, group, {
-      pivot: { x: 0, y: 0, z: 0 },
-      armLength: 4,
-      speed: 2,
-    }, surfaceHeight);
+    const sweeper = new MovingSweeper(
+      world,
+      group,
+      {
+        pivot: { x: 0, y: 0, z: 0 },
+        armLength: 4,
+        speed: 2
+      },
+      surfaceHeight
+    );
 
     // Run for several frames
     sweeper.update(0.5, null);
@@ -218,12 +224,17 @@ describe('Pause/Resume: MovingSweeper', () => {
   });
 
   it('resumes from exact pre-pause angle on next update', () => {
-    const sweeper = new MovingSweeper(world, group, {
-      pivot: { x: 0, y: 0, z: 0 },
-      armLength: 4,
-      speed: 2,
-      phase: 0,
-    }, surfaceHeight);
+    const sweeper = new MovingSweeper(
+      world,
+      group,
+      {
+        pivot: { x: 0, y: 0, z: 0 },
+        armLength: 4,
+        speed: 2,
+        phase: 0
+      },
+      surfaceHeight
+    );
 
     // Run for 1 second total
     sweeper.update(0.5, null);
@@ -242,11 +253,16 @@ describe('Pause/Resume: MovingSweeper', () => {
   });
 
   it('mesh position is unchanged during pause', () => {
-    const sweeper = new MovingSweeper(world, group, {
-      pivot: { x: 0, y: 0, z: 0 },
-      armLength: 4,
-      speed: 2,
-    }, surfaceHeight);
+    const sweeper = new MovingSweeper(
+      world,
+      group,
+      {
+        pivot: { x: 0, y: 0, z: 0 },
+        armLength: 4,
+        speed: 2
+      },
+      surfaceHeight
+    );
 
     sweeper.update(0.5, null);
     const posXBefore = sweeper.mesh.position.x;
@@ -271,11 +287,16 @@ describe('Pause/Resume: TimedHazard', () => {
   });
 
   it('timer does not advance while game is paused (no update calls)', () => {
-    const hazard = new TimedHazard(world, group, {
-      position: { x: 0, y: 0, z: 0 },
-      onDuration: 2,
-      offDuration: 3,
-    }, surfaceHeight);
+    const hazard = new TimedHazard(
+      world,
+      group,
+      {
+        position: { x: 0, y: 0, z: 0 },
+        onDuration: 2,
+        offDuration: 3
+      },
+      surfaceHeight
+    );
 
     hazard.update(0.5, null);
     const timerBeforePause = hazard.timer;
@@ -288,11 +309,16 @@ describe('Pause/Resume: TimedHazard', () => {
   });
 
   it('active/inactive state is preserved during pause', () => {
-    const hazard = new TimedHazard(world, group, {
-      position: { x: 0, y: 0, z: 0 },
-      onDuration: 1,
-      offDuration: 1,
-    }, surfaceHeight);
+    const hazard = new TimedHazard(
+      world,
+      group,
+      {
+        position: { x: 0, y: 0, z: 0 },
+        onDuration: 1,
+        offDuration: 1
+      },
+      surfaceHeight
+    );
 
     // Advance into active state
     hazard.update(0.5, null);
@@ -306,11 +332,16 @@ describe('Pause/Resume: TimedHazard', () => {
   });
 
   it('resumes timer from exact pre-pause value', () => {
-    const hazard = new TimedHazard(world, group, {
-      position: { x: 0, y: 0, z: 0 },
-      onDuration: 2,
-      offDuration: 2,
-    }, surfaceHeight);
+    const hazard = new TimedHazard(
+      world,
+      group,
+      {
+        position: { x: 0, y: 0, z: 0 },
+        onDuration: 2,
+        offDuration: 2
+      },
+      surfaceHeight
+    );
 
     hazard.update(0.7, null);
     expect(hazard.timer).toBeCloseTo(0.7, 5);
@@ -323,11 +354,16 @@ describe('Pause/Resume: TimedHazard', () => {
   });
 
   it('does not skip timer state on resume — continues exact cycle position', () => {
-    const hazard = new TimedHazard(world, group, {
-      position: { x: 0, y: 0, z: 0 },
-      onDuration: 1,
-      offDuration: 1,
-    }, surfaceHeight);
+    const hazard = new TimedHazard(
+      world,
+      group,
+      {
+        position: { x: 0, y: 0, z: 0 },
+        onDuration: 1,
+        offDuration: 1
+      },
+      surfaceHeight
+    );
 
     // Advance to timer=0.9, still in active phase (cyclePos 0.9 < onDuration 1)
     hazard.update(0.9, null);
@@ -355,11 +391,16 @@ describe('Pause/Resume: TimedGate', () => {
   });
 
   it('timer does not advance while game is paused (no update calls)', () => {
-    const gate = new TimedGate(world, group, {
-      position: { x: 0, y: 0, z: 0 },
-      openDuration: 2,
-      closedDuration: 3,
-    }, surfaceHeight);
+    const gate = new TimedGate(
+      world,
+      group,
+      {
+        position: { x: 0, y: 0, z: 0 },
+        openDuration: 2,
+        closedDuration: 3
+      },
+      surfaceHeight
+    );
 
     gate.update(1.0, null);
     const timerBeforePause = gate.timer;
@@ -372,11 +413,16 @@ describe('Pause/Resume: TimedGate', () => {
   });
 
   it('open/closed state is preserved during pause', () => {
-    const gate = new TimedGate(world, group, {
-      position: { x: 0, y: 0, z: 0 },
-      openDuration: 3,
-      closedDuration: 2,
-    }, surfaceHeight);
+    const gate = new TimedGate(
+      world,
+      group,
+      {
+        position: { x: 0, y: 0, z: 0 },
+        openDuration: 3,
+        closedDuration: 2
+      },
+      surfaceHeight
+    );
 
     // Advance into open state
     gate.update(0.5, null);
@@ -388,11 +434,16 @@ describe('Pause/Resume: TimedGate', () => {
   });
 
   it('resumes timer from exact pre-pause value', () => {
-    const gate = new TimedGate(world, group, {
-      position: { x: 0, y: 0, z: 0 },
-      openDuration: 2,
-      closedDuration: 3,
-    }, surfaceHeight);
+    const gate = new TimedGate(
+      world,
+      group,
+      {
+        position: { x: 0, y: 0, z: 0 },
+        openDuration: 2,
+        closedDuration: 3
+      },
+      surfaceHeight
+    );
 
     gate.update(1.5, null);
     expect(gate.timer).toBeCloseTo(1.5, 5);
@@ -405,12 +456,17 @@ describe('Pause/Resume: TimedGate', () => {
   });
 
   it('gate position does not change during pause', () => {
-    const gate = new TimedGate(world, group, {
-      position: { x: 0, y: 0, z: 0 },
-      size: { width: 2, height: 1, depth: 0.2 },
-      openDuration: 5,
-      closedDuration: 1,
-    }, surfaceHeight);
+    const gate = new TimedGate(
+      world,
+      group,
+      {
+        position: { x: 0, y: 0, z: 0 },
+        size: { width: 2, height: 1, depth: 0.2 },
+        openDuration: 5,
+        closedDuration: 1
+      },
+      surfaceHeight
+    );
 
     // Set mesh to closedY, then update to start lerping
     gate.mesh.position.y = gate.closedY;
@@ -424,12 +480,17 @@ describe('Pause/Resume: TimedGate', () => {
   });
 
   it('gate lerp continues from pre-pause position on resume', () => {
-    const gate = new TimedGate(world, group, {
-      position: { x: 0, y: 0, z: 0 },
-      size: { width: 2, height: 1, depth: 0.2 },
-      openDuration: 5,
-      closedDuration: 1,
-    }, surfaceHeight);
+    const gate = new TimedGate(
+      world,
+      group,
+      {
+        position: { x: 0, y: 0, z: 0 },
+        size: { width: 2, height: 1, depth: 0.2 },
+        openDuration: 5,
+        closedDuration: 1
+      },
+      surfaceHeight
+    );
 
     gate.mesh.position.y = gate.closedY;
     gate.update(0.05, null);
@@ -459,11 +520,16 @@ describe('Pause/Resume: PortalGate', () => {
   });
 
   it('cooldown does not decrement while game is paused (no update calls)', () => {
-    const portal = new PortalGate(world, group, {
-      entryPosition: { x: -3, y: 0, z: 2 },
-      exitPosition: { x: 3, y: 0, z: -5 },
-      radius: 0.6,
-    }, surfaceHeight);
+    const portal = new PortalGate(
+      world,
+      group,
+      {
+        entryPosition: { x: -3, y: 0, z: 2 },
+        exitPosition: { x: 3, y: 0, z: -5 },
+        radius: 0.6
+      },
+      surfaceHeight
+    );
 
     // Trigger a teleport to start cooldown
     const ball = makeBallBody(-3, 0.5, 2);
@@ -485,11 +551,16 @@ describe('Pause/Resume: PortalGate', () => {
   });
 
   it('cooldown continues decrementing from exact pre-pause value on resume', () => {
-    const portal = new PortalGate(world, group, {
-      entryPosition: { x: -3, y: 0, z: 2 },
-      exitPosition: { x: 3, y: 0, z: -5 },
-      radius: 0.6,
-    }, surfaceHeight);
+    const portal = new PortalGate(
+      world,
+      group,
+      {
+        entryPosition: { x: -3, y: 0, z: 2 },
+        exitPosition: { x: 3, y: 0, z: -5 },
+        radius: 0.6
+      },
+      surfaceHeight
+    );
 
     // Trigger teleport
     const ball = makeBallBody(-3, 0.5, 2);
@@ -509,11 +580,16 @@ describe('Pause/Resume: PortalGate', () => {
   });
 
   it('teleport remains blocked during cooldown across pause/resume', () => {
-    const portal = new PortalGate(world, group, {
-      entryPosition: { x: -3, y: 0, z: 2 },
-      exitPosition: { x: 3, y: 0, z: -5 },
-      radius: 0.6,
-    }, surfaceHeight);
+    const portal = new PortalGate(
+      world,
+      group,
+      {
+        entryPosition: { x: -3, y: 0, z: 2 },
+        exitPosition: { x: 3, y: 0, z: -5 },
+        radius: 0.6
+      },
+      surfaceHeight
+    );
 
     // Trigger first teleport
     const ball = makeBallBody(-3, 0.5, 2);
@@ -551,12 +627,17 @@ describe('Pause/Resume: BoostStrip', () => {
   });
 
   it('does not apply force while game is paused (no update calls)', () => {
-    const boost = new BoostStrip(world, group, {
-      position: { x: 0, y: 0, z: 0 },
-      direction: { x: 0, y: 0, z: -1 },
-      force: 10,
-      size: { width: 2, length: 4 },
-    }, surfaceHeight);
+    const boost = new BoostStrip(
+      world,
+      group,
+      {
+        position: { x: 0, y: 0, z: 0 },
+        direction: { x: 0, y: 0, z: -1 },
+        force: 10,
+        size: { width: 2, length: 4 }
+      },
+      surfaceHeight
+    );
 
     const ball = makeBallBody(0, 0.5, 0);
 
@@ -572,12 +653,17 @@ describe('Pause/Resume: BoostStrip', () => {
   });
 
   it('resumes applying force on next update after pause', () => {
-    const boost = new BoostStrip(world, group, {
-      position: { x: 0, y: 0, z: 0 },
-      direction: { x: 0, y: 0, z: -1 },
-      force: 10,
-      size: { width: 2, length: 4 },
-    }, surfaceHeight);
+    const boost = new BoostStrip(
+      world,
+      group,
+      {
+        position: { x: 0, y: 0, z: 0 },
+        direction: { x: 0, y: 0, z: -1 },
+        force: 10,
+        size: { width: 2, length: 4 }
+      },
+      surfaceHeight
+    );
 
     const ball = makeBallBody(0, 0.5, 0);
 
@@ -592,12 +678,17 @@ describe('Pause/Resume: BoostStrip', () => {
   });
 
   it('sound cooldown does not decrement during pause', () => {
-    const boost = new BoostStrip(world, group, {
-      position: { x: 0, y: 0, z: 0 },
-      direction: { x: 0, y: 0, z: -1 },
-      force: 10,
-      size: { width: 2, length: 4 },
-    }, surfaceHeight);
+    const boost = new BoostStrip(
+      world,
+      group,
+      {
+        position: { x: 0, y: 0, z: 0 },
+        direction: { x: 0, y: 0, z: -1 },
+        force: 10,
+        size: { width: 2, length: 4 }
+      },
+      surfaceHeight
+    );
 
     // Set a known cooldown value
     boost.boostSoundCooldown = 0.3;
@@ -625,11 +716,16 @@ describe('Pause/Resume: SuctionZone', () => {
   });
 
   it('does not apply force while game is paused (no update calls)', () => {
-    const suction = new SuctionZone(world, group, {
-      position: { x: 0, y: 0, z: 0 },
-      radius: 5,
-      force: 8,
-    }, surfaceHeight);
+    const suction = new SuctionZone(
+      world,
+      group,
+      {
+        position: { x: 0, y: 0, z: 0 },
+        radius: 5,
+        force: 8
+      },
+      surfaceHeight
+    );
 
     const ball = makeBallBody(1, 0.5, 1);
 
@@ -644,11 +740,16 @@ describe('Pause/Resume: SuctionZone', () => {
   });
 
   it('resumes applying force on next update after pause', () => {
-    const suction = new SuctionZone(world, group, {
-      position: { x: 0, y: 0, z: 0 },
-      radius: 5,
-      force: 8,
-    }, surfaceHeight);
+    const suction = new SuctionZone(
+      world,
+      group,
+      {
+        position: { x: 0, y: 0, z: 0 },
+        radius: 5,
+        force: 8
+      },
+      surfaceHeight
+    );
 
     const ball = makeBallBody(1, 0.5, 1);
 
@@ -677,12 +778,17 @@ describe('Pause/Resume: all mechanics resume from exact pre-pause state', () => 
 
   it('MovingSweeper: continuous run matches pause/resume run', () => {
     // Continuous run (no pause)
-    const continuous = new MovingSweeper(world, group, {
-      pivot: { x: 0, y: 0, z: 0 },
-      armLength: 4,
-      speed: 2,
-      phase: 0,
-    }, surfaceHeight);
+    const continuous = new MovingSweeper(
+      world,
+      group,
+      {
+        pivot: { x: 0, y: 0, z: 0 },
+        armLength: 4,
+        speed: 2,
+        phase: 0
+      },
+      surfaceHeight
+    );
 
     // Run 20 frames at 0.016s each = 0.32s total
     for (let i = 0; i < 20; i++) {
@@ -690,12 +796,17 @@ describe('Pause/Resume: all mechanics resume from exact pre-pause state', () => 
     }
 
     // Pause/resume run: 10 frames, pause, 10 frames
-    const pauseResume = new MovingSweeper(world, group, {
-      pivot: { x: 0, y: 0, z: 0 },
-      armLength: 4,
-      speed: 2,
-      phase: 0,
-    }, surfaceHeight);
+    const pauseResume = new MovingSweeper(
+      world,
+      group,
+      {
+        pivot: { x: 0, y: 0, z: 0 },
+        armLength: 4,
+        speed: 2,
+        phase: 0
+      },
+      surfaceHeight
+    );
 
     for (let i = 0; i < 10; i++) {
       pauseResume.update(0.016, null);
@@ -713,7 +824,7 @@ describe('Pause/Resume: all mechanics resume from exact pre-pause state', () => 
     const config = {
       position: { x: 0, y: 0, z: 0 },
       onDuration: 1,
-      offDuration: 1,
+      offDuration: 1
     };
 
     const continuous = new TimedHazard(world, group, config, surfaceHeight);
@@ -738,7 +849,7 @@ describe('Pause/Resume: all mechanics resume from exact pre-pause state', () => 
     const config = {
       position: { x: 0, y: 0, z: 0 },
       openDuration: 2,
-      closedDuration: 3,
+      closedDuration: 3
     };
 
     const continuous = new TimedGate(world, group, config, surfaceHeight);
@@ -763,14 +874,15 @@ describe('Pause/Resume: all mechanics resume from exact pre-pause state', () => 
     const config = {
       entryPosition: { x: -3, y: 0, z: 2 },
       exitPosition: { x: 3, y: 0, z: -5 },
-      radius: 0.6,
+      radius: 0.6
     };
 
     // Trigger teleport on both, then decrement cooldown identically
     const continuous = new PortalGate(world, group, config, surfaceHeight);
     const ball1 = makeBallBody(-3, 0.5, 2);
     continuous.update(0.016, ball1);
-    ball1.position.x = 10; ball1.position.z = 10;
+    ball1.position.x = 10;
+    ball1.position.z = 10;
     for (let i = 0; i < 19; i++) {
       continuous.update(0.016, ball1);
     }
@@ -778,7 +890,8 @@ describe('Pause/Resume: all mechanics resume from exact pre-pause state', () => 
     const pauseResume = new PortalGate(world, group, config, surfaceHeight);
     const ball2 = makeBallBody(-3, 0.5, 2);
     pauseResume.update(0.016, ball2);
-    ball2.position.x = 10; ball2.position.z = 10;
+    ball2.position.x = 10;
+    ball2.position.z = 10;
     for (let i = 0; i < 9; i++) {
       pauseResume.update(0.016, ball2);
     }

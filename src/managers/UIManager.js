@@ -2,6 +2,7 @@ import { EventTypes } from '../events/EventTypes';
 import { UIScoreOverlay } from './ui/UIScoreOverlay';
 import { UIDebugOverlay } from './ui/UIDebugOverlay';
 import { debug } from '../utils/debug';
+import { reloadPage } from '../utils/navigation';
 
 /**
  * UIManager - Handles all UI elements and interactions for the game
@@ -41,6 +42,9 @@ export class UIManager {
     // Resume button (within pause overlay)
     this.resumeButton = null;
 
+    // Quit to menu button (within pause overlay)
+    this.quitButton = null;
+
     // Mobile pause button
     this.pauseButton = null;
 
@@ -68,7 +72,9 @@ export class UIManager {
       this.debugOverlay.init();
       debug.log('[UIManager.init] Submodules initialized.');
 
-      debug.log('[UIManager.init] Creating remaining UI elements (Message, Power, Transition, Pause)...');
+      debug.log(
+        '[UIManager.init] Creating remaining UI elements (Message, Power, Transition, Pause)...'
+      );
       this.createMessageUI();
       this.createPowerIndicatorUI();
       this.createTransitionOverlay();
@@ -180,6 +186,17 @@ export class UIManager {
     });
     content.appendChild(this.resumeButton);
 
+    this.quitButton = document.createElement('button');
+    this.quitButton.classList.add('pause-quit-button');
+    this.quitButton.textContent = 'Quit to Menu';
+    this.quitButton.setAttribute('aria-label', 'Quit to menu');
+    this.quitButton.addEventListener('click', () => {
+      if (this.game.quitToMenu) {
+        this.game.quitToMenu();
+      }
+    });
+    content.appendChild(this.quitButton);
+
     const howToPlayButton = document.createElement('button');
     howToPlayButton.classList.add('pause-how-to-play-button');
     howToPlayButton.textContent = 'How to Play';
@@ -191,8 +208,10 @@ export class UIManager {
     });
     content.appendChild(howToPlayButton);
 
+    content.appendChild(this._createVolumeSlider());
+
     // Trap focus within pause overlay
-    this.pauseOverlay.addEventListener('keydown', (e) => {
+    this.pauseOverlay.addEventListener('keydown', e => {
       this._trapFocus(e, this.pauseOverlay);
     });
 
@@ -247,6 +266,7 @@ export class UIManager {
     }
     this.game.audioManager.toggleMute();
     this.updateMuteButtonIcon();
+    this.syncVolumeSlider();
   }
 
   /**
@@ -262,12 +282,69 @@ export class UIManager {
   }
 
   /**
+   * Handle volume slider input — update AudioManager and sync mute button.
+   */
+  _handleVolumeSliderChange() {
+    if (!this.volumeSlider || !this.game.audioManager) {
+      return;
+    }
+    const level = parseInt(this.volumeSlider.value, 10) / 100;
+    this.game.audioManager.setMasterVolume(level);
+    this.updateMuteButtonIcon();
+  }
+
+  /**
+   * Sync the volume slider to the current AudioManager volume.
+   */
+  syncVolumeSlider() {
+    if (!this.volumeSlider || !this.game.audioManager) {
+      return;
+    }
+    const vol = this.game.audioManager.getMasterVolume();
+    this.volumeSlider.value = String(Math.round(vol * 100));
+  }
+
+  /**
+   * Create the volume slider container element for the pause overlay.
+   * @returns {HTMLElement} The volume container element
+   */
+  _createVolumeSlider() {
+    const container = document.createElement('div');
+    container.classList.add('pause-volume-container');
+
+    const label = document.createElement('label');
+    label.classList.add('pause-volume-label');
+    label.textContent = 'Volume';
+    label.setAttribute('for', 'pause-volume-slider');
+    container.appendChild(label);
+
+    this.volumeSlider = document.createElement('input');
+    this.volumeSlider.type = 'range';
+    this.volumeSlider.id = 'pause-volume-slider';
+    this.volumeSlider.classList.add('pause-volume-slider');
+    this.volumeSlider.min = '0';
+    this.volumeSlider.max = '100';
+    this.volumeSlider.step = '5';
+    const currentVol = this.game.audioManager?.getMasterVolume() ?? 1.0;
+    this.volumeSlider.value = String(Math.round(currentVol * 100));
+    this.volumeSlider.setAttribute('aria-label', 'Master volume');
+
+    this.volumeSlider.addEventListener('input', () => {
+      this._handleVolumeSliderChange();
+    });
+
+    container.appendChild(this.volumeSlider);
+    return container;
+  }
+
+  /**
    * Show the pause overlay.
    */
   showPauseOverlay() {
     if (!this.pauseOverlay) {
       return;
     }
+    this.syncVolumeSlider();
     this.pauseOverlay.classList.add('visible');
     if (this.pauseButton) {
       this.pauseButton.style.display = 'none';
@@ -347,12 +424,18 @@ export class UIManager {
       debug.log('[UIManager.setupEventListeners] Subscribing to HAZARD_DETECTED...');
       subscribe(EventTypes.HAZARD_DETECTED, this.handleHazardDetected);
 
+      subscribe(EventTypes.STROKE_LIMIT_WARNING, this.handleStrokeLimitWarning);
+      subscribe(EventTypes.STROKE_LIMIT_REACHED, this.handleStrokeLimitReached);
+
+      subscribe(EventTypes.GAME_PAUSED, this.handleGamePaused);
+      subscribe(EventTypes.GAME_RESUMED, this.handleGameResumed);
+
       subscribe(EventTypes.UI_REQUEST_RESTART_GAME, () => {
         debug.log('[UIManager] Received UI_REQUEST_RESTART_GAME. Returning to start screen.');
         if (window.App && typeof window.App.returnToMenu === 'function') {
           window.App.returnToMenu();
         } else {
-          window.location.reload();
+          reloadPage();
         }
       });
 
@@ -373,6 +456,7 @@ export class UIManager {
 
     const message = `Hole ${holeNumber} completed! Total strokes so far: ${totalStrokes}`;
     this.showMessage(message, 3000);
+    this.hidePowerIndicator();
 
     // Delegate updates to score overlay
     this.scoreOverlay?.updateHoleInfo();
@@ -466,6 +550,34 @@ export class UIManager {
 
     // Delegate stroke update to score overlay
     this.scoreOverlay?.updateStrokes();
+  }
+
+  handleStrokeLimitWarning() {
+    this.showMessage('Last stroke!', 2000);
+  }
+
+  handleStrokeLimitReached() {
+    this.showMessage('Max strokes reached', 2000);
+  }
+
+  handleGamePaused() {
+    this.showPauseOverlay();
+  }
+
+  handleGameResumed() {
+    this.hidePauseOverlay();
+  }
+
+  showPowerIndicator() {
+    if (this.powerIndicator) {
+      this.powerIndicator.style.display = '';
+    }
+  }
+
+  hidePowerIndicator() {
+    if (this.powerIndicator) {
+      this.powerIndicator.style.display = 'none';
+    }
   }
 
   /**
@@ -651,6 +763,7 @@ export class UIManager {
     this.pauseOverlay = null;
     this.pauseButton = null;
     this.resumeButton = null;
+    this.quitButton = null;
     this.muteButton = null;
     this.scoreOverlay = null;
     this.debugOverlay = null;

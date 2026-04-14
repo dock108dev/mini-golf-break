@@ -71,6 +71,9 @@ class BankWall extends MechanicBase {
   }
 }
 
-registerMechanic('bank_wall', (world, group, config, sh, theme) => new BankWall(world, group, config, sh, theme));
+registerMechanic(
+  'bank_wall',
+  (world, group, config, sh, theme) => new BankWall(world, group, config, sh, theme)
+);
 
 export { BankWall };

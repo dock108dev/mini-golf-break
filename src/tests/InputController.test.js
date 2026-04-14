@@ -14,14 +14,36 @@ jest.mock('three', () => ({
   })),
   Vector3: jest.fn(function (x = 0, y = 0, z = 0) {
     const v = {
-      x, y, z,
-      set: jest.fn(function (nx, ny, nz) { this.x = nx; this.y = ny; this.z = nz; return this; }),
-      copy: jest.fn(function (other) { this.x = other.x; this.y = other.y; this.z = other.z; return this; }),
-      clone: jest.fn(function () { return { x: this.x, y: this.y, z: this.z }; }),
-      add: jest.fn(function () { return this; }),
-      subVectors: jest.fn(function () { return this; }),
-      normalize: jest.fn(function () { return this; }),
-      multiplyScalar: jest.fn(function () { return this; }),
+      x,
+      y,
+      z,
+      set: jest.fn(function (nx, ny, nz) {
+        this.x = nx;
+        this.y = ny;
+        this.z = nz;
+        return this;
+      }),
+      copy: jest.fn(function (other) {
+        this.x = other.x;
+        this.y = other.y;
+        this.z = other.z;
+        return this;
+      }),
+      clone: jest.fn(function () {
+        return { x: this.x, y: this.y, z: this.z };
+      }),
+      add: jest.fn(function () {
+        return this;
+      }),
+      subVectors: jest.fn(function () {
+        return this;
+      }),
+      normalize: jest.fn(function () {
+        return this;
+      }),
+      multiplyScalar: jest.fn(function () {
+        return this;
+      }),
       distanceTo: jest.fn(() => 0),
       lengthSquared: jest.fn(() => 0)
     };
@@ -234,7 +256,6 @@ describe('InputController', () => {
     expect(global.navigator.vibrate).toHaveBeenCalledWith(50);
   });
 
-
   test('should handle touch start events', () => {
     const mockTouchEvent = {
       preventDefault: jest.fn(),
@@ -275,7 +296,6 @@ describe('InputController', () => {
     inputController.enableInput();
     expect(inputController.isInputEnabled).toBe(true);
   });
-
 
   test('should handle ball state events', () => {
     // Test ball stopped event
@@ -398,7 +418,7 @@ describe('InputController', () => {
       inputController.isPointerDown = false;
 
       // Mock camera.getWorldDirection for keyboard aiming init
-      mockCamera.getWorldDirection = jest.fn((target) => {
+      mockCamera.getWorldDirection = jest.fn(target => {
         target.x = 0;
         target.y = 0;
         target.z = -1;
@@ -406,7 +426,7 @@ describe('InputController', () => {
       });
 
       // Mock requestAnimationFrame / cancelAnimationFrame
-      jest.spyOn(global, 'requestAnimationFrame').mockImplementation((cb) => {
+      jest.spyOn(global, 'requestAnimationFrame').mockImplementation(cb => {
         return 42; // Return a fake ID
       });
       jest.spyOn(global, 'cancelAnimationFrame').mockImplementation(() => {});
@@ -626,12 +646,8 @@ describe('InputController', () => {
 
       inputController.cleanup();
 
-      const keydownRemoved = removeSpy.mock.calls.some(
-        call => call[0] === 'keydown'
-      );
-      const keyupRemoved = removeSpy.mock.calls.some(
-        call => call[0] === 'keyup'
-      );
+      const keydownRemoved = removeSpy.mock.calls.some(call => call[0] === 'keydown');
+      const keyupRemoved = removeSpy.mock.calls.some(call => call[0] === 'keyup');
       expect(keydownRemoved).toBe(true);
       expect(keyupRemoved).toBe(true);
 
@@ -754,9 +770,16 @@ describe('InputController', () => {
       inputController.isDragging = true;
       inputController.hitPower = 0.5;
       inputController.hitDirection = {
-        x: 0, y: 0, z: 1,
+        x: 0,
+        y: 0,
+        z: 1,
         clone: jest.fn(() => ({ x: 0, y: 0, z: 1 })),
-        set: jest.fn(function (nx, ny, nz) { this.x = nx; this.y = ny; this.z = nz; return this; })
+        set: jest.fn(function (nx, ny, nz) {
+          this.x = nx;
+          this.y = ny;
+          this.z = nz;
+          return this;
+        })
       };
       inputController.onMouseUp({ button: 0, preventDefault: jest.fn() });
 
@@ -798,7 +821,12 @@ describe('InputController', () => {
       // Set up mouse-based aim
       inputController.isPointerDown = true;
       inputController.isDragging = true;
-      inputController.hitDirection = { x: 1, y: 0, z: 0, clone: jest.fn(() => ({ x: 1, y: 0, z: 0 })) };
+      inputController.hitDirection = {
+        x: 1,
+        y: 0,
+        z: 0,
+        clone: jest.fn(() => ({ x: 1, y: 0, z: 0 }))
+      };
       inputController.hitPower = 0.7;
 
       // Try space while mouse is active — should be rejected

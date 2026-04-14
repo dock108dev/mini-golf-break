@@ -2,10 +2,11 @@ import * as THREE from 'three';
 import { CoursesManager } from '../managers/CoursesManager.js';
 import { HoleEntity } from './HoleEntity';
 import { createOrbitalDriftConfigs } from '../config/orbitalDriftConfigs';
+import { hydrateHoleConfig } from '../config/hydrateHoleConfig';
 import { debug } from '../utils/debug';
 
 /**
- * OrbitalDriftCourse - 9-hole space-themed course with advanced mechanics.
+ * OrbitalDriftCourse - space-themed course with advanced mechanics.
  */
 export class OrbitalDriftCourse extends CoursesManager {
   constructor(game, options = {}) {
@@ -14,7 +15,9 @@ export class OrbitalDriftCourse extends CoursesManager {
     this.options = { debug: options.debug || false };
     this.scene = game.scene;
     this.physicsWorld = game.physicsWorld;
-    this.totalHoles = 9;
+
+    this.holeConfigs = createOrbitalDriftConfigs().map(hydrateHoleConfig);
+    this.totalHoles = this.holeConfigs.length;
 
     this.holeGroups = [];
     this.holeEntities = [];
@@ -27,18 +30,15 @@ export class OrbitalDriftCourse extends CoursesManager {
       this.holeGroups.push(holeGroup);
     }
 
-    this.holeConfigs = createOrbitalDriftConfigs();
-    if (this.holeConfigs.length !== this.totalHoles) {
-      this.totalHoles = this.holeConfigs.length;
-    }
-
     this.currentHoleIndex = 0;
     this.currentHoleEntity = null;
   }
 
   static async create(game) {
     const physicsWorld = game.physicsManager.getWorld();
-    if (!physicsWorld) {throw new Error('Physics world not available');}
+    if (!physicsWorld) {
+      throw new Error('Physics world not available');
+    }
 
     const course = new OrbitalDriftCourse(game, { physicsWorld });
     const success = await course.initializeHole(0);
@@ -51,13 +51,19 @@ export class OrbitalDriftCourse extends CoursesManager {
   }
 
   async initializeHole(holeIndex) {
-    if (holeIndex < 0 || holeIndex >= this.totalHoles) {return false;}
+    if (holeIndex < 0 || holeIndex >= this.totalHoles) {
+      return false;
+    }
 
     const holeGroup = this.holeGroups[holeIndex];
     const holeConfig = this.holeConfigs[holeIndex];
-    if (!holeConfig || !holeGroup) {return false;}
+    if (!holeConfig || !holeGroup) {
+      return false;
+    }
 
-    if (!holeGroup.parent) {this.scene.add(holeGroup);}
+    if (!holeGroup.parent) {
+      this.scene.add(holeGroup);
+    }
 
     if (this.currentHoleEntity && this.currentHoleEntity.config.index === holeIndex) {
       this.holeGroups[holeIndex].visible = true;
@@ -66,7 +72,9 @@ export class OrbitalDriftCourse extends CoursesManager {
       return true;
     }
 
-    this.holeGroups.forEach(g => { g.visible = false; });
+    this.holeGroups.forEach(g => {
+      g.visible = false;
+    });
 
     const physicsWorld = this.game.physicsManager.getWorld();
     this.currentHoleEntity = new HoleEntity(physicsWorld, holeConfig, holeGroup);
@@ -87,7 +95,9 @@ export class OrbitalDriftCourse extends CoursesManager {
   }
 
   async createCourse(targetHoleNumber) {
-    if (targetHoleNumber < 1 || targetHoleNumber > this.totalHoles) {return false;}
+    if (targetHoleNumber < 1 || targetHoleNumber > this.totalHoles) {
+      return false;
+    }
     await this.clearCurrentHole();
     return await this.initializeHole(targetHoleNumber - 1);
   }
@@ -98,20 +108,40 @@ export class OrbitalDriftCourse extends CoursesManager {
       this.currentHoleEntity = null;
       this.currentHole = null;
     }
-    if (this.holeGroups && this.currentHoleIndex >= 0 && this.currentHoleIndex < this.holeGroups.length) {
+    if (
+      this.holeGroups &&
+      this.currentHoleIndex >= 0 &&
+      this.currentHoleIndex < this.holeGroups.length
+    ) {
       this.holeGroups[this.currentHoleIndex].visible = false;
     }
     return Promise.resolve();
   }
 
-  getCurrentHoleNumber() { return this.currentHoleIndex + 1; }
-  getCurrentHoleConfig() { return this.holeConfigs[this.currentHoleIndex] || null; }
-  hasNextHole() { return this.currentHoleIndex < this.totalHoles - 1; }
-  getHolePosition() { return this.getCurrentHoleConfig()?.holePosition || null; }
-  getHoleStartPosition() { return this.getCurrentHoleConfig()?.startPosition || null; }
-  getHolePar() { return this.getCurrentHoleConfig()?.par || 0; }
-  getAllHolePars() { return this.holeConfigs.map(c => c.par || 0); }
-  getCameraHint() { return this.getCurrentHoleConfig()?.cameraHint || null; }
+  getCurrentHoleNumber() {
+    return this.currentHoleIndex + 1;
+  }
+  getCurrentHoleConfig() {
+    return this.holeConfigs[this.currentHoleIndex] || null;
+  }
+  hasNextHole() {
+    return this.currentHoleIndex < this.totalHoles - 1;
+  }
+  getHolePosition() {
+    return this.getCurrentHoleConfig()?.holePosition || null;
+  }
+  getHoleStartPosition() {
+    return this.getCurrentHoleConfig()?.startPosition || null;
+  }
+  getHolePar() {
+    return this.getCurrentHoleConfig()?.par || 0;
+  }
+  getAllHolePars() {
+    return this.holeConfigs.map(c => c.par || 0);
+  }
+  getCameraHint() {
+    return this.getCurrentHoleConfig()?.cameraHint || null;
+  }
 
   // update(dt) is inherited from CoursesManager — it threads ballBody to currentHoleEntity
 }

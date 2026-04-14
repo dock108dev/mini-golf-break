@@ -35,7 +35,9 @@ export class UIDebugOverlay {
    * @param {object} debugInfo - Object containing debug data (e.g., fps, ballPos, etc.)
    */
   updateDebugDisplay(debugInfo) {
-    if (!this.debugElement) {return;}
+    if (!this.debugElement) {
+      return;
+    }
 
     // Only update if debug mode is enabled in DebugManager
     if (!this.game.debugManager?.enabled) {

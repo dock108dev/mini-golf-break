@@ -35,7 +35,7 @@ beforeAll(() => {
     x,
     y,
     z,
-    scale: (s) => ({ x: x * s, y: y * s, z: z * s }),
+    scale: s => ({ x: x * s, y: y * s, z: z * s })
   }));
 
   CANNON.Body.mockImplementation(() => ({
@@ -47,7 +47,7 @@ beforeAll(() => {
         this.x = x;
         this.y = y;
         this.z = z;
-      }),
+      })
     },
     velocity: {
       x: 0,
@@ -57,7 +57,7 @@ beforeAll(() => {
         this.x = x;
         this.y = y;
         this.z = z;
-      }),
+      })
     },
     quaternion: {
       x: 0,
@@ -66,35 +66,33 @@ beforeAll(() => {
       w: 1,
       set: jest.fn(),
       setFromAxisAngle: jest.fn(),
-      copy: jest.fn(),
+      copy: jest.fn()
     },
     addShape: jest.fn(),
     addEventListener: jest.fn(),
-    userData: {},
+    userData: {}
   }));
 
   CANNON.Body.SLEEPING = 2;
   CANNON.Body.KINEMATIC = 4;
   CANNON.Body.STATIC = 1;
 
-  THREE.MeshStandardMaterial.mockImplementation((opts) => {
+  THREE.MeshStandardMaterial.mockImplementation(opts => {
     const mat = { color: 0xffffff, roughness: 0.3, metalness: 0.2, dispose: jest.fn() };
-    if (opts) Object.assign(mat, opts);
+    if (opts) {
+      Object.assign(mat, opts);
+    }
     return mat;
   });
 
   const geomProto = { dispose: jest.fn() };
-  [
-    'CircleGeometry',
-    'PlaneGeometry',
-    'BoxGeometry',
-    'CylinderGeometry',
-    'RingGeometry',
-  ].forEach((name) => {
-    if (typeof THREE[name]?.mockImplementation === 'function') {
-      THREE[name].mockImplementation(() => ({ ...geomProto }));
+  ['CircleGeometry', 'PlaneGeometry', 'BoxGeometry', 'CylinderGeometry', 'RingGeometry'].forEach(
+    name => {
+      if (typeof THREE[name]?.mockImplementation === 'function') {
+        THREE[name].mockImplementation(() => ({ ...geomProto }));
+      }
     }
-  });
+  );
 });
 
 // ---------------------------------------------------------------------------
@@ -107,19 +105,21 @@ function makeMockWorld() {
     addBody: jest.fn(),
     removeBody: jest.fn(),
     step: jest.fn(),
-    bumperMaterial: { name: 'bumper' },
+    bumperMaterial: { name: 'bumper' }
   };
 }
 
 function makeMockGroup() {
   const children = [];
   return {
-    add: jest.fn((child) => children.push(child)),
-    remove: jest.fn((child) => {
+    add: jest.fn(child => children.push(child)),
+    remove: jest.fn(child => {
       const idx = children.indexOf(child);
-      if (idx !== -1) children.splice(idx, 1);
+      if (idx !== -1) {
+        children.splice(idx, 1);
+      }
     }),
-    children,
+    children
   };
 }
 
@@ -133,13 +133,13 @@ function makeMockBall(x = 0, z = 0, vx = 0, vz = 0) {
         this.x = nx;
         this.y = ny;
         this.z = nz;
-      }),
+      })
     },
     velocity: { x: vx, y: 0, z: vz },
     mass: 0.45,
     sleepState: 0, // AWAKE
     applyForce: jest.fn(),
-    wakeUp: jest.fn(),
+    wakeUp: jest.fn()
   };
 }
 
@@ -152,7 +152,9 @@ function checkBallInHole(ballBody, holePosition) {
   const dz = ballBody.position.z - holePosition.z;
   const dist = Math.sqrt(dx * dx + dz * dz);
 
-  if (dist > CHECK_RADIUS) return false;
+  if (dist > CHECK_RADIUS) {
+    return false;
+  }
 
   const vx = ballBody.velocity.x;
   const vy = ballBody.velocity.y || 0;
@@ -179,7 +181,7 @@ describe('Ball-in-hole detection with LowGravityZone active', () => {
     const config = {
       position: new THREE.Vector3(holePos.x, 0, holePos.z),
       radius: 3,
-      gravityMultiplier: 0.3,
+      gravityMultiplier: 0.3
     };
     const zone = new LowGravityZone(world, group, config, SURFACE_HEIGHT);
 
@@ -206,7 +208,7 @@ describe('Ball-in-hole detection with LowGravityZone active', () => {
     const config = {
       position: new THREE.Vector3(holePos.x, 0, holePos.z),
       radius: 5,
-      gravityMultiplier: 0.1,
+      gravityMultiplier: 0.1
     };
     const zone = new LowGravityZone(world, group, config, SURFACE_HEIGHT);
 
@@ -246,7 +248,7 @@ describe('Ball-in-hole detection with MovingSweeper active nearby', () => {
       pivot: new THREE.Vector3(2, 0, holePos.z),
       armLength: 1.5,
       speed: 2,
-      size: { width: 0.3, height: 0.4, depth: 1.5 },
+      size: { width: 0.3, height: 0.4, depth: 1.5 }
     };
     const sweeper = new MovingSweeper(world, group, config, SURFACE_HEIGHT);
 
@@ -276,7 +278,7 @@ describe('Ball-in-hole detection with MovingSweeper active nearby', () => {
       pivot: new THREE.Vector3(holePos.x, 0, holePos.z),
       armLength: 3,
       speed: 1,
-      size: { width: 0.3, height: 0.4, depth: 3 },
+      size: { width: 0.3, height: 0.4, depth: 3 }
     };
     const sweeper = new MovingSweeper(world, group, config, SURFACE_HEIGHT);
 
@@ -314,17 +316,12 @@ describe('Ball-in-hole detection with BoostStrip active', () => {
       position: new THREE.Vector3(holePos.x, 0, holePos.z),
       direction: new THREE.Vector3(1, 0, 0),
       force: 20,
-      size: { width: 2, length: 2 },
+      size: { width: 2, length: 2 }
     };
     const strip = new BoostStrip(world, group, config, SURFACE_HEIGHT);
 
     // Ball at hole position but with speed already near threshold
-    const ball = makeMockBall(
-      strip.triggerBody.position.x,
-      strip.triggerBody.position.z,
-      3.5,
-      0
-    );
+    const ball = makeMockBall(strip.triggerBody.position.x, strip.triggerBody.position.z, 3.5, 0);
 
     // BoostStrip applies force each frame
     strip.update(1 / 60, ball);
@@ -344,17 +341,12 @@ describe('Ball-in-hole detection with BoostStrip active', () => {
       position: new THREE.Vector3(holePos.x, 0, holePos.z),
       direction: new THREE.Vector3(1, 0, 0),
       force: 2,
-      size: { width: 2, length: 2 },
+      size: { width: 2, length: 2 }
     };
     const strip = new BoostStrip(world, group, config, SURFACE_HEIGHT);
 
     // Ball at hole, low speed
-    const ball = makeMockBall(
-      strip.triggerBody.position.x,
-      strip.triggerBody.position.z,
-      1.0,
-      0
-    );
+    const ball = makeMockBall(strip.triggerBody.position.x, strip.triggerBody.position.z, 1.0, 0);
 
     strip.update(1 / 60, ball);
     expect(ball.applyForce).toHaveBeenCalled();
@@ -375,7 +367,7 @@ describe('Ball-in-hole detection with BoostStrip active', () => {
       position: new THREE.Vector3(holePos.x, 0, holePos.z),
       direction: new THREE.Vector3(0, 0, 1),
       force: 10,
-      size: { width: 2, length: 2 },
+      size: { width: 2, length: 2 }
     };
     const strip = new BoostStrip(world, group, config, SURFACE_HEIGHT);
 
@@ -405,7 +397,7 @@ describe('SuctionZone centered on hole pulls ball in and triggers detection', ()
     const config = {
       position: new THREE.Vector3(holePos.x, 0, holePos.z),
       radius: 3,
-      force: 10,
+      force: 10
     };
     const zone = new SuctionZone(world, group, config, SURFACE_HEIGHT);
 
@@ -424,7 +416,7 @@ describe('SuctionZone centered on hole pulls ball in and triggers detection', ()
     const config = {
       position: new THREE.Vector3(holePos.x, 0, holePos.z),
       radius: 3,
-      force: 8,
+      force: 8
     };
     const zone = new SuctionZone(world, group, config, SURFACE_HEIGHT);
 
@@ -447,7 +439,7 @@ describe('SuctionZone centered on hole pulls ball in and triggers detection', ()
     const config = {
       position: new THREE.Vector3(holePos.x, 0, holePos.z),
       radius: 4,
-      force: 12,
+      force: 12
     };
     const zone = new SuctionZone(world, group, config, SURFACE_HEIGHT);
 
@@ -481,27 +473,18 @@ describe('Ball teleported by PortalGate to hole position triggers detection', ()
     const config = {
       entryPosition: new THREE.Vector3(-5, 0, -5),
       exitPosition: new THREE.Vector3(holePos.x, SURFACE_HEIGHT, holePos.z),
-      radius: 1,
+      radius: 1
     };
     const portal = new PortalGate(world, group, config, SURFACE_HEIGHT);
 
     // Ball at entry portal, slow speed
-    const ball = makeMockBall(
-      config.entryPosition.x,
-      config.entryPosition.z,
-      1.0,
-      0
-    );
+    const ball = makeMockBall(config.entryPosition.x, config.entryPosition.z, 1.0, 0);
 
     // Portal teleports ball
     portal.update(1 / 60, ball);
 
     // Ball should now be at exit position (hole XZ, with portal's exit Y elevation)
-    expect(ball.position.set).toHaveBeenCalledWith(
-      holePos.x,
-      PORTAL_EXIT_Y,
-      holePos.z
-    );
+    expect(ball.position.set).toHaveBeenCalledWith(holePos.x, PORTAL_EXIT_Y, holePos.z);
 
     // Simulate the position update (mocked set doesn't auto-update)
     ball.position.x = holePos.x;
@@ -518,17 +501,12 @@ describe('Ball teleported by PortalGate to hole position triggers detection', ()
     const config = {
       entryPosition: new THREE.Vector3(-5, 0, -5),
       exitPosition: new THREE.Vector3(holePos.x, SURFACE_HEIGHT, holePos.z),
-      radius: 1,
+      radius: 1
     };
     const portal = new PortalGate(world, group, config, SURFACE_HEIGHT);
 
     // Ball at entry portal, fast speed
-    const ball = makeMockBall(
-      config.entryPosition.x,
-      config.entryPosition.z,
-      5.0,
-      3.0
-    );
+    const ball = makeMockBall(config.entryPosition.x, config.entryPosition.z, 5.0, 3.0);
 
     portal.update(1 / 60, ball);
 
@@ -545,16 +523,11 @@ describe('Ball teleported by PortalGate to hole position triggers detection', ()
     const config = {
       entryPosition: new THREE.Vector3(-5, 0, -5),
       exitPosition: new THREE.Vector3(holePos.x, SURFACE_HEIGHT, holePos.z),
-      radius: 1,
+      radius: 1
     };
     const portal = new PortalGate(world, group, config, SURFACE_HEIGHT);
 
-    const ball = makeMockBall(
-      config.entryPosition.x,
-      config.entryPosition.z,
-      1.0,
-      0
-    );
+    const ball = makeMockBall(config.entryPosition.x, config.entryPosition.z, 1.0, 0);
 
     // First teleport
     portal.update(1 / 60, ball);

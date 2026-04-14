@@ -65,8 +65,8 @@ export class PhysicsWorld {
   createContactMaterials() {
     // Set up contact between ball and ground (normal green)
     const ballGroundContact = new CANNON.ContactMaterial(this.ballMaterial, this.groundMaterial, {
-      friction: 0.8, // Increased friction for faster deceleration
-      restitution: 0.1, // Keep low bounce
+      friction: 0.4, // Tuned per golf-ball-physics-tuning research
+      restitution: 0.05, // Tuned per golf-ball-physics-tuning research
       contactEquationStiffness: 1e7,
       contactEquationRelaxation: 3,
       frictionEquationStiffness: 1e7,
@@ -80,7 +80,7 @@ export class PhysicsWorld {
     ); // Log IDs before definition
     const ballBumperContact = new CANNON.ContactMaterial(this.ballMaterial, this.bumperMaterial, {
       friction: 0.2, // Restored original value
-      restitution: 0.7, // Increased from 0.4 for better bounce off walls
+      restitution: 0.65, // Tuned per golf-ball-physics-tuning research
       contactEquationStiffness: 1e8,
       contactEquationRelaxation: 3, // Increased for more elastic collisions
       frictionEquationStiffness: 1e7,
@@ -109,7 +109,7 @@ export class PhysicsWorld {
 
     // Set up contact between ball and hole rim/funnel - low bounce
     const ballRimContact = new CANNON.ContactMaterial(this.ballMaterial, this.holeRimMaterial, {
-      friction: 0.6, // Similar to ground friction
+      friction: 0.4, // Tuned per golf-ball-physics-tuning research
       restitution: 0.01, // VERY low bounce
       contactEquationStiffness: 1e7,
       contactEquationRelaxation: 3,
@@ -121,8 +121,8 @@ export class PhysicsWorld {
 
     // Default contact material for everything else
     if (this.world.defaultContactMaterial) {
-      this.world.defaultContactMaterial.friction = 0.8; // Increased default friction
-      this.world.defaultContactMaterial.restitution = 0.1; // Restored original value
+      this.world.defaultContactMaterial.friction = 0.4; // Tuned per golf-ball-physics-tuning research
+      this.world.defaultContactMaterial.restitution = 0.05; // Tuned per golf-ball-physics-tuning research
     } else {
       // In testing environment, defaultContactMaterial might be null
       debug.log(
@@ -204,7 +204,9 @@ export class PhysicsWorld {
         // Only reset all bodies as a last resort after repeated failures.
         // A single error may be transient (e.g., NaN from one body's state).
         if (this._physicsErrorCount >= 3) {
-          console.warn('PhysicsWorld: Repeated physics errors — resetting all body velocities as recovery.');
+          console.warn(
+            'PhysicsWorld: Repeated physics errors — resetting all body velocities as recovery.'
+          );
           this.world.bodies.forEach(body => {
             if (body) {
               body.velocity.set(0, 0, 0);

@@ -29,7 +29,7 @@ beforeAll(() => {
 });
 
 beforeEach(() => {
-  global.requestAnimationFrame = jest.fn((cb) => {
+  global.requestAnimationFrame = jest.fn(cb => {
     animationFrameCallback = cb;
     return 1;
   });
@@ -56,14 +56,14 @@ function createMockGame() {
       beginFrame: jest.fn(),
       endFrame: jest.fn(),
       startTimer: jest.fn(),
-      endTimer: jest.fn(),
+      endTimer: jest.fn()
     },
     ballManager: { update: jest.fn() },
     hazardManager: { update: jest.fn() },
     cameraController: { update: jest.fn() },
     cannonDebugRenderer: { update: jest.fn() },
     visualEffectsManager: { update: jest.fn() },
-    debugManager: { log: jest.fn(), enabled: false },
+    debugManager: { log: jest.fn(), enabled: false }
   };
 }
 
@@ -75,7 +75,7 @@ function createMockWorld() {
   return {
     addBody: jest.fn(),
     removeBody: jest.fn(),
-    bumperMaterial: {},
+    bumperMaterial: {}
   };
 }
 
@@ -86,7 +86,7 @@ function createMockWorld() {
 function createMockGroup() {
   return {
     add: jest.fn(),
-    remove: jest.fn(),
+    remove: jest.fn()
   };
 }
 
@@ -99,7 +99,7 @@ function createMockBallBody(x = 0, z = 0) {
     position: { x, y: 0.2, z },
     velocity: { x: 0, y: 0, z: 0 },
     sleepState: 0,
-    applyImpulse: jest.fn(),
+    applyImpulse: jest.fn()
   };
 }
 
@@ -193,7 +193,7 @@ describe('TimedHazard with clamped dt', () => {
       addShape: jest.fn(),
       applyImpulse: jest.fn(),
       sleepState: 0,
-      userData: {},
+      userData: {}
     }));
 
     CANNON.Vec3.mockImplementation((x, y, z) => ({ x: x || 0, y: y || 0, z: z || 0 }));
@@ -207,13 +207,13 @@ describe('TimedHazard with clamped dt', () => {
           this.x = x;
           this.y = y;
           this.z = z;
-        }),
+        })
       },
       rotation: { x: 0, y: 0, z: 0 },
       visible: true,
       geometry: { dispose: jest.fn() },
       material: { dispose: jest.fn() },
-      parent: null,
+      parent: null
     }));
   });
 
@@ -223,7 +223,7 @@ describe('TimedHazard with clamped dt', () => {
       size: { width: 2, length: 2 },
       onDuration: 2,
       offDuration: 2,
-      hazardType: 'water',
+      hazardType: 'water'
     };
     const hazard = new TimedHazard(world, group, config, 0.2);
 
@@ -248,7 +248,7 @@ describe('TimedHazard with clamped dt', () => {
       position: new THREE.Vector3(0, 0, 0),
       size: { width: 2, length: 2 },
       onDuration: 1,
-      offDuration: 1,
+      offDuration: 1
     };
     const hazard = new TimedHazard(world, group, config, 0.2);
 
@@ -267,7 +267,7 @@ describe('TimedHazard with clamped dt', () => {
       size: { width: 2, length: 2 },
       onDuration: 0.5,
       offDuration: 0.5,
-      phase: 0.49, // Near end of on-cycle
+      phase: 0.49 // Near end of on-cycle
     };
     const hazard = new TimedHazard(world, group, config, 0.2);
 
@@ -301,12 +301,12 @@ describe('TimedGate with clamped dt', () => {
           this.x = x;
           this.y = y;
           this.z = z;
-        }),
+        })
       },
       velocity: { x: 0, y: 0, z: 0 },
       quaternion: { x: 0, y: 0, z: 0, w: 1, set: jest.fn() },
       addShape: jest.fn(),
-      userData: {},
+      userData: {}
     }));
 
     CANNON.Vec3.mockImplementation((x, y, z) => ({ x: x || 0, y: y || 0, z: z || 0 }));
@@ -321,14 +321,14 @@ describe('TimedGate with clamped dt', () => {
           this.x = x;
           this.y = y;
           this.z = z;
-        }),
+        })
       },
       rotation: { x: 0, y: 0, z: 0 },
       castShadow: false,
       visible: true,
       geometry: { dispose: jest.fn() },
       material: { dispose: jest.fn() },
-      parent: null,
+      parent: null
     }));
   });
 
@@ -337,7 +337,7 @@ describe('TimedGate with clamped dt', () => {
       position: new THREE.Vector3(0, 0, 0),
       size: { width: 2, height: 1, depth: 0.2 },
       openDuration: 2,
-      closedDuration: 3,
+      closedDuration: 3
     };
     const gate = new TimedGate(world, group, config, 0.2);
 
@@ -358,7 +358,7 @@ describe('TimedGate with clamped dt', () => {
       position: new THREE.Vector3(0, 0, 0),
       size: { width: 2, height: 1, depth: 0.2 },
       openDuration: 2,
-      closedDuration: 3,
+      closedDuration: 3
     };
     const gate = new TimedGate(world, group, config, 0.2);
 
@@ -400,7 +400,7 @@ describe('MovingSweeper with clamped dt', () => {
           this.x = x;
           this.y = y;
           this.z = z;
-        }),
+        })
       },
       velocity: { x: 0, y: 0, z: 0, set: jest.fn() },
       quaternion: {
@@ -410,11 +410,11 @@ describe('MovingSweeper with clamped dt', () => {
         w: 1,
         set: jest.fn(),
         setFromAxisAngle: jest.fn(),
-        copy: jest.fn(),
+        copy: jest.fn()
       },
       addShape: jest.fn(),
       addEventListener: jest.fn(),
-      userData: {},
+      userData: {}
     }));
 
     CANNON.Quaternion = jest.fn(() => ({
@@ -422,7 +422,7 @@ describe('MovingSweeper with clamped dt', () => {
       y: 0,
       z: 0,
       w: 1,
-      setFromAxisAngle: jest.fn(),
+      setFromAxisAngle: jest.fn()
     }));
 
     CANNON.Vec3.mockImplementation((x, y, z) => ({ x: x || 0, y: y || 0, z: z || 0 }));
@@ -437,13 +437,13 @@ describe('MovingSweeper with clamped dt', () => {
           this.x = x;
           this.y = y;
           this.z = z;
-        }),
+        })
       },
       rotation: { x: 0, y: 0, z: 0 },
       castShadow: false,
       geometry: { dispose: jest.fn() },
       material: { dispose: jest.fn() },
-      parent: null,
+      parent: null
     }));
   });
 
@@ -452,7 +452,7 @@ describe('MovingSweeper with clamped dt', () => {
       pivot: new THREE.Vector3(0, 0, 0),
       armLength: 4,
       speed: 1.5,
-      size: { width: 4, height: 0.4, depth: 0.3 },
+      size: { width: 4, height: 0.4, depth: 0.3 }
     };
     const sweeper = new MovingSweeper(world, group, config, 0.2);
 
@@ -478,7 +478,7 @@ describe('MovingSweeper with clamped dt', () => {
     const config = {
       pivot: new THREE.Vector3(0, 0, 0),
       armLength: 3,
-      speed: 2.0,
+      speed: 2.0
     };
     const sweeper = new MovingSweeper(world, group, config, 0.2);
 
@@ -494,7 +494,7 @@ describe('MovingSweeper with clamped dt', () => {
     const config = {
       pivot: new THREE.Vector3(2, 0, 3),
       armLength: 4,
-      speed: 1.0,
+      speed: 1.0
     };
     const sweeper = new MovingSweeper(world, group, config, 0.2);
 
@@ -597,7 +597,7 @@ describe('Page visibility change handling', () => {
     Object.defineProperty(document, 'visibilityState', {
       value: 'hidden',
       writable: true,
-      configurable: true,
+      configurable: true
     });
     gameLoopManager._onVisibilityChange();
 
@@ -612,7 +612,7 @@ describe('Page visibility change handling', () => {
     Object.defineProperty(document, 'visibilityState', {
       value: 'hidden',
       writable: true,
-      configurable: true,
+      configurable: true
     });
     gameLoopManager._onVisibilityChange();
     expect(gameLoopManager.isPaused).toBe(true);
@@ -621,7 +621,7 @@ describe('Page visibility change handling', () => {
     Object.defineProperty(document, 'visibilityState', {
       value: 'visible',
       writable: true,
-      configurable: true,
+      configurable: true
     });
     gameLoopManager._onVisibilityChange();
 
@@ -642,7 +642,7 @@ describe('Page visibility change handling', () => {
     Object.defineProperty(document, 'visibilityState', {
       value: 'visible',
       writable: true,
-      configurable: true,
+      configurable: true
     });
     gameLoopManager._onVisibilityChange();
 
@@ -657,7 +657,7 @@ describe('Page visibility change handling', () => {
     Object.defineProperty(document, 'visibilityState', {
       value: 'hidden',
       writable: true,
-      configurable: true,
+      configurable: true
     });
     gameLoopManager._onVisibilityChange();
 
@@ -671,7 +671,7 @@ describe('Page visibility change handling', () => {
     Object.defineProperty(document, 'visibilityState', {
       value: 'hidden',
       writable: true,
-      configurable: true,
+      configurable: true
     });
     gameLoopManager._onVisibilityChange();
 
@@ -682,7 +682,7 @@ describe('Page visibility change handling', () => {
     Object.defineProperty(document, 'visibilityState', {
       value: 'visible',
       writable: true,
-      configurable: true,
+      configurable: true
     });
     gameLoopManager._onVisibilityChange();
 

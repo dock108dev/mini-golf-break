@@ -340,9 +340,15 @@ export class CameraController {
 
     if (hint && hint.offset && hint.lookAt) {
       // Use camera hint values directly
-      cameraPosition = hint.offset.clone ? hint.offset.clone() : new THREE.Vector3(hint.offset.x, hint.offset.y, hint.offset.z);
-      lookAtPoint = hint.lookAt.clone ? hint.lookAt.clone() : new THREE.Vector3(hint.lookAt.x, hint.lookAt.y, hint.lookAt.z);
-      debug.log(`Using camera hint: offset=${cameraPosition.x},${cameraPosition.y},${cameraPosition.z} lookAt=${lookAtPoint.x},${lookAtPoint.y},${lookAtPoint.z}`);
+      cameraPosition = hint.offset.clone
+        ? hint.offset.clone()
+        : new THREE.Vector3(hint.offset.x, hint.offset.y, hint.offset.z);
+      lookAtPoint = hint.lookAt.clone
+        ? hint.lookAt.clone()
+        : new THREE.Vector3(hint.lookAt.x, hint.lookAt.y, hint.lookAt.z);
+      debug.log(
+        `Using camera hint: offset=${cameraPosition.x},${cameraPosition.y},${cameraPosition.z} lookAt=${lookAtPoint.x},${lookAtPoint.y},${lookAtPoint.z}`
+      );
     } else {
       // Default positioning: calculate from hole geometry
       // Calculate midpoint between WORLD tee and hole

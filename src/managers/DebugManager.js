@@ -45,7 +45,9 @@ export class DebugManager {
       this.courseDebugUI.init();
     }
 
-    if (this.enabled) {this.setupDebugHelpers();}
+    if (this.enabled) {
+      this.setupDebugHelpers();
+    }
     return this;
   }
 
@@ -53,7 +55,9 @@ export class DebugManager {
     if (process.env.NODE_ENV !== 'production' || DEBUG_CONFIG.enabled) {
       window.addEventListener('keydown', this.boundHandleMainKey);
       window.addEventListener('keydown', this.boundHandleForceFieldKey);
-      debug.log("[DebugManager] Debug mode available - press '" + DEBUG_CONFIG.enableKey + "' to toggle");
+      debug.log(
+        "[DebugManager] Debug mode available - press '" + DEBUG_CONFIG.enableKey + "' to toggle"
+      );
     }
   }
 
@@ -63,11 +67,15 @@ export class DebugManager {
   }
 
   handleMainDebugKey(e) {
-    if (e.key === DEBUG_CONFIG.enableKey) {this.toggleDebugMode();}
+    if (e.key === DEBUG_CONFIG.enableKey) {
+      this.toggleDebugMode();
+    }
   }
 
   handleForceFieldKey(e) {
-    if (e.key === DEBUG_CONFIG.forceFieldToggleKey) {this.toggleForceFieldVisibility();}
+    if (e.key === DEBUG_CONFIG.forceFieldToggleKey) {
+      this.toggleForceFieldVisibility();
+    }
   }
 
   toggleForceFieldVisibility() {
@@ -82,9 +90,13 @@ export class DebugManager {
 
   applyForceFieldVisibility() {
     const course = this.game?.course;
-    if (!course) {return;}
+    if (!course) {
+      return;
+    }
     const holeEntity = course.currentHoleEntity;
-    if (!holeEntity?.mechanics) {return;}
+    if (!holeEntity?.mechanics) {
+      return;
+    }
     for (const mechanic of holeEntity.mechanics) {
       if (mechanic.isForceField) {
         mechanic.setMeshVisibility(this.forceFieldsVisible);
@@ -110,9 +122,13 @@ export class DebugManager {
   }
 
   setupDebugHelpers() {
-    if (!DEBUG_CONFIG.showHelpers) {return;}
+    if (!DEBUG_CONFIG.showHelpers) {
+      return;
+    }
     this.removeDebugHelpers();
-    if (!this.game?.scene) {return;}
+    if (!this.game?.scene) {
+      return;
+    }
 
     const axesHelper = new THREE.AxesHelper(5);
     this.game.scene.add(axesHelper);
@@ -139,28 +155,40 @@ export class DebugManager {
       console.warn('[DebugManager] Cannot remove helpers, game or scene missing.');
       return this;
     }
-    this.debugObjects.forEach(obj => { if (obj?.parent) {this.game.scene.remove(obj);} });
+    this.debugObjects.forEach(obj => {
+      if (obj?.parent) {
+        this.game.scene.remove(obj);
+      }
+    });
     this.debugObjects = [];
     return this;
   }
 
   logBallVelocity(velocity) {
-    if (!this.enabled || !DEBUG_CONFIG.logVelocity) {return;}
+    if (!this.enabled || !DEBUG_CONFIG.logVelocity) {
+      return;
+    }
     const speed = velocity.length();
     this.velocityHistory.push(speed);
-    if (this.velocityHistory.length > this.maxHistoryLength) {this.velocityHistory.shift();}
+    if (this.velocityHistory.length > this.maxHistoryLength) {
+      this.velocityHistory.shift();
+    }
     debug.log(`Ball speed: ${speed.toFixed(2)} m/s`);
     return this;
   }
 
   logWithLevel(level, source, message, data = null, showInUI = false) {
     if (level !== ERROR_LEVELS.ERROR && !this.enabled && !DEBUG_CONFIG.logCriticalErrors) {
-      if (level !== ERROR_LEVELS.ERROR || !DEBUG_CONFIG.logCriticalErrors) {return this;}
+      if (level !== ERROR_LEVELS.ERROR || !DEBUG_CONFIG.logCriticalErrors) {
+        return this;
+      }
     }
 
     const formattedMessage = `[${level}] ${source}: ${message}`;
     this.trackError(level, formattedMessage);
-    if (this.shouldSuppressError(formattedMessage)) {return this;}
+    if (this.shouldSuppressError(formattedMessage)) {
+      return this;
+    }
 
     switch (level) {
       case ERROR_LEVELS.ERROR:
@@ -174,7 +202,9 @@ export class DebugManager {
         break;
     }
 
-    if (showInUI && level === ERROR_LEVELS.ERROR) {this.showErrorInUI(formattedMessage);}
+    if (showInUI && level === ERROR_LEVELS.ERROR) {
+      this.showErrorInUI(formattedMessage);
+    }
     return this;
   }
 
@@ -188,7 +218,9 @@ export class DebugManager {
   }
 
   shouldSuppressError(message) {
-    if (!DEBUG_CONFIG.errorTracking.suppressRepeated) {return false;}
+    if (!DEBUG_CONFIG.errorTracking.suppressRepeated) {
+      return false;
+    }
     return (this.errorHistory.get(message) || 0) > DEBUG_CONFIG.errorTracking.maxRepeats;
   }
 
@@ -201,7 +233,9 @@ export class DebugManager {
   }
 
   getDebugInfo() {
-    if (!this.enabled) {return {};}
+    if (!this.enabled) {
+      return {};
+    }
     const info = {
       FPS: Math.round(1 / this.game.deltaTime),
       'Debug Mode': 'ON',
@@ -215,7 +249,8 @@ export class DebugManager {
     if (this.game.ballManager?.ball?.body) {
       const ball = this.game.ballManager.ball;
       const pos = ball.mesh.position;
-      info['Ball Position'] = `X: ${pos.x.toFixed(2)}, Y: ${pos.y.toFixed(2)}, Z: ${pos.z.toFixed(2)}`;
+      info['Ball Position'] =
+        `X: ${pos.x.toFixed(2)}, Y: ${pos.y.toFixed(2)}, Z: ${pos.z.toFixed(2)}`;
       info['Ball Velocity'] = `${ball.body.velocity.length().toFixed(2)} m/s`;
     }
     return info;
@@ -239,8 +274,13 @@ export class DebugManager {
 
   promptForHoleNumber() {
     const maxHole = 9;
-    const holeNumber = prompt(`Enter hole number to load (1-${maxHole}):`, this.courseDebugState.currentHole);
-    if (holeNumber === null) {return;}
+    const holeNumber = prompt(
+      `Enter hole number to load (1-${maxHole}):`,
+      this.courseDebugState.currentHole
+    );
+    if (holeNumber === null) {
+      return;
+    }
     const holeNum = parseInt(holeNumber, 10);
     if (isNaN(holeNum) || holeNum < 1 || holeNum > maxHole) {
       alert(`Please enter a valid hole number between 1 and ${maxHole}.`);
@@ -254,7 +294,10 @@ export class DebugManager {
     this.courseDebugState.currentHole = holeNumber;
     this.courseDebugState.courseOverrideActive = true;
 
-    if (!this.game.course || this.game.course.constructor.name !== this.courseDebugState.courseType) {
+    if (
+      !this.game.course ||
+      this.game.course.constructor.name !== this.courseDebugState.courseType
+    ) {
       this.loadCourseWithType(this.courseDebugState.courseType, holeNumber);
     } else {
       this.loadHoleInExistingCourse(holeNumber);
@@ -295,7 +338,9 @@ export class DebugManager {
     }
     try {
       const success = await this.game.course.createCourse(holeNumber);
-      if (!success) {throw new Error(`Failed to load hole ${holeNumber}`);}
+      if (!success) {
+        throw new Error(`Failed to load hole ${holeNumber}`);
+      }
 
       if (this.game.ballManager && this.game.course.startPosition) {
         await this.game.ballManager.resetBall(this.game.course.startPosition);

@@ -9,7 +9,9 @@ import { GameState } from '../../states/GameState';
 // Mock dependencies
 jest.mock('../../events/EventTypes', () => ({
   EventTypes: {
-    GAME_COMPLETED: 'game:completed'
+    GAME_COMPLETED: 'game:completed',
+    HOLE_COMPLETED: 'hole:completed',
+    HOLE_STARTED: 'hole:started'
   }
 }));
 
@@ -43,6 +45,11 @@ describe('HoleTransitionManager', () => {
         createCourse: jest.fn().mockResolvedValue(true),
         getHolePosition: jest.fn(() => ({ x: 0, y: 0, z: 10 })),
         getHoleStartPosition: jest.fn(() => ({ x: 0, y: 0, z: 0 })),
+        getCurrentHoleConfig: jest.fn(() => ({
+          theme: {
+            lighting: { ambientColor: 0xfff5e6, ambientIntensity: 0.6, keyLightColor: 0xffeecc }
+          }
+        })),
         getCurrentHoleMesh: jest.fn(() => ({
           userData: {
             material: {
@@ -101,7 +108,11 @@ describe('HoleTransitionManager', () => {
       cameraController: {
         updateCameraForHole: jest.fn()
       },
-      createStarfield: jest.fn()
+      spaceDecorations: {
+        setThemeVariant: jest.fn()
+      },
+      createStarfield: jest.fn(),
+      updateLightingForTheme: jest.fn()
     };
 
     // Set up resetWorld to return the existing world
@@ -474,7 +485,8 @@ describe('HoleTransitionManager', () => {
       expect(mockGame.scene.clear).toHaveBeenCalled();
       expect(mockGame.scene.add).toHaveBeenCalledTimes(4); // All essential objects
       expect(console.log).toHaveBeenCalledWith(
-        '[DEBUG]', '[HoleTransitionManager] Keeping object:',
+        '[DEBUG]',
+        '[HoleTransitionManager] Keeping object:',
         expect.any(String),
         expect.any(Object)
       );
@@ -486,7 +498,10 @@ describe('HoleTransitionManager', () => {
 
       holeTransitionManager.cleanScene();
 
-      expect(console.log).toHaveBeenCalledWith('[DEBUG]', '[HoleTransitionManager] Recreating starfield');
+      expect(console.log).toHaveBeenCalledWith(
+        '[DEBUG]',
+        '[HoleTransitionManager] Recreating starfield'
+      );
       expect(mockGame.createStarfield).toHaveBeenCalled();
     });
 
@@ -506,7 +521,8 @@ describe('HoleTransitionManager', () => {
 
       expect(result).toBe(true);
       expect(console.log).toHaveBeenCalledWith(
-        '[DEBUG]', '[HoleTransitionManager] Physics world state:',
+        '[DEBUG]',
+        '[HoleTransitionManager] Physics world state:',
         expect.objectContaining({
           bodies: 0,
           gravity: '(0, -9.82, 0)',
@@ -595,7 +611,8 @@ describe('HoleTransitionManager', () => {
       holeTransitionManager.verifyPhysicsWorld();
 
       expect(console.log).toHaveBeenCalledWith(
-        '[DEBUG]', '[HoleTransitionManager] Physics bodies:',
+        '[DEBUG]',
+        '[HoleTransitionManager] Physics bodies:',
         expect.arrayContaining([
           expect.objectContaining({
             type: 'ball',
@@ -712,7 +729,8 @@ describe('HoleTransitionManager', () => {
         expect(mockMaterial.transparent).toBe(false);
         expect(mockMaterial.opacity).toBe(1.0);
         expect(console.log).toHaveBeenCalledWith(
-          '[DEBUG]', '[HoleTransitionManager] Transition to hole 2 complete'
+          '[DEBUG]',
+          '[HoleTransitionManager] Transition to hole 2 complete'
         );
       });
 
@@ -728,20 +746,226 @@ describe('HoleTransitionManager', () => {
     });
   });
 
+  describe('teardown → build → reposition call order', () => {
+    test('should execute unload, physics reset, load, state reset, ball create, input enable in order', async () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(2);
+      mockGame.course.getTotalHoles.mockReturnValue(9);
+      jest.spyOn(holeTransitionManager, 'verifyPhysicsWorld').mockReturnValue(true);
+
+      const callOrder = [];
+
+      jest.spyOn(holeTransitionManager, 'unloadCurrentHole').mockImplementation(async () => {
+        callOrder.push('unload');
+      });
+      mockGame.physicsManager.resetWorld.mockImplementation(async () => {
+        callOrder.push('resetWorld');
+        return mockGame.physicsManager.world;
+      });
+      jest.spyOn(holeTransitionManager, 'loadNewHole').mockImplementation(async () => {
+        callOrder.push('loadNewHole');
+        return true;
+      });
+      mockGame.stateManager.resetForNextHole.mockImplementation(() => {
+        callOrder.push('resetForNextHole');
+      });
+      mockGame.ballManager.createBall.mockImplementation(() => {
+        callOrder.push('createBall');
+        return true;
+      });
+      mockGame.inputController.enableInput.mockImplementation(() => {
+        callOrder.push('enableInput');
+      });
+
+      await holeTransitionManager.transitionToNextHole();
+
+      expect(callOrder).toEqual([
+        'unload',
+        'resetWorld',
+        'loadNewHole',
+        'resetForNextHole',
+        'createBall',
+        'enableInput'
+      ]);
+    });
+
+    test('should call clearCurrentHole before removeBall during unload', async () => {
+      const callOrder = [];
+      mockGame.course.clearCurrentHole.mockImplementation(() => {
+        callOrder.push('clearCurrentHole');
+      });
+      mockGame.ballManager.removeBall.mockImplementation(() => {
+        callOrder.push('removeBall');
+      });
+      jest.spyOn(holeTransitionManager, 'cleanScene').mockImplementation(() => {
+        callOrder.push('cleanScene');
+      });
+
+      await holeTransitionManager.unloadCurrentHole();
+
+      expect(callOrder).toEqual(['clearCurrentHole', 'removeBall', 'cleanScene']);
+    });
+
+    test('should create ball with start position from course after build completes', async () => {
+      const startPos = { x: 5, y: 0, z: -3 };
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(3);
+      mockGame.course.getTotalHoles.mockReturnValue(9);
+      mockGame.course.getHoleStartPosition.mockReturnValue(startPos);
+      jest.spyOn(holeTransitionManager, 'unloadCurrentHole').mockResolvedValue();
+      jest.spyOn(holeTransitionManager, 'loadNewHole').mockResolvedValue(true);
+
+      await holeTransitionManager.transitionToNextHole();
+
+      expect(mockGame.ballManager.createBall).toHaveBeenCalledWith(startPos);
+    });
+  });
+
+  describe('hole-18 end-of-course routing', () => {
+    test('should route to game completion on final hole (hole 18)', async () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(18);
+      mockGame.course.getTotalHoles.mockReturnValue(18);
+
+      const result = await holeTransitionManager.transitionToNextHole();
+
+      expect(result).toBe(false);
+      expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
+        EventTypes.GAME_COMPLETED,
+        { timestamp: 12345 },
+        holeTransitionManager
+      );
+    });
+
+    test('should not attempt to build hole 19 after hole 18', async () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(18);
+      mockGame.course.getTotalHoles.mockReturnValue(18);
+
+      await holeTransitionManager.transitionToNextHole();
+
+      expect(mockGame.course.createCourse).not.toHaveBeenCalled();
+      expect(mockGame.ballManager.createBall).not.toHaveBeenCalled();
+      expect(mockGame.physicsManager.resetWorld).not.toHaveBeenCalled();
+    });
+
+    test('should route to game completion on final hole of 9-hole course', async () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(9);
+      mockGame.course.getTotalHoles.mockReturnValue(9);
+
+      const result = await holeTransitionManager.transitionToNextHole();
+
+      expect(result).toBe(false);
+      expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
+        EventTypes.GAME_COMPLETED,
+        expect.objectContaining({ timestamp: expect.any(Number) }),
+        holeTransitionManager
+      );
+    });
+  });
+
+  describe('re-entrant transition guard', () => {
+    test('should handle concurrent transition calls without errors', async () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(2);
+      mockGame.course.getTotalHoles.mockReturnValue(9);
+      jest.spyOn(holeTransitionManager, 'verifyPhysicsWorld').mockReturnValue(true);
+
+      const [result1, result2] = await Promise.all([
+        holeTransitionManager.transitionToNextHole(),
+        holeTransitionManager.transitionToNextHole()
+      ]);
+
+      expect(typeof result1).toBe('boolean');
+      expect(typeof result2).toBe('boolean');
+    });
+
+    test('should allow sequential transitions after completion', async () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValueOnce(2).mockReturnValueOnce(3);
+      mockGame.course.getTotalHoles.mockReturnValue(9);
+      jest.spyOn(holeTransitionManager, 'unloadCurrentHole').mockResolvedValue();
+      jest.spyOn(holeTransitionManager, 'loadNewHole').mockResolvedValue(true);
+
+      const result1 = await holeTransitionManager.transitionToNextHole();
+      expect(result1).toBe(true);
+
+      const result2 = await holeTransitionManager.transitionToNextHole();
+      expect(result2).toBe(true);
+    });
+  });
+
+  describe('destroy / cleanup', () => {
+    test('should allow resetting transition state after use', () => {
+      holeTransitionManager.isTransitioning = true;
+      holeTransitionManager.fromHole = 3;
+      holeTransitionManager.toHole = 4;
+      holeTransitionManager.transitionStartTime = 5000;
+
+      holeTransitionManager.resetTransitionState();
+
+      expect(holeTransitionManager.isTransitioning).toBe(false);
+      expect(holeTransitionManager.fromHole).toBe(0);
+      expect(holeTransitionManager.toHole).toBe(0);
+      expect(holeTransitionManager.transitionStartTime).toBe(0);
+    });
+
+    test('should not process updates after transition state is cleared', () => {
+      holeTransitionManager.isTransitioning = true;
+      holeTransitionManager.resetTransitionState();
+
+      holeTransitionManager.update(0.016);
+
+      expect(performance.now).not.toHaveBeenCalled();
+    });
+
+    test('should clean up transition overlay on error during transition', async () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(2);
+      mockGame.course.getTotalHoles.mockReturnValue(9);
+      jest.spyOn(holeTransitionManager, 'unloadCurrentHole').mockRejectedValue(new Error('fail'));
+
+      await holeTransitionManager.transitionToNextHole();
+
+      expect(mockGame.uiManager.hideTransitionOverlay).toHaveBeenCalled();
+    });
+  });
+
+  describe('transition event payloads', () => {
+    test('should publish GAME_COMPLETED with timestamp payload', async () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(9);
+      mockGame.course.getTotalHoles.mockReturnValue(9);
+
+      await holeTransitionManager.transitionToNextHole();
+
+      expect(mockGame.eventManager.publish).toHaveBeenCalledTimes(1);
+      const [eventType, payload, source] = mockGame.eventManager.publish.mock.calls[0];
+      expect(eventType).toBe('game:completed');
+      expect(payload).toEqual({ timestamp: 12345 });
+      expect(source).toBe(holeTransitionManager);
+    });
+
+    test('should show transition overlay at start and hide at end of successful transition', async () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(2);
+      mockGame.course.getTotalHoles.mockReturnValue(9);
+      jest.spyOn(holeTransitionManager, 'unloadCurrentHole').mockResolvedValue();
+      jest.spyOn(holeTransitionManager, 'loadNewHole').mockResolvedValue(true);
+
+      await holeTransitionManager.transitionToNextHole();
+
+      expect(mockGame.uiManager.showTransitionOverlay).toHaveBeenCalled();
+      expect(mockGame.uiManager.hideTransitionOverlay).toHaveBeenCalled();
+
+      const showOrder = mockGame.uiManager.showTransitionOverlay.mock.invocationCallOrder[0];
+      const hideOrder = mockGame.uiManager.hideTransitionOverlay.mock.invocationCallOrder[0];
+      expect(showOrder).toBeLessThan(hideOrder);
+    });
+  });
+
   describe('integration scenarios', () => {
     test('should handle complete transition workflow', async () => {
-      // Setup for hole 2 to 3 transition
       mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(2);
       mockGame.course.getTotalHoles.mockReturnValue(9);
 
-      // Mock successful transition
       jest.spyOn(holeTransitionManager, 'verifyPhysicsWorld').mockReturnValue(true);
 
       const result = await holeTransitionManager.transitionToNextHole();
 
       expect(result).toBe(true);
 
-      // Verify the complete workflow
       expect(mockGame.course.clearCurrentHole).toHaveBeenCalled();
       expect(mockGame.physicsManager.resetWorld).toHaveBeenCalled();
       expect(mockGame.course.createCourse).toHaveBeenCalledWith(3);
@@ -751,21 +975,16 @@ describe('HoleTransitionManager', () => {
     });
 
     test('should handle transition with visual effects', () => {
-      // Manually set up transition state to avoid resetTransitionState side effect
       holeTransitionManager.isTransitioning = true;
       holeTransitionManager.transitionStartTime = 1000;
       holeTransitionManager.transitionDuration = 2000;
       holeTransitionManager.toHole = 2;
 
-      // Update during transition - elapsed = (1500 - 1000) / 1000 = 0.5 seconds
-      // progress = 0.5 / 2000 = 0.00025 which is less than 1, so still transitioning
-      performance.now.mockReturnValue(1500); // 500ms elapsed
+      performance.now.mockReturnValue(1500);
       holeTransitionManager.update(0.016);
       expect(holeTransitionManager.isTransitioning).toBe(true);
 
-      // Complete transition - need elapsed > duration in seconds
-      // elapsed = (2001000 - 1000) / 1000 = 2000 seconds which is > 2000ms duration
-      performance.now.mockReturnValue(2001000); // Much larger elapsed time
+      performance.now.mockReturnValue(2001000);
       holeTransitionManager.update(0.016);
       expect(holeTransitionManager.isTransitioning).toBe(false);
     });
@@ -773,7 +992,6 @@ describe('HoleTransitionManager', () => {
     test('should handle error recovery gracefully', async () => {
       mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(2);
 
-      // Simulate physics world failure
       mockGame.physicsManager.resetWorld.mockResolvedValue(null);
 
       const result = await holeTransitionManager.transitionToNextHole();
@@ -782,6 +1000,20 @@ describe('HoleTransitionManager', () => {
       expect(console.error).toHaveBeenCalledWith(
         expect.stringContaining('Physics world reset failed')
       );
+    });
+
+    test('should update hazard boundaries for new hole when hazardManager exists', async () => {
+      mockGame.stateManager.getCurrentHoleNumber.mockReturnValue(2);
+      mockGame.course.getTotalHoles.mockReturnValue(9);
+      mockGame.hazardManager = { setHoleBounds: jest.fn() };
+      const holeConfig = { bounds: { minX: -10, maxX: 10 } };
+      mockGame.course.getCurrentHoleConfig = jest.fn().mockReturnValue(holeConfig);
+      jest.spyOn(holeTransitionManager, 'verifyPhysicsWorld').mockReturnValue(true);
+
+      const result = await holeTransitionManager.loadNewHole(3);
+
+      expect(result).toBe(true);
+      expect(mockGame.hazardManager.setHoleBounds).toHaveBeenCalledWith(holeConfig);
     });
   });
 });

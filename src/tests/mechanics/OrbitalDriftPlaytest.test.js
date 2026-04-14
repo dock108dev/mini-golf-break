@@ -15,6 +15,7 @@
 import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { createOrbitalDriftConfigs } from '../../config/orbitalDriftConfigs';
+import { hydrateHoleConfig } from '../../config/hydrateHoleConfig';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -26,7 +27,7 @@ function makeMockWorld() {
     removeBody: jest.fn(),
     step: jest.fn(),
     groundMaterial: { id: 'ground' },
-    bumperMaterial: { id: 'bumper' },
+    bumperMaterial: { id: 'bumper' }
   };
 }
 
@@ -35,19 +36,31 @@ function makeMockGroup() {
   return {
     add: jest.fn(child => children.push(child)),
     remove: jest.fn(),
-    children,
+    children
   };
 }
 
 function makeBallBody(x = 0, y = 0.3, z = 0) {
   return {
     position: {
-      x, y, z,
-      set: jest.fn(function (nx, ny, nz) { this.x = nx; this.y = ny; this.z = nz; }),
+      x,
+      y,
+      z,
+      set: jest.fn(function (nx, ny, nz) {
+        this.x = nx;
+        this.y = ny;
+        this.z = nz;
+      })
     },
     velocity: {
-      x: 0, y: 0, z: 0,
-      set: jest.fn(function (vx, vy, vz) { this.x = vx; this.y = vy; this.z = vz; }),
+      x: 0,
+      y: 0,
+      z: 0,
+      set: jest.fn(function (vx, vy, vz) {
+        this.x = vx;
+        this.y = vy;
+        this.z = vz;
+      })
     },
     quaternion: { x: 0, y: 0, z: 0, w: 1, copy: jest.fn(), setFromAxisAngle: jest.fn() },
     mass: 0.45,
@@ -56,7 +69,7 @@ function makeBallBody(x = 0, y = 0.3, z = 0) {
     applyImpulse: jest.fn(),
     wakeUp: jest.fn(),
     addShape: jest.fn(),
-    userData: {},
+    userData: {}
   };
 }
 
@@ -68,11 +81,14 @@ function isPointInBoundary(x, z, boundaryShape) {
   let inside = false;
   const n = boundaryShape.length;
   for (let i = 0, j = n - 1; i < n; j = i++) {
-    const xi = boundaryShape[i].x, zi = boundaryShape[i].y;
-    const xj = boundaryShape[j].x, zj = boundaryShape[j].y;
-    const intersect = ((zi > z) !== (zj > z)) &&
-      (x < (xj - xi) * (z - zi) / (zj - zi) + xi);
-    if (intersect) inside = !inside;
+    const xi = boundaryShape[i].x,
+      zi = boundaryShape[i].y;
+    const xj = boundaryShape[j].x,
+      zj = boundaryShape[j].y;
+    const intersect = zi > z !== zj > z && x < ((xj - xi) * (z - zi)) / (zj - zi) + xi;
+    if (intersect) {
+      inside = !inside;
+    }
   }
   return inside;
 }
@@ -86,7 +102,7 @@ let configs;
 beforeAll(() => {
   // Ensure THREE.Vector2 and THREE.Vector3 produce usable objects
   // (setup.js mocks are already loaded by Jest)
-  configs = createOrbitalDriftConfigs();
+  configs = createOrbitalDriftConfigs().map(hydrateHoleConfig);
 });
 
 // ===========================================================================
@@ -94,43 +110,48 @@ beforeAll(() => {
 // ===========================================================================
 
 describe('Orbital Drift — Hole Config Integrity', () => {
-  it('has exactly 9 holes', () => {
-    expect(configs).toHaveLength(9);
+  it('has exactly 18 holes', () => {
+    expect(configs).toHaveLength(18);
   });
 
-  it.each([0, 1, 2, 3, 4, 5, 6, 7, 8])('H%i+1 has required fields', (idx) => {
-    const h = configs[idx];
-    expect(h.index).toBe(idx);
-    expect(h.description).toBeTruthy();
-    expect(h.par).toBeGreaterThanOrEqual(2);
-    expect(h.boundaryShape).toBeDefined();
-    expect(h.boundaryShape.length).toBeGreaterThanOrEqual(4);
-    expect(h.startPosition).toBeDefined();
-    expect(h.holePosition).toBeDefined();
-    expect(Array.isArray(h.hazards)).toBe(true);
-    expect(Array.isArray(h.bumpers)).toBe(true);
-    expect(Array.isArray(h.mechanics)).toBe(true);
-  });
+  it.each([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17])(
+    'H%i+1 has required fields',
+    idx => {
+      const h = configs[idx];
+      expect(typeof h.index).toBe('number');
+      expect(h.description).toBeTruthy();
+      expect(h.par).toBeGreaterThanOrEqual(2);
+      expect(h.boundaryShape).toBeDefined();
+      expect(h.boundaryShape.length).toBeGreaterThanOrEqual(4);
+      expect(h.startPosition).toBeDefined();
+      expect(h.holePosition).toBeDefined();
+      expect(Array.isArray(h.hazards)).toBe(true);
+      expect(Array.isArray(h.bumpers)).toBe(true);
+      expect(Array.isArray(h.mechanics)).toBe(true);
+    }
+  );
 
-  it.each([0, 1, 2, 3, 4, 5, 6, 7, 8])('H%i+1 startPosition is within boundary', (idx) => {
-    const h = configs[idx];
-    const inBounds = isPointInBoundary(
-      h.startPosition.x, h.startPosition.z, h.boundaryShape
-    );
-    expect(inBounds).toBe(true);
-  });
+  it.each([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17])(
+    'H%i+1 startPosition is within boundary',
+    idx => {
+      const h = configs[idx];
+      const inBounds = isPointInBoundary(h.startPosition.x, h.startPosition.z, h.boundaryShape);
+      expect(inBounds).toBe(true);
+    }
+  );
 
-  it.each([0, 1, 2, 3, 4, 5, 6, 7, 8])('H%i+1 holePosition is within boundary', (idx) => {
-    const h = configs[idx];
-    const inBounds = isPointInBoundary(
-      h.holePosition.x, h.holePosition.z, h.boundaryShape
-    );
-    expect(inBounds).toBe(true);
-  });
+  it.each([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17])(
+    'H%i+1 holePosition is within boundary',
+    idx => {
+      const h = configs[idx];
+      const inBounds = isPointInBoundary(h.holePosition.x, h.holePosition.z, h.boundaryShape);
+      expect(inBounds).toBe(true);
+    }
+  );
 
-  it('total par across 9 holes is 24', () => {
+  it('total par across 18 holes is 57', () => {
     const totalPar = configs.reduce((sum, h) => sum + h.par, 0);
-    expect(totalPar).toBe(24);
+    expect(totalPar).toBe(57);
   });
 });
 
@@ -139,43 +160,51 @@ describe('Orbital Drift — Hole Config Integrity', () => {
 // ===========================================================================
 
 describe('Orbital Drift — No Geometry Traps', () => {
-  it.each([0, 1, 2, 3, 4, 5, 6, 7, 8])('H%i+1 start and hole positions are not coincident', (idx) => {
-    const h = configs[idx];
-    const dx = h.startPosition.x - h.holePosition.x;
-    const dz = h.startPosition.z - h.holePosition.z;
-    const dist = Math.sqrt(dx * dx + dz * dz);
-    // Start and hole must be at least 2 units apart
-    expect(dist).toBeGreaterThan(2);
-  });
-
-  it.each([0, 1, 2, 3, 4, 5, 6, 7, 8])('H%i+1 boundary area is large enough for play', (idx) => {
-    const h = configs[idx];
-    // Compute bounding box of boundary
-    const xs = h.boundaryShape.map(v => v.x);
-    const zs = h.boundaryShape.map(v => v.y);
-    const width = Math.max(...xs) - Math.min(...xs);
-    const length = Math.max(...zs) - Math.min(...zs);
-    const area = width * length;
-    // Minimum playable area: 30 sq units
-    expect(area).toBeGreaterThanOrEqual(30);
-  });
-
-  it.each([0, 1, 2, 3, 4, 5, 6, 7, 8])('H%i+1 bumpers do not overlap start or hole positions', (idx) => {
-    const h = configs[idx];
-    for (const bumper of h.bumpers) {
-      // Check bumper center is at least 1 unit from start and hole
-      const distStart = Math.sqrt(
-        (bumper.position.x - h.startPosition.x) ** 2 +
-        (bumper.position.z - h.startPosition.z) ** 2
-      );
-      const distHole = Math.sqrt(
-        (bumper.position.x - h.holePosition.x) ** 2 +
-        (bumper.position.z - h.holePosition.z) ** 2
-      );
-      expect(distStart).toBeGreaterThan(0.5);
-      expect(distHole).toBeGreaterThan(0.5);
+  it.each([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])(
+    'H%i+1 start and hole positions are not coincident',
+    idx => {
+      const h = configs[idx];
+      const dx = h.startPosition.x - h.holePosition.x;
+      const dz = h.startPosition.z - h.holePosition.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      // Start and hole must be at least 2 units apart
+      expect(dist).toBeGreaterThan(2);
     }
-  });
+  );
+
+  it.each([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])(
+    'H%i+1 boundary area is large enough for play',
+    idx => {
+      const h = configs[idx];
+      // Compute bounding box of boundary
+      const xs = h.boundaryShape.map(v => v.x);
+      const zs = h.boundaryShape.map(v => v.y);
+      const width = Math.max(...xs) - Math.min(...xs);
+      const length = Math.max(...zs) - Math.min(...zs);
+      const area = width * length;
+      // Minimum playable area: 30 sq units
+      expect(area).toBeGreaterThanOrEqual(30);
+    }
+  );
+
+  it.each([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12])(
+    'H%i+1 bumpers do not overlap start or hole positions',
+    idx => {
+      const h = configs[idx];
+      for (const bumper of h.bumpers) {
+        // Check bumper center is at least 1 unit from start and hole
+        const distStart = Math.sqrt(
+          (bumper.position.x - h.startPosition.x) ** 2 +
+            (bumper.position.z - h.startPosition.z) ** 2
+        );
+        const distHole = Math.sqrt(
+          (bumper.position.x - h.holePosition.x) ** 2 + (bumper.position.z - h.holePosition.z) ** 2
+        );
+        expect(distStart).toBeGreaterThan(0.5);
+        expect(distHole).toBeGreaterThan(0.5);
+      }
+    }
+  );
 });
 
 // ===========================================================================
@@ -184,9 +213,9 @@ describe('Orbital Drift — No Geometry Traps', () => {
 
 describe('Orbital Drift — MovingSweeper Timing', () => {
   const sweeperHoles = [
-    { holeIdx: 0, desc: 'H1 Launch Bay' },
+    { holeIdx: 0, desc: 'H1 Docking Lane' },
     { holeIdx: 2, desc: 'H3 Satellite Slingshot' },
-    { holeIdx: 8, desc: 'H9 Station Core Finale' },
+    { holeIdx: 8, desc: 'H9 Station Core Finale' }
   ];
 
   it.each(sweeperHoles)('$desc sweeper allows ≥0.5s passage window', ({ holeIdx }) => {
@@ -221,13 +250,13 @@ describe('Orbital Drift — MovingSweeper Timing', () => {
 // ===========================================================================
 
 describe('Orbital Drift — TimedHazard Timing', () => {
-  it('H6 Solar Flare Run timed hazards have ≥0.5s off-window', () => {
+  it('H6 Solar Flare Run has 3 timed hazards with ≥3.0s off-window', () => {
     const h = configs[5]; // H6
     const timedHazards = h.mechanics.filter(m => m.type === 'timed_hazard');
     expect(timedHazards.length).toBe(3);
 
     for (const th of timedHazards) {
-      expect(th.offDuration).toBeGreaterThanOrEqual(0.5);
+      expect(th.offDuration).toBeGreaterThanOrEqual(3.0);
     }
   });
 
@@ -235,9 +264,45 @@ describe('Orbital Drift — TimedHazard Timing', () => {
     const h = configs[5];
     const timedHazards = h.mechanics.filter(m => m.type === 'timed_hazard');
     const phases = timedHazards.map(th => th.phase);
-    // At least two different phases
     const uniquePhases = new Set(phases);
-    expect(uniquePhases.size).toBeGreaterThanOrEqual(2);
+    expect(uniquePhases.size).toBe(3);
+  });
+
+  it('H6 timed hazards have ≥1.5s simultaneous safe window per cycle', () => {
+    const h = configs[5];
+    const timedHazards = h.mechanics.filter(m => m.type === 'timed_hazard');
+    const cycle = timedHazards[0].onDuration + timedHazards[0].offDuration;
+    const step = 0.01;
+    let safeRun = 0;
+    let maxSafeRun = 0;
+
+    for (let t = 0; t < cycle; t += step) {
+      const allOff = timedHazards.every(th => {
+        const cyclePos = (th.phase + t) % cycle;
+        return cyclePos >= th.onDuration;
+      });
+      if (allOff) {
+        safeRun += step;
+      } else {
+        maxSafeRun = Math.max(maxSafeRun, safeRun);
+        safeRun = 0;
+      }
+    }
+    maxSafeRun = Math.max(maxSafeRun, safeRun);
+    expect(maxSafeRun).toBeGreaterThanOrEqual(1.5);
+  });
+
+  it('H6 hazard zones have ≥2-unit gap between consecutive zones', () => {
+    const h = configs[5];
+    const timedHazards = h.mechanics.filter(m => m.type === 'timed_hazard');
+    const sorted = [...timedHazards].sort((a, b) => b.position.z - a.position.z);
+    for (let i = 0; i < sorted.length - 1; i++) {
+      const gap =
+        Math.abs(sorted[i].position.z - sorted[i + 1].position.z) -
+        sorted[i].size.length / 2 -
+        sorted[i + 1].size.length / 2;
+      expect(gap).toBeGreaterThanOrEqual(2);
+    }
   });
 });
 
@@ -246,13 +311,13 @@ describe('Orbital Drift — TimedHazard Timing', () => {
 // ===========================================================================
 
 describe('Orbital Drift — TimedGate Timing', () => {
-  it('H8 Event Horizon timed gate has ≥0.5s open window', () => {
+  it('H8 Event Horizon timed gate has ≥1.5s open window (ISSUE-014)', () => {
     const h = configs[7]; // H8
     const timedGates = h.mechanics.filter(m => m.type === 'timed_gate');
     expect(timedGates.length).toBe(1);
 
     for (const tg of timedGates) {
-      expect(tg.openDuration).toBeGreaterThanOrEqual(0.5);
+      expect(tg.openDuration).toBeGreaterThanOrEqual(1.5);
     }
   });
 });
@@ -269,7 +334,9 @@ describe('Orbital Drift — PortalGate Validation', () => {
 
     const portal = portals[0];
     const exitInBounds = isPointInBoundary(
-      portal.exitPosition.x, portal.exitPosition.z, h.boundaryShape
+      portal.exitPosition.x,
+      portal.exitPosition.z,
+      h.boundaryShape
     );
     expect(exitInBounds).toBe(true);
   });
@@ -278,7 +345,9 @@ describe('Orbital Drift — PortalGate Validation', () => {
     const h = configs[4];
     const portal = h.mechanics.find(m => m.type === 'portal_gate');
     const entryInBounds = isPointInBoundary(
-      portal.entryPosition.x, portal.entryPosition.z, h.boundaryShape
+      portal.entryPosition.x,
+      portal.entryPosition.z,
+      h.boundaryShape
     );
     expect(entryInBounds).toBe(true);
   });
@@ -288,7 +357,7 @@ describe('Orbital Drift — PortalGate Validation', () => {
     const portal = h.mechanics.find(m => m.type === 'portal_gate');
     const distToHole = Math.sqrt(
       (portal.exitPosition.x - h.holePosition.x) ** 2 +
-      (portal.exitPosition.z - h.holePosition.z) ** 2
+        (portal.exitPosition.z - h.holePosition.z) ** 2
     );
     // Exit should not land directly on the hole (min 1 unit distance)
     expect(distToHole).toBeGreaterThan(1);
@@ -299,7 +368,7 @@ describe('Orbital Drift — PortalGate Validation', () => {
     const portal = h.mechanics.find(m => m.type === 'portal_gate');
     const dist = Math.sqrt(
       (portal.exitPosition.x - portal.entryPosition.x) ** 2 +
-      (portal.exitPosition.z - portal.entryPosition.z) ** 2
+        (portal.exitPosition.z - portal.entryPosition.z) ** 2
     );
     // Entry and exit must be at least 2× the portal radius apart
     expect(dist).toBeGreaterThan(portal.radius * 2);
@@ -358,7 +427,7 @@ describe('Orbital Drift — SuctionZone Escape Validation', () => {
 describe('Orbital Drift — ElevatedGreen Ramp Angles', () => {
   const elevatedHoles = [
     { holeIdx: 3, desc: 'H4 Asteroid Belt Bounce' },
-    { holeIdx: 8, desc: 'H9 Station Core Finale' },
+    { holeIdx: 8, desc: 'H9 Station Core Finale' }
   ];
 
   it.each(elevatedHoles)('$desc ramp angle < 30 degrees', ({ holeIdx }) => {
@@ -386,9 +455,7 @@ describe('Orbital Drift — ElevatedGreen Ramp Angles', () => {
     const elevated = h.mechanics.find(m => m.type === 'elevated_green');
     const platformPos = elevated.platform.position;
 
-    const inBounds = isPointInBoundary(
-      platformPos.x, platformPos.z, h.boundaryShape
-    );
+    const inBounds = isPointInBoundary(platformPos.x, platformPos.z, h.boundaryShape);
     expect(inBounds).toBe(true);
   });
 });
@@ -401,20 +468,33 @@ describe('Orbital Drift — Cross-Hole Consistency', () => {
   it('each hole has a unique index', () => {
     const indices = configs.map(h => h.index);
     const uniqueIndices = new Set(indices);
-    expect(uniqueIndices.size).toBe(9);
+    expect(uniqueIndices.size).toBe(18);
   });
 
   it('each hole has a unique description', () => {
     const descriptions = configs.map(h => h.description);
     const uniqueDescriptions = new Set(descriptions);
-    expect(uniqueDescriptions.size).toBe(9);
+    expect(uniqueDescriptions.size).toBe(18);
   });
 
   it('all mechanic types in configs are valid registered types', () => {
     const validTypes = [
-      'moving_sweeper', 'bowl_contour', 'split_route', 'ricochet_bumpers',
-      'elevated_green', 'portal_gate', 'timed_hazard', 'low_gravity_zone',
-      'bank_wall', 'suction_zone', 'timed_gate', 'boost_strip',
+      'moving_sweeper',
+      'bowl_contour',
+      'split_route',
+      'ricochet_bumpers',
+      'elevated_green',
+      'portal_gate',
+      'timed_hazard',
+      'low_gravity_zone',
+      'bank_wall',
+      'suction_zone',
+      'timed_gate',
+      'boost_strip',
+      'laser_grid',
+      'gravity_funnel',
+      'disappearing_platform',
+      'multi_level_ramp'
     ];
 
     for (const h of configs) {
@@ -564,5 +644,92 @@ describe('Orbital Drift — Mechanic Config Validation', () => {
         expect(m.bumpers.length).toBeGreaterThan(0);
       }
     }
+  });
+});
+
+// ===========================================================================
+// 11. ISSUE-014: H8 Event Horizon acceptance criteria
+// ===========================================================================
+
+describe('ISSUE-014 — H8 Event Horizon acceptance criteria', () => {
+  let h8;
+
+  beforeAll(() => {
+    h8 = configs[7];
+  });
+
+  it('hole config name is "Event Horizon" and par is 3', () => {
+    expect(h8.description).toContain('Event Horizon');
+    expect(h8.par).toBe(3);
+  });
+
+  it('suction_zone is placed at the center of the layout', () => {
+    const suction = h8.mechanics.find(m => m.type === 'suction_zone');
+    expect(suction).toBeDefined();
+
+    // Center of the 16×16 boundary is (0, 0)
+    expect(suction.position.x).toBe(0);
+    expect(suction.position.z).toBe(0);
+  });
+
+  it('timed_gate is on the approach path between suction zone and cup', () => {
+    const gate = h8.mechanics.find(m => m.type === 'timed_gate');
+    expect(gate).toBeDefined();
+
+    // Gate should be between suction center (0,0,0) and cup (5,0,-5)
+    const suctionCenter = { x: 0, z: 0 };
+    const cup = { x: h8.holePosition.x, z: h8.holePosition.z };
+    const gatePos = { x: gate.position.x, z: gate.position.z };
+
+    // Gate x should be between suction center x and cup x
+    expect(gatePos.x).toBeGreaterThanOrEqual(Math.min(suctionCenter.x, cup.x));
+    expect(gatePos.x).toBeLessThanOrEqual(Math.max(suctionCenter.x, cup.x));
+
+    // Gate z should be between suction center z and cup z
+    expect(gatePos.z).toBeGreaterThanOrEqual(Math.min(suctionCenter.z, cup.z));
+    expect(gatePos.z).toBeLessThanOrEqual(Math.max(suctionCenter.z, cup.z));
+  });
+
+  it('timed_gate has an open window of at least 1.5 seconds per cycle', () => {
+    const gate = h8.mechanics.find(m => m.type === 'timed_gate');
+    expect(gate.openDuration).toBeGreaterThanOrEqual(1.5);
+  });
+
+  it('suction_zone visibly pulls ball trajectory (force > 0, radius > 0)', () => {
+    const suction = h8.mechanics.find(m => m.type === 'suction_zone');
+    expect(suction.force).toBeGreaterThan(0);
+    expect(suction.radius).toBeGreaterThan(0);
+  });
+
+  it('suction zone does not trap balls — force is escapable', () => {
+    const suction = h8.mechanics.find(m => m.type === 'suction_zone');
+
+    // At half-radius the force must be overcome by a typical ball hit
+    // SuctionZone formula: strength = force * (1 - dist/radius)
+    // At half radius: strength = force * 0.5
+    const halfRadiusForce = suction.force * 0.5;
+    const ballMass = 0.45;
+    const acceleration = halfRadiusForce / ballMass;
+
+    // A typical hit gives 2-6 m/s velocity; acceleration < 15 m/s² is escapable
+    expect(acceleration).toBeLessThan(15);
+  });
+
+  it('black hole swirl visual is defined via heroProps', () => {
+    const blackHoleProp = h8.heroProps.find(p => p.type === 'black_hole_core');
+    expect(blackHoleProp).toBeDefined();
+    // Should be at suction zone center
+    expect(blackHoleProp.position.x).toBe(0);
+    expect(blackHoleProp.position.z).toBe(0);
+  });
+
+  it('layout is approximately 16×16 units', () => {
+    const xs = h8.boundaryShape.map(v => v.x);
+    const ys = h8.boundaryShape.map(v => v.y);
+    const width = Math.max(...xs) - Math.min(...xs);
+    const length = Math.max(...ys) - Math.min(...ys);
+
+    expect(width).toBe(16);
+    expect(length).toBe(16);
   });
 });

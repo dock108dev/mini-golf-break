@@ -1,11 +1,10 @@
-/**
- * Unit tests for UIScoreOverlay
- */
-
 import { UIScoreOverlay } from '../../../managers/ui/UIScoreOverlay';
 import { HighScoreManager } from '../../../game/HighScoreManager';
 
 jest.mock('../../../game/HighScoreManager');
+jest.mock('../../../utils/navigation', () => ({
+  reloadPage: jest.fn()
+}));
 
 describe('UIScoreOverlay', () => {
   let mockGame;
@@ -14,7 +13,6 @@ describe('UIScoreOverlay', () => {
   let mockElements;
 
   beforeEach(() => {
-    // Mock DOM elements
     mockElements = {
       scoreContainer: {
         style: {},
@@ -39,7 +37,6 @@ describe('UIScoreOverlay', () => {
       }
     };
 
-    // Mock document.createElement
     document.createElement = jest.fn(tagName => {
       switch (tagName) {
         case 'div':
@@ -73,14 +70,12 @@ describe('UIScoreOverlay', () => {
       }
     });
 
-    // Mock parent container
     mockParentContainer = {
       appendChild: jest.fn(),
       removeChild: jest.fn(),
-      querySelector: jest.fn(() => null) // Returns null for top-right container query
+      querySelector: jest.fn(() => null)
     };
 
-    // Mock game object
     mockGame = {
       stateManager: {
         state: {
@@ -278,6 +273,7 @@ describe('UIScoreOverlay', () => {
       expect(uiScoreOverlay.parElement).toBe(null);
       expect(uiScoreOverlay.strokesElement).toBe(null);
       expect(uiScoreOverlay.totalScoreElement).toBe(null);
+      expect(uiScoreOverlay.nameEntryElement).toBe(null);
     });
 
     test('should handle cleanup without initialization', () => {
@@ -350,12 +346,13 @@ describe('UIScoreOverlay', () => {
   describe('showFinalScorecard - Play Again returns to start screen', () => {
     let createdElements;
     let clickHandlers;
+    let keydownHandlers;
 
     beforeEach(() => {
       createdElements = [];
       clickHandlers = [];
+      keydownHandlers = [];
 
-      // Enhanced createElement mock that tracks buttons and their click handlers
       document.createElement = jest.fn(tagName => {
         const el = {
           tagName: tagName.toUpperCase(),
@@ -363,6 +360,7 @@ describe('UIScoreOverlay', () => {
           id: '',
           innerHTML: '',
           textContent: '',
+          value: '',
           appendChild: jest.fn(),
           remove: jest.fn(),
           focus: jest.fn(),
@@ -378,19 +376,18 @@ describe('UIScoreOverlay', () => {
             if (event === 'click') {
               clickHandlers.push(handler);
             }
+            if (event === 'keydown') {
+              keydownHandlers.push(handler);
+            }
           })
         };
         createdElements.push(el);
         return el;
       });
 
-      // Mock document.body.appendChild
       document.body.appendChild = jest.fn();
-
-      // Mock requestAnimationFrame
       global.requestAnimationFrame = jest.fn(cb => cb());
 
-      // Mock scoring system with hole scores
       mockGame.scoringSystem.getHoleScores = jest.fn(() => [3, 4, 2]);
       mockGame.scoringSystem.getTotalStrokes = jest.fn(() => 9);
       mockGame.course.getAllHolePars = jest.fn(() => [2, 3, 3]);
@@ -405,40 +402,36 @@ describe('UIScoreOverlay', () => {
     });
 
     test('should call window.App.returnToMenu when Play Again is clicked', () => {
+      HighScoreManager.isTopTen.mockReturnValue(false);
       const mockReturnToMenu = jest.fn();
       window.App = { returnToMenu: mockReturnToMenu };
 
       uiScoreOverlay.showFinalScorecard();
 
-      // Find and click the Play Again button handler
       expect(clickHandlers.length).toBeGreaterThan(0);
-      const playAgainHandler = clickHandlers[clickHandlers.length - 1];
+      const playAgainHandler = clickHandlers[0];
       playAgainHandler();
 
       expect(mockReturnToMenu).toHaveBeenCalled();
     });
 
     test('should fallback to window.location.reload when App is not available', () => {
-      // No window.App set
-      const mockReload = jest.fn();
-      Object.defineProperty(window, 'location', {
-        value: { reload: mockReload },
-        writable: true,
-        configurable: true
-      });
+      const { reloadPage } = require('../../../utils/navigation');
+      HighScoreManager.isTopTen.mockReturnValue(false);
 
       uiScoreOverlay.showFinalScorecard();
 
-      const playAgainHandler = clickHandlers[clickHandlers.length - 1];
+      const playAgainHandler = clickHandlers[0];
       playAgainHandler();
 
-      expect(mockReload).toHaveBeenCalled();
+      expect(reloadPage).toHaveBeenCalled();
     });
 
     test('should create scorecard with Play Again button', () => {
+      HighScoreManager.isTopTen.mockReturnValue(false);
+
       uiScoreOverlay.showFinalScorecard();
 
-      // Find the button element
       const buttonEl = createdElements.find(
         el => el.tagName === 'BUTTON' && el.textContent === 'Play Again'
       );
@@ -447,6 +440,8 @@ describe('UIScoreOverlay', () => {
     });
 
     test('should set role and aria-labelledby on scorecard overlay', () => {
+      HighScoreManager.isTopTen.mockReturnValue(false);
+
       uiScoreOverlay.showFinalScorecard();
 
       expect(uiScoreOverlay.scorecardElement.setAttribute).toHaveBeenCalledWith('role', 'dialog');
@@ -457,6 +452,8 @@ describe('UIScoreOverlay', () => {
     });
 
     test('should add keydown listener for focus trapping on scorecard', () => {
+      HighScoreManager.isTopTen.mockReturnValue(false);
+
       uiScoreOverlay.showFinalScorecard();
 
       expect(uiScoreOverlay.scorecardElement.addEventListener).toHaveBeenCalledWith(
@@ -465,10 +462,11 @@ describe('UIScoreOverlay', () => {
       );
     });
 
-    test('should focus Play Again button when scorecard is shown', () => {
+    test('should focus Play Again button when scorecard is shown and score is not top-10', () => {
+      HighScoreManager.isTopTen.mockReturnValue(false);
+
       uiScoreOverlay.showFinalScorecard();
 
-      // Find the Play Again button
       const buttonEl = createdElements.find(
         el => el.tagName === 'BUTTON' && el.textContent === 'Play Again'
       );
@@ -477,56 +475,73 @@ describe('UIScoreOverlay', () => {
     });
 
     test('should append scorecard to document body', () => {
+      HighScoreManager.isTopTen.mockReturnValue(false);
+
       uiScoreOverlay.showFinalScorecard();
 
       expect(document.body.appendChild).toHaveBeenCalled();
     });
 
     test('should include par and +/- columns in header', () => {
+      HighScoreManager.isTopTen.mockReturnValue(false);
+
       uiScoreOverlay.showFinalScorecard();
 
-      // Find the tbody element (has innerHTML set with header)
-      const tbodyEl = createdElements.find(
-        el => el.tagName === 'TBODY' && el.innerHTML !== undefined
-      );
-      // The first innerHTML set on tbody is the header row via appendChild
-      // Check that a tr element has the header with Par and +/- columns
       const headerTr = createdElements.find(
-        el => el.tagName === 'TR' && el.innerHTML && el.innerHTML.includes('Par') && el.innerHTML.includes('+/-')
+        el =>
+          el.tagName === 'TR' &&
+          el.innerHTML &&
+          el.innerHTML.includes('Par') &&
+          el.innerHTML.includes('+/-')
       );
       expect(headerTr).toBeDefined();
     });
 
     test('should show par values and over/under par for each hole', () => {
+      HighScoreManager.isTopTen.mockReturnValue(false);
+
       uiScoreOverlay.showFinalScorecard();
 
-      // Hole 1: strokes 3, par 2 → +1 (over par)
       const hole1Row = createdElements.find(
-        el => el.tagName === 'TR' && el.innerHTML && el.innerHTML.includes('Hole 1') && el.innerHTML.includes('+1')
+        el =>
+          el.tagName === 'TR' &&
+          el.innerHTML &&
+          el.innerHTML.includes('Hole 1') &&
+          el.innerHTML.includes('+1')
       );
       expect(hole1Row).toBeDefined();
       expect(hole1Row.innerHTML).toContain('score-over-par');
 
-      // Hole 3: strokes 2, par 3 → -1 (under par)
       const hole3Row = createdElements.find(
-        el => el.tagName === 'TR' && el.innerHTML && el.innerHTML.includes('Hole 3') && el.innerHTML.includes('-1')
+        el =>
+          el.tagName === 'TR' &&
+          el.innerHTML &&
+          el.innerHTML.includes('Hole 3') &&
+          el.innerHTML.includes('-1')
       );
       expect(hole3Row).toBeDefined();
       expect(hole3Row.innerHTML).toContain('score-under-par');
     });
 
     test('should show total par and total over/under', () => {
+      HighScoreManager.isTopTen.mockReturnValue(false);
+
       uiScoreOverlay.showFinalScorecard();
 
-      // Total: strokes 9, par 8 → +1
       const totalRow = createdElements.find(
-        el => el.tagName === 'TR' && el.innerHTML && el.innerHTML.includes('Total') && el.innerHTML.includes('+1')
+        el =>
+          el.tagName === 'TR' &&
+          el.innerHTML &&
+          el.innerHTML.includes('Total') &&
+          el.innerHTML.includes('+1')
       );
       expect(totalRow).toBeDefined();
-      expect(totalRow.innerHTML).toContain('8'); // total par
+      expect(totalRow.innerHTML).toContain('8');
     });
 
     test('should call getAllHolePars on the course', () => {
+      HighScoreManager.isTopTen.mockReturnValue(false);
+
       uiScoreOverlay.showFinalScorecard();
 
       expect(mockGame.course.getAllHolePars).toHaveBeenCalled();
@@ -535,6 +550,7 @@ describe('UIScoreOverlay', () => {
     test('should save score via HighScoreManager on game completion', () => {
       HighScoreManager.saveScore.mockReturnValue(false);
       HighScoreManager.getBestScore.mockReturnValue(8);
+      HighScoreManager.isTopTen.mockReturnValue(false);
 
       uiScoreOverlay.showFinalScorecard();
 
@@ -544,11 +560,12 @@ describe('UIScoreOverlay', () => {
     test('should show "New Best!" indicator when score is a new best', () => {
       HighScoreManager.saveScore.mockReturnValue(true);
       HighScoreManager.getBestScore.mockReturnValue(9);
+      HighScoreManager.isTopTen.mockReturnValue(false);
 
       uiScoreOverlay.showFinalScorecard();
 
-      const bestScoreEl = createdElements.find(
-        el => el.classList.add.mock.calls.some(call => call[0] === 'scorecard-best-score')
+      const bestScoreEl = createdElements.find(el =>
+        el.classList.add.mock.calls.some(call => call[0] === 'scorecard-best-score')
       );
       expect(bestScoreEl).toBeDefined();
       expect(bestScoreEl.innerHTML).toContain('New Best!');
@@ -557,14 +574,679 @@ describe('UIScoreOverlay', () => {
     test('should show personal best when score is not a new best', () => {
       HighScoreManager.saveScore.mockReturnValue(false);
       HighScoreManager.getBestScore.mockReturnValue(7);
+      HighScoreManager.isTopTen.mockReturnValue(false);
 
       uiScoreOverlay.showFinalScorecard();
 
-      const bestScoreEl = createdElements.find(
-        el => el.classList.add.mock.calls.some(call => call[0] === 'scorecard-best-score')
+      const bestScoreEl = createdElements.find(el =>
+        el.classList.add.mock.calls.some(call => call[0] === 'scorecard-best-score')
       );
       expect(bestScoreEl).toBeDefined();
       expect(bestScoreEl.textContent).toContain('Personal Best: 7');
+    });
+  });
+
+  describe('name entry modal', () => {
+    let createdElements;
+    let clickHandlers;
+    let keydownHandlers;
+    let inputHandlers;
+
+    beforeEach(() => {
+      createdElements = [];
+      clickHandlers = [];
+      keydownHandlers = [];
+      inputHandlers = [];
+
+      document.createElement = jest.fn(tagName => {
+        const el = {
+          tagName: tagName.toUpperCase(),
+          style: {},
+          id: '',
+          innerHTML: '',
+          textContent: '',
+          value: '',
+          type: '',
+          maxLength: 0,
+          placeholder: '',
+          appendChild: jest.fn(),
+          remove: jest.fn(),
+          focus: jest.fn(),
+          setAttribute: jest.fn(),
+          querySelectorAll: jest.fn(() => []),
+          classList: {
+            add: jest.fn(),
+            remove: jest.fn(),
+            contains: jest.fn(),
+            toggle: jest.fn()
+          },
+          addEventListener: jest.fn((event, handler) => {
+            if (event === 'click') {
+              clickHandlers.push({ el, handler });
+            }
+            if (event === 'keydown') {
+              keydownHandlers.push({ el, handler });
+            }
+            if (event === 'input') {
+              inputHandlers.push({ el, handler });
+            }
+          })
+        };
+        createdElements.push(el);
+        return el;
+      });
+
+      document.body.appendChild = jest.fn();
+      global.requestAnimationFrame = jest.fn(cb => cb());
+
+      mockGame.scoringSystem.getHoleScores = jest.fn(() => [3, 4, 2]);
+      mockGame.scoringSystem.getTotalStrokes = jest.fn(() => 9);
+      mockGame.course.getAllHolePars = jest.fn(() => [2, 3, 3]);
+
+      HighScoreManager.saveScore.mockReturnValue(true);
+      HighScoreManager.getBestScore.mockReturnValue(9);
+      HighScoreManager.isTopTen.mockReturnValue(true);
+      HighScoreManager.saveNamedScore.mockReturnValue(true);
+
+      uiScoreOverlay = new UIScoreOverlay(mockGame, mockParentContainer);
+      uiScoreOverlay.init();
+    });
+
+    afterEach(() => {
+      delete global.requestAnimationFrame;
+      delete window.App;
+    });
+
+    test('should show name entry modal when score qualifies for top-10', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      expect(uiScoreOverlay.nameEntryElement).not.toBeNull();
+      const promptEl = createdElements.find(el =>
+        el.classList.add.mock.calls.some(call => call[0] === 'name-entry-prompt')
+      );
+      expect(promptEl).toBeDefined();
+      expect(promptEl.textContent).toContain('NEW PERSONAL BEST');
+    });
+
+    test('should not show name entry modal when score does not qualify', () => {
+      HighScoreManager.isTopTen.mockReturnValue(false);
+
+      uiScoreOverlay.showFinalScorecard();
+
+      expect(uiScoreOverlay.nameEntryElement).toBeNull();
+    });
+
+    test('should hide Play Again button when name entry is shown', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      const playAgainBtn = createdElements.find(
+        el => el.tagName === 'BUTTON' && el.textContent === 'Play Again'
+      );
+      expect(playAgainBtn.style.display).toBe('none');
+    });
+
+    test('should create input with max length 3 and autocapitalize', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      const inputEl = createdElements.find(el => el.tagName === 'INPUT');
+      expect(inputEl).toBeDefined();
+      expect(inputEl.maxLength).toBe(3);
+      expect(inputEl.setAttribute).toHaveBeenCalledWith('autocapitalize', 'characters');
+    });
+
+    test('should create Save and Skip buttons', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      const saveBtn = createdElements.find(
+        el => el.tagName === 'BUTTON' && el.textContent === 'Save'
+      );
+      const skipBtn = createdElements.find(
+        el => el.tagName === 'BUTTON' && el.textContent === 'Skip'
+      );
+      expect(saveBtn).toBeDefined();
+      expect(skipBtn).toBeDefined();
+    });
+
+    test('should call saveNamedScore with input value on Save click', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      const inputEl = createdElements.find(el => el.tagName === 'INPUT');
+      inputEl.value = 'ABC';
+
+      const saveClick = clickHandlers.find(
+        h => h.el.tagName === 'BUTTON' && h.el.textContent === 'Save'
+      );
+      saveClick.handler();
+
+      expect(HighScoreManager.saveNamedScore).toHaveBeenCalledWith('ABC', 9, expect.any(String));
+    });
+
+    test('should call saveNamedScore with --- on Skip click', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      const skipClick = clickHandlers.find(
+        h => h.el.tagName === 'BUTTON' && h.el.textContent === 'Skip'
+      );
+      skipClick.handler();
+
+      expect(HighScoreManager.saveNamedScore).toHaveBeenCalledWith('---', 9, expect.any(String));
+    });
+
+    test('should remove name entry modal after save', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      const saveClick = clickHandlers.find(
+        h => h.el.tagName === 'BUTTON' && h.el.textContent === 'Save'
+      );
+      saveClick.handler();
+
+      expect(uiScoreOverlay.nameEntryElement).toBeNull();
+    });
+
+    test('should show Play Again button after name entry is dismissed', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      const playAgainBtn = createdElements.find(
+        el => el.tagName === 'BUTTON' && el.textContent === 'Play Again'
+      );
+
+      const skipClick = clickHandlers.find(
+        h => h.el.tagName === 'BUTTON' && h.el.textContent === 'Skip'
+      );
+      skipClick.handler();
+
+      expect(playAgainBtn.style.display).toBe('');
+      expect(playAgainBtn.focus).toHaveBeenCalled();
+    });
+
+    test('should submit on Enter key in input field', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      const inputEl = createdElements.find(el => el.tagName === 'INPUT');
+      inputEl.value = 'XYZ';
+
+      const inputKeydown = keydownHandlers.find(h => h.el.tagName === 'INPUT');
+      inputKeydown.handler({ key: 'Enter', preventDefault: jest.fn() });
+
+      expect(HighScoreManager.saveNamedScore).toHaveBeenCalledWith('XYZ', 9, expect.any(String));
+    });
+
+    test('should not submit on non-Enter key in input field', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      const inputKeydown = keydownHandlers.find(h => h.el.tagName === 'INPUT');
+      inputKeydown.handler({ key: 'a', preventDefault: jest.fn() });
+
+      expect(HighScoreManager.saveNamedScore).not.toHaveBeenCalled();
+    });
+
+    test('should focus input field when name entry modal is shown', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      const inputEl = createdElements.find(el => el.tagName === 'INPUT');
+      expect(inputEl.focus).toHaveBeenCalled();
+    });
+
+    test('input handler should uppercase and strip non-alpha chars', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      const inputEntry = inputHandlers.find(h => h.el.tagName === 'INPUT');
+      const inputEl = inputEntry.el;
+      inputEl.value = 'a1b';
+      inputEntry.handler();
+
+      expect(inputEl.value).toBe('AB');
+    });
+  });
+
+  describe('hideFinalScorecard', () => {
+    let createdElements;
+    let transitionEndHandlers;
+
+    beforeEach(() => {
+      createdElements = [];
+      transitionEndHandlers = [];
+
+      document.createElement = jest.fn(tagName => {
+        const el = {
+          tagName: tagName.toUpperCase(),
+          style: {},
+          id: '',
+          innerHTML: '',
+          textContent: '',
+          value: '',
+          appendChild: jest.fn(),
+          remove: jest.fn(),
+          focus: jest.fn(),
+          setAttribute: jest.fn(),
+          querySelectorAll: jest.fn(() => []),
+          classList: {
+            add: jest.fn(),
+            remove: jest.fn(),
+            contains: jest.fn(() => false),
+            toggle: jest.fn()
+          },
+          addEventListener: jest.fn((event, handler) => {
+            if (event === 'transitionend') {
+              transitionEndHandlers.push({ el, handler });
+            }
+          })
+        };
+        createdElements.push(el);
+        return el;
+      });
+
+      document.body.appendChild = jest.fn();
+      global.requestAnimationFrame = jest.fn(cb => cb());
+
+      mockGame.scoringSystem.getHoleScores = jest.fn(() => [2, 3, 3]);
+      mockGame.scoringSystem.getTotalStrokes = jest.fn(() => 8);
+      mockGame.course.getAllHolePars = jest.fn(() => [2, 3, 3]);
+
+      HighScoreManager.saveScore.mockReturnValue(false);
+      HighScoreManager.getBestScore.mockReturnValue(7);
+      HighScoreManager.isTopTen.mockReturnValue(false);
+
+      uiScoreOverlay = new UIScoreOverlay(mockGame, mockParentContainer);
+      uiScoreOverlay.init();
+    });
+
+    afterEach(() => {
+      delete global.requestAnimationFrame;
+    });
+
+    test('should remove visible class from scorecard', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      uiScoreOverlay.hideFinalScorecard();
+
+      expect(uiScoreOverlay.scorecardElement.classList.remove).toHaveBeenCalledWith('visible');
+    });
+
+    test('should register transitionend listener', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      uiScoreOverlay.hideFinalScorecard();
+
+      expect(uiScoreOverlay.scorecardElement.addEventListener).toHaveBeenCalledWith(
+        'transitionend',
+        expect.any(Function),
+        { once: true }
+      );
+    });
+
+    test('should remove scorecard from DOM after transition ends', () => {
+      uiScoreOverlay.showFinalScorecard();
+      const scorecardRef = uiScoreOverlay.scorecardElement;
+
+      uiScoreOverlay.hideFinalScorecard();
+
+      const transitionHandler = transitionEndHandlers.find(h => h.el === scorecardRef);
+      expect(transitionHandler).toBeDefined();
+      transitionHandler.handler();
+
+      expect(scorecardRef.remove).toHaveBeenCalled();
+      expect(uiScoreOverlay.scorecardElement).toBeNull();
+    });
+
+    test('should do nothing when no scorecard exists', () => {
+      expect(() => {
+        uiScoreOverlay.hideFinalScorecard();
+      }).not.toThrow();
+    });
+  });
+
+  describe('showFinalScorecard - under par total', () => {
+    let createdElements;
+
+    beforeEach(() => {
+      createdElements = [];
+
+      document.createElement = jest.fn(tagName => {
+        const el = {
+          tagName: tagName.toUpperCase(),
+          style: {},
+          id: '',
+          innerHTML: '',
+          textContent: '',
+          value: '',
+          appendChild: jest.fn(),
+          remove: jest.fn(),
+          focus: jest.fn(),
+          setAttribute: jest.fn(),
+          querySelectorAll: jest.fn(() => []),
+          classList: {
+            add: jest.fn(),
+            remove: jest.fn(),
+            contains: jest.fn(),
+            toggle: jest.fn()
+          },
+          addEventListener: jest.fn()
+        };
+        createdElements.push(el);
+        return el;
+      });
+
+      document.body.appendChild = jest.fn();
+      global.requestAnimationFrame = jest.fn(cb => cb());
+
+      mockGame.scoringSystem.getHoleScores = jest.fn(() => [1, 2, 2]);
+      mockGame.scoringSystem.getTotalStrokes = jest.fn(() => 5);
+      mockGame.course.getAllHolePars = jest.fn(() => [2, 3, 3]);
+
+      HighScoreManager.saveScore.mockReturnValue(false);
+      HighScoreManager.getBestScore.mockReturnValue(5);
+      HighScoreManager.isTopTen.mockReturnValue(false);
+
+      uiScoreOverlay = new UIScoreOverlay(mockGame, mockParentContainer);
+      uiScoreOverlay.init();
+    });
+
+    afterEach(() => {
+      delete global.requestAnimationFrame;
+    });
+
+    test('should show negative diff for under-par holes', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      const hole1Row = createdElements.find(
+        el => el.tagName === 'TR' && el.innerHTML.includes('Hole 1') && el.innerHTML.includes('-1')
+      );
+      expect(hole1Row).toBeDefined();
+      expect(hole1Row.innerHTML).toContain('score-under-par');
+    });
+
+    test('should show negative total diff when total is under par', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      const totalRow = createdElements.find(
+        el => el.tagName === 'TR' && el.innerHTML.includes('Total') && el.innerHTML.includes('-3')
+      );
+      expect(totalRow).toBeDefined();
+      expect(totalRow.innerHTML).toContain('score-under-par');
+    });
+  });
+
+  describe('showFinalScorecard - over par total', () => {
+    let createdElements;
+
+    beforeEach(() => {
+      createdElements = [];
+
+      document.createElement = jest.fn(tagName => {
+        const el = {
+          tagName: tagName.toUpperCase(),
+          style: {},
+          id: '',
+          innerHTML: '',
+          textContent: '',
+          value: '',
+          appendChild: jest.fn(),
+          remove: jest.fn(),
+          focus: jest.fn(),
+          setAttribute: jest.fn(),
+          querySelectorAll: jest.fn(() => []),
+          classList: {
+            add: jest.fn(),
+            remove: jest.fn(),
+            contains: jest.fn(),
+            toggle: jest.fn()
+          },
+          addEventListener: jest.fn()
+        };
+        createdElements.push(el);
+        return el;
+      });
+
+      document.body.appendChild = jest.fn();
+      global.requestAnimationFrame = jest.fn(cb => cb());
+
+      mockGame.scoringSystem.getHoleScores = jest.fn(() => [4, 5, 6]);
+      mockGame.scoringSystem.getTotalStrokes = jest.fn(() => 15);
+      mockGame.course.getAllHolePars = jest.fn(() => [2, 3, 3]);
+
+      HighScoreManager.saveScore.mockReturnValue(false);
+      HighScoreManager.getBestScore.mockReturnValue(10);
+      HighScoreManager.isTopTen.mockReturnValue(false);
+
+      uiScoreOverlay = new UIScoreOverlay(mockGame, mockParentContainer);
+      uiScoreOverlay.init();
+    });
+
+    afterEach(() => {
+      delete global.requestAnimationFrame;
+    });
+
+    test('should show positive diff for over-par holes', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      const hole1Row = createdElements.find(
+        el => el.tagName === 'TR' && el.innerHTML.includes('Hole 1') && el.innerHTML.includes('+2')
+      );
+      expect(hole1Row).toBeDefined();
+      expect(hole1Row.innerHTML).toContain('score-over-par');
+    });
+
+    test('should show positive total diff when total is over par', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      const totalRow = createdElements.find(
+        el => el.tagName === 'TR' && el.innerHTML.includes('Total') && el.innerHTML.includes('+7')
+      );
+      expect(totalRow).toBeDefined();
+      expect(totalRow.innerHTML).toContain('score-over-par');
+    });
+
+    test('should show Personal Best when score is not a new best', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      const bestScoreEl = createdElements.find(el =>
+        el.classList.add.mock.calls.some(call => call[0] === 'scorecard-best-score')
+      );
+      expect(bestScoreEl).toBeDefined();
+      expect(bestScoreEl.textContent).toContain('Personal Best: 10');
+    });
+  });
+
+  describe('showFinalScorecard - even par total', () => {
+    let createdElements;
+
+    beforeEach(() => {
+      createdElements = [];
+
+      document.createElement = jest.fn(tagName => {
+        const el = {
+          tagName: tagName.toUpperCase(),
+          style: {},
+          id: '',
+          innerHTML: '',
+          textContent: '',
+          value: '',
+          appendChild: jest.fn(),
+          remove: jest.fn(),
+          focus: jest.fn(),
+          setAttribute: jest.fn(),
+          querySelectorAll: jest.fn(() => []),
+          classList: {
+            add: jest.fn(),
+            remove: jest.fn(),
+            contains: jest.fn(),
+            toggle: jest.fn()
+          },
+          addEventListener: jest.fn()
+        };
+        createdElements.push(el);
+        return el;
+      });
+
+      document.body.appendChild = jest.fn();
+      global.requestAnimationFrame = jest.fn(cb => cb());
+
+      mockGame.scoringSystem.getHoleScores = jest.fn(() => [2, 3, 3]);
+      mockGame.scoringSystem.getTotalStrokes = jest.fn(() => 8);
+      mockGame.course.getAllHolePars = jest.fn(() => [2, 3, 3]);
+
+      HighScoreManager.saveScore.mockReturnValue(false);
+      HighScoreManager.getBestScore.mockReturnValue(8);
+      HighScoreManager.isTopTen.mockReturnValue(false);
+
+      uiScoreOverlay = new UIScoreOverlay(mockGame, mockParentContainer);
+      uiScoreOverlay.init();
+    });
+
+    afterEach(() => {
+      delete global.requestAnimationFrame;
+    });
+
+    test('should show E for even-par holes', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      const hole1Row = createdElements.find(
+        el => el.tagName === 'TR' && el.innerHTML.includes('Hole 1') && el.innerHTML.includes('>E<')
+      );
+      expect(hole1Row).toBeDefined();
+      expect(hole1Row.innerHTML).toContain('score-even-par');
+    });
+
+    test('should show E for total when total equals par', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      const evenTotalRow = createdElements.find(
+        el =>
+          el.tagName === 'TR' &&
+          el.innerHTML.includes('Total') &&
+          el.innerHTML.includes('score-even-par')
+      );
+      expect(evenTotalRow).toBeDefined();
+    });
+  });
+
+  describe('showFinalScorecard - new best score', () => {
+    let createdElements;
+
+    beforeEach(() => {
+      createdElements = [];
+
+      document.createElement = jest.fn(tagName => {
+        const el = {
+          tagName: tagName.toUpperCase(),
+          style: {},
+          id: '',
+          innerHTML: '',
+          textContent: '',
+          value: '',
+          appendChild: jest.fn(),
+          remove: jest.fn(),
+          focus: jest.fn(),
+          setAttribute: jest.fn(),
+          querySelectorAll: jest.fn(() => []),
+          classList: {
+            add: jest.fn(),
+            remove: jest.fn(),
+            contains: jest.fn(),
+            toggle: jest.fn()
+          },
+          addEventListener: jest.fn()
+        };
+        createdElements.push(el);
+        return el;
+      });
+
+      document.body.appendChild = jest.fn();
+      global.requestAnimationFrame = jest.fn(cb => cb());
+
+      mockGame.scoringSystem.getHoleScores = jest.fn(() => [1, 2, 2]);
+      mockGame.scoringSystem.getTotalStrokes = jest.fn(() => 5);
+      mockGame.course.getAllHolePars = jest.fn(() => [2, 3, 3]);
+
+      HighScoreManager.saveScore.mockReturnValue(true);
+      HighScoreManager.getBestScore.mockReturnValue(5);
+      HighScoreManager.isTopTen.mockReturnValue(false);
+
+      uiScoreOverlay = new UIScoreOverlay(mockGame, mockParentContainer);
+      uiScoreOverlay.init();
+    });
+
+    afterEach(() => {
+      delete global.requestAnimationFrame;
+    });
+
+    test('should show New Best! indicator when saveScore returns true', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      const bestScoreEl = createdElements.find(el =>
+        el.classList.add.mock.calls.some(call => call[0] === 'scorecard-best-score')
+      );
+      expect(bestScoreEl).toBeDefined();
+      expect(bestScoreEl.innerHTML).toContain('New Best!');
+      expect(bestScoreEl.innerHTML).toContain('new-best-indicator');
+    });
+
+    test('should save score via HighScoreManager', () => {
+      uiScoreOverlay.showFinalScorecard();
+
+      expect(HighScoreManager.saveScore).toHaveBeenCalledWith(5, expect.any(String));
+    });
+  });
+
+  describe('showFinalScorecard - re-show existing scorecard', () => {
+    let createdElements;
+
+    beforeEach(() => {
+      createdElements = [];
+
+      document.createElement = jest.fn(tagName => {
+        const el = {
+          tagName: tagName.toUpperCase(),
+          style: {},
+          id: '',
+          innerHTML: '',
+          textContent: '',
+          value: '',
+          appendChild: jest.fn(),
+          remove: jest.fn(),
+          focus: jest.fn(),
+          setAttribute: jest.fn(),
+          querySelectorAll: jest.fn(() => []),
+          classList: {
+            add: jest.fn(),
+            remove: jest.fn(),
+            contains: jest.fn(),
+            toggle: jest.fn()
+          },
+          addEventListener: jest.fn()
+        };
+        createdElements.push(el);
+        return el;
+      });
+
+      document.body.appendChild = jest.fn();
+      global.requestAnimationFrame = jest.fn(cb => cb());
+
+      mockGame.scoringSystem.getHoleScores = jest.fn(() => [2, 3, 3]);
+      mockGame.scoringSystem.getTotalStrokes = jest.fn(() => 8);
+      mockGame.course.getAllHolePars = jest.fn(() => [2, 3, 3]);
+
+      HighScoreManager.saveScore.mockReturnValue(false);
+      HighScoreManager.getBestScore.mockReturnValue(8);
+      HighScoreManager.isTopTen.mockReturnValue(false);
+
+      uiScoreOverlay = new UIScoreOverlay(mockGame, mockParentContainer);
+      uiScoreOverlay.init();
+    });
+
+    afterEach(() => {
+      delete global.requestAnimationFrame;
+    });
+
+    test('should make existing scorecard visible instead of creating new one', () => {
+      uiScoreOverlay.showFinalScorecard();
+      const firstScorecard = uiScoreOverlay.scorecardElement;
+
+      uiScoreOverlay.showFinalScorecard();
+
+      expect(uiScoreOverlay.scorecardElement).toBe(firstScorecard);
+      expect(firstScorecard.classList.add).toHaveBeenCalledWith('visible');
     });
   });
 

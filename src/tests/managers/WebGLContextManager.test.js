@@ -162,10 +162,7 @@ describe('WebGLContextManager', () => {
 
     it('should reinitialize renderer settings', async () => {
       await manager.restoreGame();
-      expect(mockGame.renderer.setSize).toHaveBeenCalledWith(
-        window.innerWidth,
-        window.innerHeight
-      );
+      expect(mockGame.renderer.setSize).toHaveBeenCalledWith(window.innerWidth, window.innerHeight);
       expect(mockGame.renderer.shadowMap.enabled).toBe(true);
       expect(mockGame.renderer.shadowMap.needsUpdate).toBe(true);
     });
@@ -313,8 +310,9 @@ describe('WebGLContextManager', () => {
       const buttonElement = allCreateCalls[allCreateCalls.length - 1].value;
 
       // Simulate click via the addEventListener mock
-      const clickHandlers = buttonElement.addEventListener.mock.calls
-        .filter(call => call[0] === 'click');
+      const clickHandlers = buttonElement.addEventListener.mock.calls.filter(
+        call => call[0] === 'click'
+      );
 
       if (clickHandlers.length > 0) {
         clickHandlers[0][1](); // Call the click handler

@@ -15,7 +15,7 @@ jest.mock('../../../game/HighScoreManager');
 jest.mock('three', () => ({
   Vector2: jest.fn((x, y) => ({ x, y })),
   Vector3: jest.fn((x, y, z) => ({ x, y, z })),
-  Euler: jest.fn((x, y, z) => ({ x, y, z })),
+  Euler: jest.fn((x, y, z) => ({ x, y, z }))
 }));
 
 describe('Course Metadata Display', () => {
@@ -34,18 +34,17 @@ describe('Course Metadata Display', () => {
       const defaultCourseName = 'Orbital Drift';
       expect(defaultCourseName).toBe('Orbital Drift');
 
-      // Verify the config produces 9 holes (matching "9 Holes" on start screen)
-      expect(orbitalDriftConfigs).toHaveLength(9);
+      // Verify the config produces 18 holes
+      expect(orbitalDriftConfigs).toHaveLength(18);
     });
 
-    test('start screen displays correct total par (sum of all 9 hole pars from config)', () => {
+    test('start screen displays correct total par (sum of all 18 hole pars from config)', () => {
       const totalPar = orbitalDriftConfigs.reduce((sum, hole) => sum + hole.par, 0);
-      // The start screen HTML shows "9 Holes · Par 24"
-      expect(totalPar).toBe(24);
+      expect(totalPar).toBe(57);
     });
 
-    test('start screen displays hole count (9)', () => {
-      expect(orbitalDriftConfigs).toHaveLength(9);
+    test('start screen displays hole count (18)', () => {
+      expect(orbitalDriftConfigs).toHaveLength(18);
     });
   });
 
@@ -58,28 +57,28 @@ describe('Course Metadata Display', () => {
       mockParentContainer = {
         appendChild: jest.fn(),
         removeChild: jest.fn(),
-        querySelector: jest.fn(() => null),
+        querySelector: jest.fn(() => null)
       };
 
       mockGame = {
         courseName: 'Orbital Drift',
         stateManager: {
           state: { currentHoleNumber: 1 },
-          getTotalScore: jest.fn(() => 0),
+          getTotalScore: jest.fn(() => 0)
         },
         course: {
           getCurrentHoleNumber: jest.fn(() => 1),
           getCurrentHoleConfig: jest.fn(() => orbitalDriftConfigs[0]),
           getHolePar: jest.fn(() => orbitalDriftConfigs[0].par),
-          getAllHolePars: jest.fn(() => orbitalDriftConfigs.map(c => c.par)),
+          getAllHolePars: jest.fn(() => orbitalDriftConfigs.map(c => c.par))
         },
         scoringSystem: {
           getStrokes: jest.fn(() => 0),
           getTotalScore: jest.fn(() => 0),
           getTotalStrokes: jest.fn(() => 0),
-          getCurrentStrokes: jest.fn(() => 0),
+          getCurrentStrokes: jest.fn(() => 0)
         },
-        debugManager: { log: jest.fn() },
+        debugManager: { log: jest.fn() }
       };
 
       uiScoreOverlay = new UIScoreOverlay(mockGame, mockParentContainer);
@@ -97,8 +96,8 @@ describe('Course Metadata Display', () => {
     test('HUD shows current hole number and description for hole 1', () => {
       uiScoreOverlay.updateHoleInfo();
 
-      // Description "1. Launch Bay" should become "Hole 1: Launch Bay"
-      expect(uiScoreOverlay.holeInfoElement.textContent).toBe('Hole 1: Launch Bay');
+      // Description "1. Docking Lane" should become "Hole 1: Docking Lane"
+      expect(uiScoreOverlay.holeInfoElement.textContent).toBe('Hole 1: Docking Lane');
     });
 
     test('HUD shows correct hole number and description for each hole', () => {
@@ -120,7 +119,7 @@ describe('Course Metadata Display', () => {
     });
 
     test('HUD correctly reflects par for each hole from config', () => {
-      const expectedPars = [2, 2, 3, 3, 2, 3, 2, 3, 4];
+      const expectedPars = [2, 2, 3, 3, 2, 3, 2, 3, 4, 3, 3, 4, 4, 3, 4, 4, 3, 5];
       const actualPars = orbitalDriftConfigs.map(c => c.par);
       expect(actualPars).toEqual(expectedPars);
     });
@@ -150,19 +149,25 @@ describe('Course Metadata Display', () => {
           classList: {
             _classes: [],
             add: jest.fn(function (cls) {
-              if (!this._classes.includes(cls)) this._classes.push(cls);
+              if (!this._classes.includes(cls)) {
+                this._classes.push(cls);
+              }
             }),
             remove: jest.fn(),
             contains: jest.fn(function (cls) {
               return this._classes.includes(cls);
             }),
-            toggle: jest.fn(),
+            toggle: jest.fn()
           },
-          addEventListener: jest.fn(),
+          addEventListener: jest.fn()
         };
         Object.defineProperty(el, 'innerHTML', {
-          get() { return this._innerHTML; },
-          set(value) { this._innerHTML = value; },
+          get() {
+            return this._innerHTML;
+          },
+          set(value) {
+            this._innerHTML = value;
+          }
         });
         createdElements.push(el);
         return el;
@@ -172,35 +177,36 @@ describe('Course Metadata Display', () => {
       global.requestAnimationFrame = jest.fn(cb => cb());
 
       const holePars = orbitalDriftConfigs.map(c => c.par);
-      // Simulate a completed game: all 9 holes with some strokes
-      const holeScores = [2, 3, 3, 4, 2, 3, 3, 4, 5]; // total = 29
+      // Simulate a completed game: all 18 holes with some strokes
+      // pars: 2,2,3,3,2,3,2,3,4,3,3,4,4,3,4,4,3,5 = 57
+      const holeScores = [2, 3, 3, 4, 2, 3, 3, 4, 5, 3, 4, 5, 4, 3, 5, 4, 4, 5]; // total = 66
 
       mockParentContainer = {
         appendChild: jest.fn(),
         removeChild: jest.fn(),
-        querySelector: jest.fn(() => null),
+        querySelector: jest.fn(() => null)
       };
 
       mockGame = {
         courseName: 'Orbital Drift',
         stateManager: {
-          state: { currentHoleNumber: 9 },
-          getTotalScore: jest.fn(() => 29),
+          state: { currentHoleNumber: 18 },
+          getTotalScore: jest.fn(() => 66)
         },
         course: {
-          getCurrentHoleNumber: jest.fn(() => 9),
-          getCurrentHoleConfig: jest.fn(() => orbitalDriftConfigs[8]),
-          getHolePar: jest.fn(() => orbitalDriftConfigs[8].par),
-          getAllHolePars: jest.fn(() => holePars),
+          getCurrentHoleNumber: jest.fn(() => 18),
+          getCurrentHoleConfig: jest.fn(() => orbitalDriftConfigs[17]),
+          getHolePar: jest.fn(() => orbitalDriftConfigs[17].par),
+          getAllHolePars: jest.fn(() => holePars)
         },
         scoringSystem: {
           getStrokes: jest.fn(() => 0),
-          getTotalScore: jest.fn(() => 29),
-          getTotalStrokes: jest.fn(() => 29),
+          getTotalScore: jest.fn(() => 66),
+          getTotalStrokes: jest.fn(() => 66),
           getCurrentStrokes: jest.fn(() => 0),
-          getHoleScores: jest.fn(() => holeScores),
+          getHoleScores: jest.fn(() => holeScores)
         },
-        debugManager: { log: jest.fn() },
+        debugManager: { log: jest.fn() }
       };
 
       HighScoreManager.saveScore.mockReturnValue(false);
@@ -215,26 +221,26 @@ describe('Course Metadata Display', () => {
       jest.clearAllMocks();
     });
 
-    test('scorecard total row shows correct total par of 24 from config', () => {
+    test('scorecard total row shows correct total par of 57 from config', () => {
       uiScoreOverlay.showFinalScorecard();
 
-      // Find the total row — it contains "Total" and the total par "24"
+      // Find the total row — it contains "Total" and the total par "57"
       const totalRow = createdElements.find(
         el =>
           el.tagName === 'TR' &&
           el.innerHTML &&
           el.innerHTML.includes('Total') &&
-          el.innerHTML.includes('24')
+          el.innerHTML.includes('57')
       );
       expect(totalRow).toBeDefined();
-      // Total par should be 24 (2+2+3+3+2+3+2+3+4)
-      expect(totalRow.innerHTML).toContain('<strong>24</strong>');
+      // Total par should be 57 (2+2+3+3+2+3+2+3+4+3+3+4+4+3+4+4+3+5)
+      expect(totalRow.innerHTML).toContain('<strong>57</strong>');
     });
 
     test('scorecard shows par for each individual hole from config', () => {
       uiScoreOverlay.showFinalScorecard();
 
-      const expectedPars = [2, 2, 3, 3, 2, 3, 2, 3, 4];
+      const expectedPars = [2, 2, 3, 3, 2, 3, 2, 3, 4, 3, 3, 4, 4, 3, 4, 4, 3, 5];
 
       expectedPars.forEach((par, index) => {
         const holeRow = createdElements.find(
@@ -251,13 +257,13 @@ describe('Course Metadata Display', () => {
     test('scorecard shows correct +/- diff relative to config pars', () => {
       uiScoreOverlay.showFinalScorecard();
 
-      // Total strokes 29 - total par 24 = +5
+      // Total strokes 66 - total par 57 = +9
       const totalRow = createdElements.find(
         el =>
           el.tagName === 'TR' &&
           el.innerHTML &&
           el.innerHTML.includes('Total') &&
-          el.innerHTML.includes('+5')
+          el.innerHTML.includes('+9')
       );
       expect(totalRow).toBeDefined();
       expect(totalRow.innerHTML).toContain('score-over-par');
@@ -266,7 +272,7 @@ describe('Course Metadata Display', () => {
     test('scorecard uses course name for HighScoreManager', () => {
       uiScoreOverlay.showFinalScorecard();
 
-      expect(HighScoreManager.saveScore).toHaveBeenCalledWith(29, 'Orbital Drift');
+      expect(HighScoreManager.saveScore).toHaveBeenCalledWith(66, 'Orbital Drift');
     });
 
     test('getAllHolePars is called to populate scorecard par column', () => {

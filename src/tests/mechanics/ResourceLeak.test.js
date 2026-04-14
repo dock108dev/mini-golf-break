@@ -24,7 +24,7 @@ function makeMockMaterial() {
     roughness: 0.3,
     metalness: 0.2,
     dispose: jest.fn(),
-    clone: jest.fn(() => makeMockMaterial()),
+    clone: jest.fn(() => makeMockMaterial())
   };
   return mat;
 }
@@ -36,7 +36,14 @@ function makeMockGeometry() {
 // Patch THREE constructors to return objects with dispose/clone
 beforeEach(() => {
   // Geometry constructors — some may be real functions (not jest.fn), so reassign
-  const geomCtors = ['BoxGeometry', 'PlaneGeometry', 'CylinderGeometry', 'SphereGeometry', 'CircleGeometry', 'RingGeometry'];
+  const geomCtors = [
+    'BoxGeometry',
+    'PlaneGeometry',
+    'CylinderGeometry',
+    'SphereGeometry',
+    'CircleGeometry',
+    'RingGeometry'
+  ];
   for (const name of geomCtors) {
     if (typeof THREE[name].mockImplementation === 'function') {
       THREE[name].mockImplementation(() => makeMockGeometry());
@@ -54,13 +61,25 @@ beforeEach(() => {
     this.geometry = geometry;
     this.material = material;
     this.position = {
-      x: 0, y: 0, z: 0,
-      set: jest.fn(function (x, y, z) { this.x = x; this.y = y; this.z = z; }),
-      copy: jest.fn(),
+      x: 0,
+      y: 0,
+      z: 0,
+      set: jest.fn(function (x, y, z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+      }),
+      copy: jest.fn()
     };
     this.rotation = {
-      x: 0, y: 0, z: 0,
-      set: jest.fn(function (x, y, z, o) { this.x = x; this.y = y; this.z = z; }),
+      x: 0,
+      y: 0,
+      z: 0,
+      set: jest.fn(function (x, y, z, o) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+      })
     };
     this.scale = { x: 1, y: 1, z: 1, set: jest.fn() };
     this.castShadow = false;
@@ -72,25 +91,40 @@ beforeEach(() => {
   // CANNON.Body — add position.set and velocity.set
   CANNON.Body.mockImplementation(() => ({
     position: {
-      x: 0, y: 0, z: 0,
-      set: jest.fn(function (x, y, z) { this.x = x; this.y = y; this.z = z; }),
-      copy: jest.fn(),
+      x: 0,
+      y: 0,
+      z: 0,
+      set: jest.fn(function (x, y, z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+      }),
+      copy: jest.fn()
     },
     velocity: {
-      x: 0, y: 0, z: 0,
-      set: jest.fn(function (x, y, z) { this.x = x; this.y = y; this.z = z; }),
+      x: 0,
+      y: 0,
+      z: 0,
+      set: jest.fn(function (x, y, z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+      }),
       copy: jest.fn(),
       scale: jest.fn(() => ({ x: 0, y: 0, z: 0 })),
-      normalize: jest.fn(),
+      normalize: jest.fn()
     },
     angularVelocity: { x: 0, y: 0, z: 0, set: jest.fn(), copy: jest.fn() },
     force: { x: 0, y: 0, z: 0, set: jest.fn() },
     quaternion: {
-      x: 0, y: 0, z: 0, w: 1,
+      x: 0,
+      y: 0,
+      z: 0,
+      w: 1,
       set: jest.fn(),
       copy: jest.fn(),
       setFromAxisAngle: jest.fn(),
-      normalize: jest.fn(),
+      normalize: jest.fn()
     },
     addShape: jest.fn(),
     removeShape: jest.fn(),
@@ -103,21 +137,26 @@ beforeEach(() => {
     addEventListener: jest.fn(),
     removeEventListener: jest.fn(),
     applyForce: jest.fn(),
-    applyImpulse: jest.fn(),
+    applyImpulse: jest.fn()
   }));
 
   // CANNON.Vec3 — needs scale() method
   CANNON.Vec3.mockImplementation((x = 0, y = 0, z = 0) => ({
-    x, y, z,
-    scale: jest.fn((s) => ({ x: x * s, y: y * s, z: z * s })),
+    x,
+    y,
+    z,
+    scale: jest.fn(s => ({ x: x * s, y: y * s, z: z * s }))
   }));
 
   // CANNON.Quaternion
   CANNON.Quaternion = jest.fn(() => ({
-    x: 0, y: 0, z: 0, w: 1,
+    x: 0,
+    y: 0,
+    z: 0,
+    w: 1,
     setFromAxisAngle: jest.fn(),
     copy: jest.fn(),
-    normalize: jest.fn(),
+    normalize: jest.fn()
   }));
 
   // CANNON.Trimesh
@@ -134,13 +173,15 @@ function makeMockWorld() {
     addBody: jest.fn(body => bodies.push(body)),
     removeBody: jest.fn(body => {
       const idx = bodies.indexOf(body);
-      if (idx !== -1) bodies.splice(idx, 1);
+      if (idx !== -1) {
+        bodies.splice(idx, 1);
+      }
     }),
     step: jest.fn(),
     bodies,
     groundMaterial: {},
     bumperMaterial: {},
-    gravity: { set: jest.fn() },
+    gravity: { set: jest.fn() }
   };
 }
 
@@ -149,16 +190,22 @@ function makeMockGroup() {
   const group = {
     add: jest.fn(child => {
       children.push(child);
-      if (child) child.parent = group;
+      if (child) {
+        child.parent = group;
+      }
     }),
     remove: jest.fn(child => {
       const idx = children.indexOf(child);
-      if (idx !== -1) children.splice(idx, 1);
-      if (child) child.parent = null;
+      if (idx !== -1) {
+        children.splice(idx, 1);
+      }
+      if (child) {
+        child.parent = null;
+      }
     }),
     children,
     position: { x: 0, y: 0, z: 0, set: jest.fn() },
-    rotation: { x: 0, y: 0, z: 0, set: jest.fn() },
+    rotation: { x: 0, y: 0, z: 0, set: jest.fn() }
   };
   return group;
 }
@@ -169,68 +216,88 @@ const MECHANIC_CONFIGS = {
     position: { x: 0, y: 0, z: 0 },
     direction: { x: 0, y: 0, z: -1 },
     force: 8,
-    size: { width: 1.5, length: 3 },
+    size: { width: 1.5, length: 3 }
   },
   suction_zone: {
     position: { x: 0, y: 0, z: 0 },
     radius: 3,
-    force: 6,
+    force: 6
   },
   low_gravity_zone: {
     position: { x: 0, y: 0, z: 0 },
     radius: 2,
-    gravityMultiplier: 0.3,
+    gravityMultiplier: 0.3
   },
   bowl_contour: {
     position: { x: 0, y: 0, z: 0 },
     radius: 4,
-    force: 3,
+    force: 3
   },
   moving_sweeper: {
     pivot: { x: 0, y: 0, z: 0 },
     armLength: 3,
-    speed: 1.5,
+    speed: 1.5
   },
   timed_hazard: {
     position: { x: 0, y: 0, z: 0 },
     size: { width: 2, length: 1 },
     onDuration: 2,
     offDuration: 2,
-    hazardType: 'water',
+    hazardType: 'water'
   },
   timed_gate: {
     position: { x: 0, y: 0, z: 0 },
     size: { width: 2, height: 1, depth: 0.2 },
     openDuration: 2,
-    closedDuration: 3,
+    closedDuration: 3
   },
   bank_wall: {
     segments: [
       { start: { x: -2, y: 0, z: 0 }, end: { x: 2, y: 0, z: 0 } },
-      { start: { x: 2, y: 0, z: 0 }, end: { x: 2, y: 0, z: -3 } },
-    ],
+      { start: { x: 2, y: 0, z: 0 }, end: { x: 2, y: 0, z: -3 } }
+    ]
   },
   split_route: {
-    walls: [
-      { start: { x: 0, y: 0, z: 0 }, end: { x: 0, y: 0, z: -4 } },
-    ],
+    walls: [{ start: { x: 0, y: 0, z: 0 }, end: { x: 0, y: 0, z: -4 } }]
   },
   ricochet_bumpers: {
     bumpers: [
       { position: { x: -1, y: 0, z: -2 }, geometry: 'cylinder', radius: 0.4 },
-      { position: { x: 1, y: 0, z: -3 }, geometry: 'sphere', radius: 0.3 },
-    ],
+      { position: { x: 1, y: 0, z: -3 }, geometry: 'sphere', radius: 0.3 }
+    ]
   },
   elevated_green: {
     platform: { position: { x: 0, y: 0, z: -5 }, width: 4, length: 4 },
     elevation: 0.5,
-    ramp: { start: { x: 0, y: 0, z: -3 }, end: { x: 0, y: 0, z: -5 }, width: 2 },
+    ramp: { start: { x: 0, y: 0, z: -3 }, end: { x: 0, y: 0, z: -5 }, width: 2 }
   },
   portal_gate: {
     entryPosition: { x: -3, y: 0, z: 2 },
     exitPosition: { x: 3, y: 0, z: -5 },
-    radius: 0.6,
+    radius: 0.6
   },
+  laser_grid: {
+    beams: [{ start: [0, 0, 0], end: [2, 0, 0] }],
+    onDuration: 2,
+    offDuration: 2
+  },
+  disappearing_platform: {
+    platforms: [
+      { position: [0, 0, 0], size: [2, 0.15, 2], onDuration: 3, offDuration: 2, offset: 0 }
+    ],
+    hazardBelowY: -1
+  },
+  gravity_funnel: {
+    position: [0, 0, 0],
+    radius: 3,
+    exitPoint: [0, 0, -5],
+    force: 2.0
+  },
+  multi_level_ramp: {
+    startPosition: [0, 0, 0],
+    endPosition: [0, 1, -4],
+    width: 1.2
+  }
 };
 
 const ALL_TYPES = Object.keys(MECHANIC_CONFIGS);
@@ -240,16 +307,16 @@ const ALL_TYPES = Object.keys(MECHANIC_CONFIGS);
 // ---------------------------------------------------------------------------
 
 describe('Resource leak tests — mechanics destroy lifecycle', () => {
-  it('covers all 12 registered mechanic types', () => {
+  it('covers all 16 registered mechanic types', () => {
     const registered = getRegisteredTypes();
-    expect(registered.length).toBe(12);
+    expect(registered.length).toBe(16);
     for (const type of registered) {
       expect(MECHANIC_CONFIGS).toHaveProperty(type);
     }
   });
 
   // Per-type destroy cleanup
-  describe.each(ALL_TYPES)('%s', (type) => {
+  describe.each(ALL_TYPES)('%s', type => {
     let world, group, mechanic;
 
     beforeEach(() => {
@@ -287,7 +354,11 @@ describe('Resource leak tests — mechanics destroy lifecycle', () => {
       const meshes = [...mechanic.meshes];
       // Wrap dispose with spies where needed (in case mock returned non-jest fns)
       for (const mesh of meshes) {
-        if (mesh.geometry && typeof mesh.geometry.dispose === 'function' && !mesh.geometry.dispose._isMockFunction) {
+        if (
+          mesh.geometry &&
+          typeof mesh.geometry.dispose === 'function' &&
+          !mesh.geometry.dispose._isMockFunction
+        ) {
           mesh.geometry.dispose = jest.fn(mesh.geometry.dispose);
         }
       }
@@ -342,21 +413,16 @@ describe('Resource leak tests — mechanics destroy lifecycle', () => {
 
   // 100x create/destroy stress test
   describe('repeated create/destroy does not leak bodies', () => {
-    it.each(ALL_TYPES)(
-      '%s — 100 cycles leaves zero bodies in world',
-      (type) => {
-        const world = makeMockWorld();
+    it.each(ALL_TYPES)('%s — 100 cycles leaves zero bodies in world', type => {
+      const world = makeMockWorld();
 
-        for (let i = 0; i < 100; i++) {
-          const group = makeMockGroup();
-          const mechanic = createMechanic(
-            type, world, group, MECHANIC_CONFIGS[type], 0.2
-          );
-          mechanic.destroy();
-        }
-
-        expect(world.bodies.length).toBe(0);
+      for (let i = 0; i < 100; i++) {
+        const group = makeMockGroup();
+        const mechanic = createMechanic(type, world, group, MECHANIC_CONFIGS[type], 0.2);
+        mechanic.destroy();
       }
-    );
+
+      expect(world.bodies.length).toBe(0);
+    });
   });
 });

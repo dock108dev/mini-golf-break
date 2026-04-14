@@ -61,7 +61,7 @@ class MovingSweeper extends MechanicBase {
     this.body.addShape(new CANNON.Box(halfExtents));
     this.body.position.set(this.pivot.x, armY, this.pivot.z);
     this.body.userData = { type: 'moving_sweeper' };
-    this.body.addEventListener('collide', (event) => {
+    this.body.addEventListener('collide', event => {
       if (this.audioManager) {
         this.audioManager.playSound('sweeperHit');
       }
@@ -108,6 +108,9 @@ class MovingSweeper extends MechanicBase {
   }
 }
 
-registerMechanic('moving_sweeper', (world, group, config, sh, theme) => new MovingSweeper(world, group, config, sh, theme));
+registerMechanic(
+  'moving_sweeper',
+  (world, group, config, sh, theme) => new MovingSweeper(world, group, config, sh, theme)
+);
 
 export { MovingSweeper };

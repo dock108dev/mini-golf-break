@@ -2,14 +2,19 @@ import * as THREE from 'three';
 import { InputController } from '../controls/InputController';
 import { CameraController } from '../controls/CameraController';
 import { ScoringSystem } from '../game/ScoringSystem';
-import { OrbitalDriftCourse } from '../objects/OrbitalDriftCourse';
 import { SpaceDecorations } from '../objects/SpaceDecorations';
 import { EventTypes } from '../events/EventTypes';
 import { GameState } from '../states/GameState';
 import { CannonDebugRenderer } from '../utils/CannonDebugRenderer';
 import { debug } from '../utils/debug';
+import { reloadPage } from '../utils/navigation';
 import { validateCourse } from '../utils/holeValidator';
-import { getRegisteredTypes } from '../mechanics/MechanicRegistry';
+import {
+  initCalibration,
+  isCalibrationActive,
+  recordHoleStrokes,
+  showCalibrationOverlay
+} from '../utils/parCalibration';
 
 // Import managers
 import { StateManager } from '../managers/StateManager';
@@ -35,8 +40,7 @@ import { StuckBallManager } from '../managers/StuckBallManager';
  */
 export class Game {
   constructor(options = {}) {
-    // Course class to use (defaults to OrbitalDriftCourse)
-    this.CourseClass = options.courseClass || OrbitalDriftCourse;
+    this.CourseClass = options.courseClass || null;
     this.courseName = options.courseName || 'Orbital Drift';
 
     // Core Three.js components
@@ -186,6 +190,21 @@ export class Game {
       await this.createCourse();
       debug.log('[Game.startGame] createCourse finished.');
 
+      // Set max strokes and OOB bounds for the first hole
+      if (this.course) {
+        const config = this.course.getCurrentHoleConfig();
+        if (config) {
+          if (this.scoringSystem) {
+            this.scoringSystem.setMaxStrokes(config.par, config.maxStrokes);
+          }
+          this.hazardManager.setHoleBounds(config);
+        }
+        this.updateLightingForTheme(config?.theme);
+        if (this.spaceDecorations && config?.theme) {
+          this.spaceDecorations.setThemeVariant(config.theme);
+        }
+      }
+
       // Initialize the ball manager after the course is created
       this.ballManager.init();
 
@@ -200,6 +219,9 @@ export class Game {
       this.uiManager.updateHoleInfo();
       this.uiManager.updateScore();
       this.uiManager.updateStrokes();
+
+      // Initialize par calibration harness (dev-mode only, URL-param gated)
+      initCalibration(this.courseName.toLowerCase().replace(/\s+/g, '_'));
 
       // Publish game started event
       this.eventManager.publish(EventTypes.GAME_STARTED, { timestamp: Date.now() }, this);
@@ -289,6 +311,22 @@ export class Game {
   }
 
   /**
+   * Quit the game and return to the main menu.
+   */
+  quitToMenu() {
+    if (this.stateManager.isInState(GameState.PAUSED)) {
+      this.uiManager.hidePauseOverlay();
+    }
+    this.prePauseState = null;
+
+    if (window.App && typeof window.App.returnToMenu === 'function') {
+      window.App.returnToMenu();
+    } else {
+      reloadPage();
+    }
+  }
+
+  /**
    * Handle Escape key for pause/resume toggle
    */
   handlePauseKey(event) {
@@ -369,6 +407,20 @@ export class Game {
     this.scene.add(this.lights.directionalLight);
   }
 
+  updateLightingForTheme(theme) {
+    if (!theme?.lighting) {
+      return;
+    }
+    const { ambientColor, ambientIntensity, keyLightColor } = theme.lighting;
+    if (this.lights.ambient) {
+      this.lights.ambient.color.set(ambientColor);
+      this.lights.ambient.intensity = ambientIntensity;
+    }
+    if (this.lights.directionalLight) {
+      this.lights.directionalLight.color.set(keyLightColor);
+    }
+  }
+
   /**
    * Create the golf course environment
    */
@@ -382,16 +434,25 @@ export class Game {
         throw new Error('PhysicsManager must be initialized before creating the course.');
       }
 
+      if (!this.CourseClass) {
+        const { OrbitalDriftCourse } = await import(
+          /* webpackChunkName: "course" */ '../objects/OrbitalDriftCourse'
+        );
+        this.CourseClass = OrbitalDriftCourse;
+      }
+
       this.course = await this.CourseClass.create(this);
 
       if (!this.course || !this.course.currentHoleEntity) {
         throw new Error('Course or initial HoleEntity failed to initialize.');
       }
 
-      // Dev-mode: validate all mechanic types in configs are registered
       if (process.env.NODE_ENV !== 'production' && this.course.holeConfigs) {
+        const { getRegisteredTypes } = await import(
+          /* webpackChunkName: "course" */ '../mechanics/MechanicRegistry'
+        );
         validateCourse(this.course.holeConfigs, this.courseName || 'Course', {
-          registeredTypes: getRegisteredTypes(),
+          registeredTypes: getRegisteredTypes()
         });
       }
 
@@ -412,7 +473,6 @@ export class Game {
       if (this.cameraController) {
         this.cameraController.positionCameraForHole();
       }
-
     } catch (error) {
       this.debugManager.error('Game.createCourse', 'Failed to create course', error, true);
       console.error('CRITICAL: Failed to create course:', error);
@@ -479,6 +539,10 @@ export class Game {
         window.removeEventListener('keydown', this.boundHandlePauseKey);
         this.boundHandlePauseKey = null;
       }
+      if (this.backButtonListener && typeof this.backButtonListener.remove === 'function') {
+        this.backButtonListener.remove();
+        this.backButtonListener = null;
+      }
 
       // Clean up managers in reverse order of initialization
       const managers = [
@@ -543,5 +607,39 @@ export class Game {
     // Pause/resume via Escape key
     this.boundHandlePauseKey = this.handlePauseKey.bind(this);
     window.addEventListener('keydown', this.boundHandlePauseKey);
+
+    // Par calibration stroke recording (dev-mode only)
+    if (isCalibrationActive()) {
+      this.eventManager.subscribe(EventTypes.HOLE_COMPLETED, data => {
+        const strokes = this.scoringSystem.getCurrentStrokes();
+        if (strokes > 0) {
+          recordHoleStrokes(data.holeNumber, strokes);
+        }
+      });
+
+      this.eventManager.subscribe(EventTypes.GAME_COMPLETED, () => {
+        const parValues = this.course.getAllHolePars();
+        showCalibrationOverlay(parValues);
+      });
+    }
+
+    // iOS hardware back button via Capacitor
+    this.setupBackButtonListener();
+  }
+
+  /**
+   * Set up Capacitor back button listener for iOS/Android pause.
+   */
+  async setupBackButtonListener() {
+    try {
+      const { App: CapApp } = await import('@capacitor/core');
+      if (CapApp && typeof CapApp.addListener === 'function') {
+        this.backButtonListener = CapApp.addListener('backButton', () => {
+          this.handlePauseKey({ key: 'Escape' });
+        });
+      }
+    } catch (_e) {
+      // Capacitor not available (browser environment) — no-op
+    }
   }
 }

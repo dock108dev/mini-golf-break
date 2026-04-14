@@ -15,7 +15,9 @@ export class Ball {
     this.scene = scene;
     this.game = game;
     this.physicsWorld = physicsWorld;
-    if (!this.physicsWorld) {throw new Error('[Ball] Physics world not available');}
+    if (!this.physicsWorld) {
+      throw new Error('[Ball] Physics world not available');
+    }
 
     this.radius = 0.2;
     this.segments = 32;
@@ -32,31 +34,44 @@ export class Ball {
     this.justAppliedHop = false;
     this.isInBunker = false;
     this.lastHitPosition = new THREE.Vector3();
-    this.defaultLinearDamping = 0.85;
+    this.defaultLinearDamping = 0.78;
     this.bunkerLinearDamping = 0.98;
 
     this.defaultMaterial = new THREE.MeshStandardMaterial({
-      color: 0xffffff, roughness: 0.3, metalness: 0.2,
-      emissive: 0x333333, emissiveIntensity: 0.3
+      color: 0xffffff,
+      roughness: 0.3,
+      metalness: 0.2,
+      emissive: 0x333333,
+      emissiveIntensity: 0.3
     });
     this.successMaterial = new THREE.MeshStandardMaterial({
-      color: 0x00ff00, roughness: 0.2, metalness: 0.3,
-      emissive: 0x00ff00, emissiveIntensity: 0.8
+      color: 0x00ff00,
+      roughness: 0.2,
+      metalness: 0.3,
+      emissive: 0x00ff00,
+      emissiveIntensity: 0.8
     });
 
     this.createMesh();
     this.createPhysicsBody();
-    debug.log('[Ball] Initialized with physics world:', { exists: !!this.physicsWorld, bodyAdded: !!this.body });
+    debug.log('[Ball] Initialized with physics world:', {
+      exists: !!this.physicsWorld,
+      bodyAdded: !!this.body
+    });
   }
 
   createMesh() {
     this.createGolfBallWithDimples();
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = true;
-    if (this.scene) {this.scene.add(this.mesh);}
+    if (this.scene) {
+      this.scene.add(this.mesh);
+    }
 
     this.ballLight = new THREE.PointLight(0xffffff, 0.4, 3);
-    if (this.scene) {this.scene.add(this.ballLight);}
+    if (this.scene) {
+      this.scene.add(this.ballLight);
+    }
     return this.mesh;
   }
 
@@ -98,17 +113,19 @@ export class Ball {
       shape: new CANNON.Sphere(this.radius),
       material: this.game.physicsManager.world.ballMaterial,
       linearDamping: this.defaultLinearDamping,
-      angularDamping: 0.5,
+      angularDamping: 0.45,
       collisionFilterGroup: 4,
       collisionFilterMask: -1,
       allowSleep: true,
       sleepSpeedLimit: 0.03,
       sleepTimeLimit: 0.3,
-      ccdSpeedThreshold: 1.0,
-      ccdIterations: 10
+      ccdSpeedThreshold: 1.5,
+      ccdIterations: 8
     });
 
-    debug.log(`[Ball.createPhysicsBody] Material ID: ${this.body.material?.id}, Name: ${this.body.material?.name}`);
+    debug.log(
+      `[Ball.createPhysicsBody] Material ID: ${this.body.material?.id}, Name: ${this.body.material?.name}`
+    );
 
     this.holeEntryThresholds = {
       MAX_SAFE_SPEED: 1.875,
@@ -126,23 +143,48 @@ export class Ball {
   }
 
   onCollide(event) {
-    if (!event.body || !event.contact) {return;}
+    if (!event.body || !event.contact) {
+      return;
+    }
     this.body.wakeUp();
 
     const otherBody = event.body;
     const otherMatName = otherBody.material?.name || 'unknown';
-    if ((otherMatName === 'bumper' || otherBody.userData?.type?.startsWith('wall')) && this.game?.audioManager) {
+    if (
+      (otherMatName === 'bumper' || otherBody.userData?.type?.startsWith('wall')) &&
+      this.game?.audioManager
+    ) {
       const impactSpeed = event.contact.getImpactVelocityAlongNormal();
-      this.game.audioManager.playSound('bump', Math.min(0.8, Math.max(0.1, Math.abs(impactSpeed) / 5.0)));
+      this.game.audioManager.playSound(
+        'bump',
+        Math.min(0.8, Math.max(0.1, Math.abs(impactSpeed) / 5.0))
+      );
     }
   }
 
   update(_dt) {
-    if (!this.body || !this.mesh) {return;}
+    if (!this.body || !this.mesh) {
+      return;
+    }
 
     this.mesh.position.copy(this.body.position);
-    if (this.mesh.quaternion && this.body.quaternion) {this.mesh.quaternion.copy(this.body.quaternion);}
-    if (this.ballLight) {this.ballLight.position.copy(this.mesh.position);}
+    if (this.mesh.quaternion && this.body.quaternion) {
+      this.mesh.quaternion.copy(this.body.quaternion);
+    }
+    if (this.ballLight) {
+      this.ballLight.position.copy(this.mesh.position);
+    }
+
+    // Velocity clamping for clean stopping
+    const speed = this.body.velocity.length();
+    if (speed < 0.08 && speed > 0) {
+      this.body.velocity.scale(0.85, this.body.velocity);
+      this.body.angularVelocity.scale(0.85, this.body.angularVelocity);
+    }
+    if (speed < 0.02) {
+      this.body.velocity.setZero();
+      this.body.angularVelocity.setZero();
+    }
 
     if (this.currentHolePosition && !this.isHoleCompleted) {
       const allowedOffset = this.radius * (1.0 - HOLE_ENTRY_OVERLAP_REQUIRED);
@@ -153,7 +195,9 @@ export class Ball {
 
       if (dist <= checkRadius) {
         const ballSpeed = this.body.velocity.length();
-        debug.log(`[Ball.update] Near hole: Dist=${dist.toFixed(3)}, Speed=${ballSpeed.toFixed(3)}, MaxSpeed=${HOLE_ENTRY_MAX_SPEED}`);
+        debug.log(
+          `[Ball.update] Near hole: Dist=${dist.toFixed(3)}, Speed=${ballSpeed.toFixed(3)}, MaxSpeed=${HOLE_ENTRY_MAX_SPEED}`
+        );
 
         if (ballSpeed <= HOLE_ENTRY_MAX_SPEED) {
           this.isHoleCompleted = true;
@@ -176,14 +220,21 @@ export class Ball {
     this.checkAndUpdateBunkerState();
     this.checkAndUpdateWaterHazardState();
 
-    if (this.body.position.y < -50) {this.handleOutOfBounds();}
+    if (this.body.position.y < -50) {
+      this.handleOutOfBounds();
+    }
   }
 
   checkAndUpdateBunkerState() {
-    if (!this.game?.course?.currentHole?.bodies || !this.body) {return;}
+    if (!this.game?.course?.currentHole?.bodies || !this.body) {
+      return;
+    }
 
-    const bunkerTriggers = this.game.course.currentHole.bodies.filter(b => b?.userData?.isBunkerZone);
-    const inBunker = bunkerTriggers.length > 0 && checkBunkerOverlap(this.body, bunkerTriggers, this.radius);
+    const bunkerTriggers = this.game.course.currentHole.bodies.filter(
+      b => b?.userData?.isBunkerZone
+    );
+    const inBunker =
+      bunkerTriggers.length > 0 && checkBunkerOverlap(this.body, bunkerTriggers, this.radius);
 
     if (inBunker && !this.isInBunker) {
       debug.log('[Ball] Entered bunker zone.');
@@ -197,18 +248,29 @@ export class Ball {
   }
 
   checkAndUpdateWaterHazardState() {
-    if (this.isHoleCompleted || !this.game?.course?.currentHole?.bodies) {return;}
+    if (this.isHoleCompleted || !this.game?.course?.currentHole?.bodies) {
+      return;
+    }
 
     const waterTriggers = this.game.course.currentHole.bodies.filter(b => b.userData?.isWaterZone);
-    if (waterTriggers.length === 0) {return;}
+    if (waterTriggers.length === 0) {
+      return;
+    }
 
-    if (!this.lastHitPosition || (this.lastHitPosition.x === 0 && this.lastHitPosition.y === 0 && this.lastHitPosition.z === 0)) {
+    if (
+      !this.lastHitPosition ||
+      (this.lastHitPosition.x === 0 && this.lastHitPosition.y === 0 && this.lastHitPosition.z === 0)
+    ) {
       this.storeLastHitPosition();
     }
 
     if (checkWaterOverlap(this.body, waterTriggers, this.radius)) {
-      debug.log(`[WATER HAZARD] Ball in water at (${this.body.position.x.toFixed(2)}, ${this.body.position.z.toFixed(2)})`);
-      if (this.game.scoringSystem) {this.game.scoringSystem.addStroke();}
+      debug.log(
+        `[WATER HAZARD] Ball in water at (${this.body.position.x.toFixed(2)}, ${this.body.position.z.toFixed(2)})`
+      );
+      if (this.game.scoringSystem) {
+        this.game.scoringSystem.addStroke();
+      }
       this.resetToLastHitPosition();
     }
   }
@@ -216,7 +278,9 @@ export class Ball {
   storeLastHitPosition() {
     if (this.body) {
       this.lastHitPosition.copy(this.body.position);
-      debug.log(`[Ball] Stored last hit position: (${this.lastHitPosition.x.toFixed(2)}, ${this.lastHitPosition.y.toFixed(2)}, ${this.lastHitPosition.z.toFixed(2)})`);
+      debug.log(
+        `[Ball] Stored last hit position: (${this.lastHitPosition.x.toFixed(2)}, ${this.lastHitPosition.y.toFixed(2)}, ${this.lastHitPosition.z.toFixed(2)})`
+      );
     }
   }
 
@@ -224,18 +288,28 @@ export class Ball {
     if (this.body && this.lastHitPosition) {
       const resetY = Math.max(this.lastHitPosition.y, this.radius + Ball.START_HEIGHT);
       this.setPosition(this.lastHitPosition.x, resetY, this.lastHitPosition.z);
-      if (this.mesh) {this.mesh.position.copy(this.body.position);}
+      if (this.mesh) {
+        this.mesh.position.copy(this.body.position);
+      }
       this.body.wakeUp();
-      if (this.game.uiManager) {this.game.uiManager.showMessage('Water Hazard! +1 Stroke', 2000);}
-      if (this.game.audioManager) {this.game.audioManager.playSound('splash', 0.6);}
+      if (this.game.uiManager) {
+        this.game.uiManager.showMessage('Water Hazard! +1 Stroke', 2000);
+      }
+      if (this.game.audioManager) {
+        this.game.audioManager.playSound('splash', 0.6);
+      }
     } else {
-      console.warn('[Ball] Cannot reset to last hit position - position not stored or body missing.');
+      console.warn(
+        '[Ball] Cannot reset to last hit position - position not stored or body missing.'
+      );
       this.resetPosition();
     }
   }
 
   applyForce(direction, power) {
-    if (!this.body) {return;}
+    if (!this.body) {
+      return;
+    }
     this.storeLastHitPosition();
 
     const forceMagnitude = power * this.powerMultiplier;
@@ -254,7 +328,11 @@ export class Ball {
   resetPosition() {
     if (this.game?.course?.startPosition) {
       const startPos = this.game.course.startPosition;
-      this.setPosition(startPos.x, Math.max(startPos.y, this.radius + Ball.START_HEIGHT), startPos.z);
+      this.setPosition(
+        startPos.x,
+        Math.max(startPos.y, this.radius + Ball.START_HEIGHT),
+        startPos.z
+      );
       debug.log('[Ball] Reset position to hole start.');
     } else {
       console.warn('[Ball] Cannot reset position - hole start position unknown.');
@@ -266,7 +344,9 @@ export class Ball {
 
   setPosition(x, y, z) {
     const safeY = Math.max(y, this.radius + Ball.START_HEIGHT);
-    if (this.mesh) {this.mesh.position.set(x, safeY, z);}
+    if (this.mesh) {
+      this.mesh.position.set(x, safeY, z);
+    }
     if (this.body) {
       if (this.body.position.set) {
         this.body.position.set(x, safeY, z);
@@ -277,7 +357,9 @@ export class Ball {
       }
       this.resetVelocity();
       this.body.wakeUp();
-      if (this.game?.debugManager) {this.game.debugManager.log(`Ball position set to (${x}, ${safeY}, ${z})`);}
+      if (this.game?.debugManager) {
+        this.game.debugManager.log(`Ball position set to (${x}, ${safeY}, ${z})`);
+      }
     }
   }
 
@@ -286,21 +368,29 @@ export class Ball {
   }
 
   isStopped() {
-    if (!this.body) {return true;}
+    if (!this.body) {
+      return true;
+    }
 
     const { velocity, angularVelocity } = this.body;
     const threshold = 0.15;
 
     const isEffectivelyZero =
-      Math.abs(velocity.x) < threshold && Math.abs(velocity.y) < threshold && Math.abs(velocity.z) < threshold &&
-      Math.abs(angularVelocity.x) < threshold && Math.abs(angularVelocity.y) < threshold && Math.abs(angularVelocity.z) < threshold;
+      Math.abs(velocity.x) < threshold &&
+      Math.abs(velocity.y) < threshold &&
+      Math.abs(velocity.z) < threshold &&
+      Math.abs(angularVelocity.x) < threshold &&
+      Math.abs(angularVelocity.y) < threshold &&
+      Math.abs(angularVelocity.z) < threshold;
 
     const isVerySlow = Math.abs(velocity.x) < threshold && Math.abs(velocity.z) < threshold;
     const shouldBeStopped = isEffectivelyZero || isVerySlow;
 
     if (shouldBeStopped && !this.wasStopped) {
       const pos = this.body.position;
-      debug.log(`[Ball.isStopped] Stopped at (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`);
+      debug.log(
+        `[Ball.isStopped] Stopped at (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)}, ${pos.z.toFixed(2)})`
+      );
       this.wasStopped = true;
     } else if (!shouldBeStopped) {
       this.wasStopped = false;
@@ -311,7 +401,12 @@ export class Ball {
   applyImpulse(direction, power) {
     if (!this.body) {
       if (this.game?.debugManager) {
-        this.game.debugManager.error('Ball.applyImpulse', 'Ball physics body is null!', { direction, power }, true);
+        this.game.debugManager.error(
+          'Ball.applyImpulse',
+          'Ball physics body is null!',
+          { direction, power },
+          true
+        );
       } else {
         console.error('ERROR: Ball.applyImpulse: Ball physics body is null or undefined!');
       }
@@ -332,15 +427,21 @@ export class Ball {
     this.body.wakeUp();
 
     if (this.game?.debugManager) {
-      this.game.debugManager.info('Ball.applyImpulse', `Applied impulse with power ${power.toFixed(2)}`, {
-        direction: `(${direction.x.toFixed(2)}, ${direction.y.toFixed(2)}, ${direction.z.toFixed(2)})`,
-        impulseMagnitude: mag
-      });
+      this.game.debugManager.info(
+        'Ball.applyImpulse',
+        `Applied impulse with power ${power.toFixed(2)}`,
+        {
+          direction: `(${direction.x.toFixed(2)}, ${direction.y.toFixed(2)}, ${direction.z.toFixed(2)})`,
+          impulseMagnitude: mag
+        }
+      );
     }
   }
 
   isInHole() {
-    if (!this.currentHolePosition) {return false;}
+    if (!this.currentHolePosition) {
+      return false;
+    }
     const ballPosition = new THREE.Vector3();
     this.mesh.getWorldPosition(ballPosition);
     return ballPosition.distanceTo(this.currentHolePosition) < 0.25 && this.isStopped();
@@ -352,16 +453,24 @@ export class Ball {
     this.body.sleep();
     resetBodyVelocity(this.body);
 
-    if (this.game?.audioManager) {this.game.audioManager.playSound('success', 0.7);}
+    if (this.game?.audioManager) {
+      this.game.audioManager.playSound('success', 0.7);
+    }
 
     if (this.game?.eventManager) {
       const EventTypes = this.game.eventManager.getEventTypes();
-      this.game.eventManager.publish(EventTypes.BALL_IN_HOLE, {
-        ballBody: this.body,
-        holeIndex: this.game.course?.currentHoleIndex ?? -1
-      }, this);
+      this.game.eventManager.publish(
+        EventTypes.BALL_IN_HOLE,
+        {
+          ballBody: this.body,
+          holeIndex: this.game.course?.currentHoleIndex ?? -1
+        },
+        this
+      );
     } else {
-      console.error('[Ball.handleHoleSuccess] Cannot publish BALL_IN_HOLE event: Missing game or eventManager.');
+      console.error(
+        '[Ball.handleHoleSuccess] Cannot publish BALL_IN_HOLE event: Missing game or eventManager.'
+      );
     }
   }
 
@@ -376,14 +485,22 @@ export class Ball {
 
   cleanup() {
     debug.log('[Ball] Cleaning up...');
-    if (this.mesh && this.scene) {this.scene.remove(this.mesh);}
-    if (this.ballLight && this.scene) {this.scene.remove(this.ballLight);}
-    if (this.body && this.physicsWorld) {this.physicsWorld.removeBody(this.body);}
+    if (this.mesh && this.scene) {
+      this.scene.remove(this.mesh);
+    }
+    if (this.ballLight && this.scene) {
+      this.scene.remove(this.ballLight);
+    }
+    if (this.body && this.physicsWorld) {
+      this.physicsWorld.removeBody(this.body);
+    }
     if (this.mesh) {
       this.mesh.geometry.dispose();
       this.defaultMaterial.dispose();
       this.successMaterial.dispose();
-      if (this.defaultMaterial.bumpMap?.dispose) {this.defaultMaterial.bumpMap.dispose();}
+      if (this.defaultMaterial.bumpMap?.dispose) {
+        this.defaultMaterial.bumpMap.dispose();
+      }
     }
     this.mesh = null;
     this.body = null;
@@ -395,7 +512,9 @@ export class Ball {
   handleOutOfBounds() {
     debug.log(`[Ball] Out of bounds at y=${this.body.position.y.toFixed(2)}, resetting.`);
     this.resetToStartPosition();
-    if (this.game?.audioManager) {this.game.audioManager.playSound('outOfBounds', 0.6);}
+    if (this.game?.audioManager) {
+      this.game.audioManager.playSound('outOfBounds', 0.6);
+    }
   }
 
   resetToStartPosition() {
@@ -412,7 +531,9 @@ export class Ball {
   }
 
   getPosition() {
-    if (this.body) {return new THREE.Vector3(this.body.position.x, this.body.position.y, this.body.position.z);}
+    if (this.body) {
+      return new THREE.Vector3(this.body.position.x, this.body.position.y, this.body.position.z);
+    }
     return this.position.clone();
   }
 }

@@ -115,15 +115,8 @@ describe('DebugManager', () => {
     console.warn = jest.fn();
     console.error = jest.fn();
 
-    // Mock DOM methods - ensure window is properly set up
-    Object.defineProperty(global, 'window', {
-      value: {
-        addEventListener: jest.fn(),
-        removeEventListener: jest.fn()
-      },
-      writable: true,
-      configurable: true
-    });
+    jest.spyOn(window, 'addEventListener');
+    jest.spyOn(window, 'removeEventListener');
 
     global.alert = jest.fn();
     global.prompt = jest.fn();

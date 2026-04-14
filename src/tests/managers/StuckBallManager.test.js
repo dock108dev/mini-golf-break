@@ -50,7 +50,9 @@ describe('StuckBallManager', () => {
       ballManager: {
         ball: { mesh: { position: { x: 1, y: 0.2, z: 2 } } },
         lastBallPosition: {
-          x: 0, y: 0.2, z: 0,
+          x: 0,
+          y: 0.2,
+          z: 0,
           clone: jest.fn(function () {
             return { x: this.x, y: this.y, z: this.z };
           })
@@ -82,19 +84,29 @@ describe('StuckBallManager', () => {
 
     test('subscribes to timer-resetting events', () => {
       expect(mockGame.eventManager.subscribe).toHaveBeenCalledWith(
-        EventTypes.BALL_STOPPED, expect.any(Function), manager
+        EventTypes.BALL_STOPPED,
+        expect.any(Function),
+        manager
       );
       expect(mockGame.eventManager.subscribe).toHaveBeenCalledWith(
-        EventTypes.BALL_IN_HOLE, expect.any(Function), manager
+        EventTypes.BALL_IN_HOLE,
+        expect.any(Function),
+        manager
       );
       expect(mockGame.eventManager.subscribe).toHaveBeenCalledWith(
-        EventTypes.BALL_RESET, expect.any(Function), manager
+        EventTypes.BALL_RESET,
+        expect.any(Function),
+        manager
       );
       expect(mockGame.eventManager.subscribe).toHaveBeenCalledWith(
-        EventTypes.HOLE_STARTED, expect.any(Function), manager
+        EventTypes.HOLE_STARTED,
+        expect.any(Function),
+        manager
       );
       expect(mockGame.eventManager.subscribe).toHaveBeenCalledWith(
-        EventTypes.BALL_HIT, expect.any(Function), manager
+        EventTypes.BALL_HIT,
+        expect.any(Function),
+        manager
       );
     });
 

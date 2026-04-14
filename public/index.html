@@ -62,6 +62,7 @@
                     <p id="menu-best-score" class="menu-best-score" style="display: none;"></p>
                 </div>
                 <button id="how-to-play-menu" class="how-to-play-button" aria-label="How to Play">How to Play</button>
+                <button id="scores-menu" class="how-to-play-button" aria-label="View high scores">Scores</button>
                 <button id="play-course" aria-label="Start game" autofocus>Play</button>
             </div>
         </div>
@@ -95,6 +96,17 @@
                 </ul>
             </div>
             <button id="controls-close" class="controls-close-button" aria-label="Close controls help">Got it!</button>
+        </div>
+    </div>
+    <!-- High Score History Overlay -->
+    <div id="scores-overlay" class="scores-overlay" role="dialog" aria-label="High score history" style="display: none;">
+        <div class="scores-content">
+            <h2 class="scores-title">High Scores</h2>
+            <div id="scores-body"></div>
+            <div class="scores-actions">
+                <button id="scores-clear" class="scores-clear-button" aria-label="Clear all scores">Clear Scores</button>
+                <button id="scores-close" class="scores-close-button" aria-label="Close high scores">Close</button>
+            </div>
         </div>
     </div>
     <div id="ui-overlay">

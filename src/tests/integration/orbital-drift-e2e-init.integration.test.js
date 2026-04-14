@@ -15,11 +15,23 @@ jest.mock('three', () => {
     this.z = z;
     this.clone = jest.fn(() => new mockVector3(this.x, this.y, this.z));
     this.copy = jest.fn(function (other) {
-      if (other) { this.x = other.x || 0; this.y = other.y || 0; this.z = other.z || 0; }
+      if (other) {
+        this.x = other.x || 0;
+        this.y = other.y || 0;
+        this.z = other.z || 0;
+      }
       return this;
     });
-    this.set = jest.fn(function (x, y, z) { this.x = x; this.y = y; this.z = z; return this; });
-    this.setY = jest.fn(function (v) { this.y = v; return this; });
+    this.set = jest.fn(function (x, y, z) {
+      this.x = x;
+      this.y = y;
+      this.z = z;
+      return this;
+    });
+    this.setY = jest.fn(function (v) {
+      this.y = v;
+      return this;
+    });
     this.normalize = jest.fn(() => this);
     this.multiplyScalar = jest.fn(() => this);
     this.subVectors = jest.fn(() => this);
@@ -32,19 +44,37 @@ jest.mock('three', () => {
     this.x = x;
     this.y = y;
     this.clone = jest.fn(() => new mockVector2(this.x, this.y));
-    this.subVectors = jest.fn((a, b) => { this.x = a.x - b.x; this.y = a.y - b.y; return this; });
+    this.subVectors = jest.fn((a, b) => {
+      this.x = a.x - b.x;
+      this.y = a.y - b.y;
+      return this;
+    });
     this.length = jest.fn(() => Math.sqrt(this.x * this.x + this.y * this.y));
     this.normalize = jest.fn(() => this);
-    this.multiplyScalar = jest.fn((s) => { this.x *= s; this.y *= s; return this; });
-    this.addVectors = jest.fn((a, b) => { this.x = a.x + b.x; this.y = a.y + b.y; return this; });
+    this.multiplyScalar = jest.fn(s => {
+      this.x *= s;
+      this.y *= s;
+      return this;
+    });
+    this.addVectors = jest.fn((a, b) => {
+      this.x = a.x + b.x;
+      this.y = a.y + b.y;
+      return this;
+    });
   });
 
   const mockBox2 = jest.fn(function () {
     this.min = { x: -5, y: -5 };
     this.max = { x: 5, y: 5 };
     this.setFromPoints = jest.fn();
-    this.getCenter = jest.fn(target => { target.x = 0; target.y = 0; });
-    this.getSize = jest.fn(target => { target.x = 10; target.y = 10; });
+    this.getCenter = jest.fn(target => {
+      target.x = 0;
+      target.y = 0;
+    });
+    this.getSize = jest.fn(target => {
+      target.x = 10;
+      target.y = 10;
+    });
   });
 
   const mockGeometry = () => ({
@@ -75,9 +105,21 @@ jest.mock('three', () => {
 
   const mockGroup = jest.fn(function () {
     this.position = {
-      x: 0, y: 0, z: 0,
-      copy: jest.fn(function (other) { if (other) { this.x = other.x || 0; this.y = other.y || 0; this.z = other.z || 0; } }),
-      set: jest.fn(function (x, y, z) { this.x = x; this.y = y; this.z = z; })
+      x: 0,
+      y: 0,
+      z: 0,
+      copy: jest.fn(function (other) {
+        if (other) {
+          this.x = other.x || 0;
+          this.y = other.y || 0;
+          this.z = other.z || 0;
+        }
+      }),
+      set: jest.fn(function (x, y, z) {
+        this.x = x;
+        this.y = y;
+        this.z = z;
+      })
     };
     this.parent = null;
     this.add = jest.fn();
@@ -91,12 +133,40 @@ jest.mock('three', () => {
     Vector3: mockVector3,
     Vector2: mockVector2,
     Box2: mockBox2,
-    Euler: jest.fn(function (x = 0, y = 0, z = 0) { this.x = x; this.y = y; this.z = z; }),
-    Shape: jest.fn(function () { this.holes = []; }),
-    ExtrudeGeometry: jest.fn(function () { this.dispose = jest.fn(); this.rotateX = jest.fn(); this.translate = jest.fn(); }),
+    Euler: jest.fn(function (x = 0, y = 0, z = 0) {
+      this.x = x;
+      this.y = y;
+      this.z = z;
+    }),
+    Shape: jest.fn(function () {
+      this.holes = [];
+      this.moveTo = jest.fn();
+      this.lineTo = jest.fn();
+      this.closePath = jest.fn();
+    }),
+    ShapeGeometry: jest.fn(mockGeometry),
+    ExtrudeGeometry: jest.fn(function () {
+      this.dispose = jest.fn();
+      this.rotateX = jest.fn();
+      this.translate = jest.fn();
+    }),
     MeshStandardMaterial: mockMaterial,
     MeshPhongMaterial: mockMaterial,
     MeshBasicMaterial: mockMaterial,
+    BufferGeometry: jest.fn(function () {
+      this.setFromPoints = jest.fn().mockReturnValue(this);
+      this.setAttribute = jest.fn();
+      this.dispose = jest.fn();
+    }),
+    LineBasicMaterial: jest.fn(function () {
+      this.color = 0xffffff;
+      this.dispose = jest.fn();
+    }),
+    Line: jest.fn(function (geometry, material) {
+      this.geometry = geometry || { dispose: jest.fn() };
+      this.material = material || { dispose: jest.fn() };
+      this.position = { x: 0, y: 0, z: 0, set: jest.fn(), copy: jest.fn() };
+    }),
     Mesh: mockMesh,
     Group: mockGroup,
     CylinderGeometry: jest.fn(mockGeometry),
@@ -105,19 +175,31 @@ jest.mock('three', () => {
     BoxGeometry: jest.fn(mockGeometry),
     RingGeometry: jest.fn(mockGeometry),
     SphereGeometry: jest.fn(mockGeometry),
-    Path: jest.fn(function () { return {}; })
+    Path: jest.fn(function () {
+      return {};
+    }),
+    Color: jest.fn(function (c) {
+      this.r = 0;
+      this.g = 0;
+      this.b = 0;
+    })
   };
 });
 
 // Mock cannon-es
 jest.mock('cannon-es', () => {
   const mockVec3 = jest.fn(function (x, y, z) {
-    this.x = x || 0; this.y = y || 0; this.z = z || 0;
+    this.x = x || 0;
+    this.y = y || 0;
+    this.z = z || 0;
     this.scale = jest.fn(() => new mockVec3(this.x, this.y, this.z));
   });
 
   const mockQuaternion = jest.fn(function () {
-    this.x = 0; this.y = 0; this.z = 0; this.w = 1;
+    this.x = 0;
+    this.y = 0;
+    this.z = 0;
+    this.w = 1;
     this.set = jest.fn();
     this.copy = jest.fn();
     this.setFromAxisAngle = jest.fn(() => this);
@@ -203,8 +285,12 @@ function makeMockWorld() {
   const addedBodies = [];
   const removedBodies = [];
   return {
-    addBody: jest.fn((body) => { addedBodies.push(body); }),
-    removeBody: jest.fn((body) => { removedBodies.push(body); }),
+    addBody: jest.fn(body => {
+      addedBodies.push(body);
+    }),
+    removeBody: jest.fn(body => {
+      removedBodies.push(body);
+    }),
     addContactMaterial: jest.fn(),
     step: jest.fn(),
     groundMaterial: { name: 'ground' },
@@ -252,79 +338,67 @@ describe('Orbital Drift end-to-end initialization (ISSUE-056)', () => {
 
   // AC1: For each of the 9 orbitalDriftConfigs: HoleEntity.init() completes without throwing
   describe('init() completes without throwing', () => {
-    it.each(configs.map(c => [c.description, c]))(
-      '%s',
-      async (_desc, config) => {
-        const hole = new HoleEntity(world, config, scene);
-        await expect(hole.init()).resolves.not.toThrow();
-      }
-    );
+    it.each(configs.map(c => [c.description, c]))('%s', async (_desc, config) => {
+      const hole = new HoleEntity(world, config, scene);
+      await expect(hole.init()).resolves.not.toThrow();
+    });
   });
 
   // AC2: For each hole: all mechanics in the config are instantiated
   describe('mechanic count matches config.mechanics.length', () => {
-    it.each(configs.map(c => [c.description, c]))(
-      '%s',
-      async (_desc, config) => {
-        const hole = new HoleEntity(world, config, scene);
-        await hole.init();
+    it.each(configs.map(c => [c.description, c]))('%s', async (_desc, config) => {
+      const hole = new HoleEntity(world, config, scene);
+      await hole.init();
 
-        const expectedCount = (config.mechanics || []).length;
-        expect(hole.mechanics).toHaveLength(expectedCount);
-      }
-    );
+      const expectedCount = (config.mechanics || []).length;
+      expect(hole.mechanics).toHaveLength(expectedCount);
+    });
   });
 
   // AC3: For each hole: calling HoleEntity.update(1/60, ballBody) 10 times does not throw
   describe('update(1/60, ballBody) x10 does not throw', () => {
-    it.each(configs.map(c => [c.description, c]))(
-      '%s',
-      async (_desc, config) => {
-        const hole = new HoleEntity(world, config, scene);
-        await hole.init();
+    it.each(configs.map(c => [c.description, c]))('%s', async (_desc, config) => {
+      const hole = new HoleEntity(world, config, scene);
+      await hole.init();
 
-        const ballBody = makeMockBallBody();
-        const dt = 1 / 60;
+      const ballBody = makeMockBallBody();
+      const dt = 1 / 60;
 
-        for (let i = 0; i < 10; i++) {
-          expect(() => hole.update(dt, ballBody)).not.toThrow();
-        }
+      for (let i = 0; i < 10; i++) {
+        expect(() => hole.update(dt, ballBody)).not.toThrow();
       }
-    );
+    });
   });
 
   // AC4: For each hole: HoleEntity.destroy() completes without throwing
   //      or leaving orphan bodies in the physics world
   describe('destroy() completes cleanly with no orphan bodies', () => {
-    it.each(configs.map(c => [c.description, c]))(
-      '%s',
-      async (_desc, config) => {
-        const hole = new HoleEntity(world, config, scene);
-        await hole.init();
+    it.each(configs.map(c => [c.description, c]))('%s', async (_desc, config) => {
+      const hole = new HoleEntity(world, config, scene);
+      await hole.init();
 
-        // Run a few updates before destroying (realistic scenario)
-        const ballBody = makeMockBallBody();
-        for (let i = 0; i < 10; i++) {
-          hole.update(1 / 60, ballBody);
-        }
-
-        // Capture tracked bodies before destroy
-        const bodiesBeforeDestroy = [...hole.bodies];
-
-        expect(() => hole.destroy()).not.toThrow();
-
-        // Mechanics array should be empty after destroy
-        expect(hole.mechanics).toEqual([]);
-
-        // All tracked bodies should have been removed from the world
-        for (const body of bodiesBeforeDestroy) {
-          expect(world.removeBody).toHaveBeenCalledWith(body);
-        }
-
-        // No tracked bodies should remain after destroy
-        expect(hole.bodies).toEqual([]);
+      // Run a few updates before destroying (realistic scenario)
+      const ballBody = makeMockBallBody();
+      for (let i = 0; i < 10; i++) {
+        hole.update(1 / 60, ballBody);
       }
-    );
+
+      // Capture tracked bodies before destroy
+      const bodiesBeforeDestroy = [...hole.bodies];
+
+      expect(() => hole.destroy()).not.toThrow();
+
+      // Mechanics array should be empty after destroy
+      expect(hole.mechanics).toEqual([]);
+
+      // All tracked bodies should have been removed from the world
+      for (const body of bodiesBeforeDestroy) {
+        expect(world.removeBody).toHaveBeenCalledWith(body);
+      }
+
+      // No tracked bodies should remain after destroy
+      expect(hole.bodies).toEqual([]);
+    });
   });
 
   // AC5: Test uses real MechanicRegistry (verified by AC2 — if any

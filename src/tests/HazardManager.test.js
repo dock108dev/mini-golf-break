@@ -234,6 +234,88 @@ describe('HazardManager', () => {
     });
   });
 
+  describe('setHoleBounds', () => {
+    beforeEach(() => {
+      hazardManager = new HazardManager(mockGame);
+      hazardManager.init();
+    });
+
+    test('should apply per-hole bounds from config', () => {
+      const holeConfig = {
+        outOfBounds: { minX: -5, maxX: 5, minZ: -8, maxZ: 8, minY: -5 }
+      };
+
+      hazardManager.setHoleBounds(holeConfig);
+
+      expect(hazardManager.boundaryLimits).toEqual({
+        minX: -5,
+        maxX: 5,
+        minZ: -8,
+        maxZ: 8,
+        minY: -5
+      });
+    });
+
+    test('should fall back to defaults when outOfBounds is absent', () => {
+      hazardManager.boundaryLimits = { minX: -5, maxX: 5, minZ: -5, maxZ: 5, minY: -5 };
+
+      hazardManager.setHoleBounds({});
+
+      expect(hazardManager.boundaryLimits).toEqual({
+        minX: -50,
+        maxX: 50,
+        minZ: -50,
+        maxZ: 50,
+        minY: -10
+      });
+    });
+
+    test('should fall back to defaults when config is null', () => {
+      hazardManager.setHoleBounds(null);
+
+      expect(hazardManager.boundaryLimits).toEqual({
+        minX: -50,
+        maxX: 50,
+        minZ: -50,
+        maxZ: 50,
+        minY: -10
+      });
+    });
+
+    test('should use default for missing individual fields', () => {
+      hazardManager.setHoleBounds({ outOfBounds: { minX: -3, maxX: 3 } });
+
+      expect(hazardManager.boundaryLimits.minX).toBe(-3);
+      expect(hazardManager.boundaryLimits.maxX).toBe(3);
+      expect(hazardManager.boundaryLimits.minZ).toBe(-50);
+      expect(hazardManager.boundaryLimits.maxZ).toBe(50);
+      expect(hazardManager.boundaryLimits.minY).toBe(-10);
+    });
+
+    test('should detect OOB at hole-defined boundary, not ±50', () => {
+      hazardManager.setHoleBounds({
+        outOfBounds: { minX: -5, maxX: 5, minZ: -8, maxZ: 8, minY: -10 }
+      });
+
+      expect(hazardManager.isPositionOutOfBounds({ x: 6, y: 0, z: 0 })).toBe(true);
+      expect(hazardManager.isPositionOutOfBounds({ x: 4, y: 0, z: 0 })).toBe(false);
+      expect(hazardManager.isPositionOutOfBounds({ x: 0, y: 0, z: 9 })).toBe(true);
+      expect(hazardManager.isPositionOutOfBounds({ x: 0, y: 0, z: 7 })).toBe(false);
+    });
+
+    test('should update bounds on each hole transition', () => {
+      hazardManager.setHoleBounds({
+        outOfBounds: { minX: -3, maxX: 3, minZ: -6, maxZ: 6, minY: -10 }
+      });
+      expect(hazardManager.boundaryLimits.minX).toBe(-3);
+
+      hazardManager.setHoleBounds({
+        outOfBounds: { minX: -10, maxX: 10, minZ: -12, maxZ: 12, minY: -10 }
+      });
+      expect(hazardManager.boundaryLimits.minX).toBe(-10);
+    });
+  });
+
   describe('hazard detection', () => {
     beforeEach(() => {
       hazardManager = new HazardManager(mockGame);

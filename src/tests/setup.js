@@ -190,7 +190,22 @@ global.THREE = {
     dispose: jest.fn()
   })),
   MeshBasicMaterial: jest.fn(() => ({
-    color: 0xffffff
+    color: 0xffffff,
+    dispose: jest.fn()
+  })),
+  LineBasicMaterial: jest.fn(() => ({
+    color: 0xffffff,
+    dispose: jest.fn()
+  })),
+  BufferGeometry: jest.fn(() => ({
+    setFromPoints: jest.fn().mockReturnThis(),
+    setAttribute: jest.fn(),
+    dispose: jest.fn()
+  })),
+  Line: jest.fn((geometry, material) => ({
+    geometry: geometry || { dispose: jest.fn() },
+    material: material || { dispose: jest.fn() },
+    position: { x: 0, y: 0, z: 0, set: jest.fn(), copy: jest.fn() }
   })),
   CanvasTexture: jest.fn(),
   PointLight: jest.fn(() => ({
@@ -344,7 +359,9 @@ global.CANNON = {
   ContactMaterial: jest.fn(),
   Vec3: jest.fn(function (x = 0, y = 0, z = 0) {
     return {
-      x, y, z,
+      x,
+      y,
+      z,
       distanceTo: jest.fn(function (other) {
         const dx = this.x - (other?.x || 0);
         const dy = this.y - (other?.y || 0);
@@ -426,8 +443,12 @@ global.document.createElement = jest.fn(elementType => {
         this.children = [];
       }
       this.children.push(child);
-      if (child) {
-        child.parentNode = this;
+      try {
+        if (child) {
+          child.parentNode = this;
+        }
+      } catch (_e) {
+        // parentNode may be read-only on real DOM nodes
       }
       return child;
     }),
@@ -442,8 +463,12 @@ global.document.createElement = jest.fn(elementType => {
       } else {
         this.children.splice(index, 0, newNode);
       }
-      if (newNode) {
-        newNode.parentNode = this;
+      try {
+        if (newNode) {
+          newNode.parentNode = this;
+        }
+      } catch (_e) {
+        // parentNode may be read-only on real DOM nodes
       }
       return newNode;
     }),

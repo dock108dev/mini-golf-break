@@ -17,7 +17,9 @@ const registry = {};
  */
 export function registerMechanic(type, factory) {
   if (registry[type]) {
-    console.error(`[MechanicRegistry] Overwriting existing mechanic type: "${type}" — this may indicate a duplicate registration bug.`);
+    console.error(
+      `[MechanicRegistry] Overwriting existing mechanic type: "${type}" — this may indicate a duplicate registration bug.`
+    );
   }
   registry[type] = factory;
 }
@@ -35,7 +37,9 @@ export function registerMechanic(type, factory) {
 export function createMechanic(type, world, group, config, surfaceHeight, theme) {
   const factory = registry[type];
   if (!factory) {
-    console.warn(`[MechanicRegistry] Unknown mechanic type: "${type}". Available: [${Object.keys(registry).join(', ')}]`);
+    console.warn(
+      `[MechanicRegistry] Unknown mechanic type: "${type}". Available: [${Object.keys(registry).join(', ')}]`
+    );
     return null;
   }
   return factory(world, group, config, surfaceHeight, theme);

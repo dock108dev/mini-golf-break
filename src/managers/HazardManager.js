@@ -12,13 +12,14 @@ export class HazardManager {
 
     // Safe position reference
     this.lastSafePosition = new THREE.Vector3();
-    this.boundaryLimits = {
+    this.defaultBounds = {
       minX: -50,
       maxX: 50,
       minZ: -50,
       maxZ: 50,
-      minY: -10 // Below this height, ball is considered lost
+      minY: -10
     };
+    this.boundaryLimits = { ...this.defaultBounds };
 
     // Hazard tracking
     this.hazards = [];
@@ -27,6 +28,10 @@ export class HazardManager {
     // Performance optimization
     this.checkFrequency = 5; // Check every 5 frames
     this.frameCount = 0;
+
+    // Double-penalty guard (500ms debounce)
+    this.lastOobTime = 0;
+    this.oobCooldownMs = 500;
 
     // State tracking
     this.isInitialized = false;
@@ -38,9 +43,29 @@ export class HazardManager {
   init() {
     // Initialize last safe position with a default value
     this.lastSafePosition = new THREE.Vector3(0, 0, 0);
+    this.lastOobTime = 0;
     this.setupEventListeners();
     this.isInitialized = true;
     return this;
+  }
+
+  /**
+   * Set per-hole OOB boundaries from hole config.
+   * Falls back to default ±50 / -10 when outOfBounds is absent.
+   */
+  setHoleBounds(holeConfig) {
+    if (holeConfig?.outOfBounds) {
+      const oob = holeConfig.outOfBounds;
+      this.boundaryLimits = {
+        minX: typeof oob.minX === 'number' ? oob.minX : this.defaultBounds.minX,
+        maxX: typeof oob.maxX === 'number' ? oob.maxX : this.defaultBounds.maxX,
+        minZ: typeof oob.minZ === 'number' ? oob.minZ : this.defaultBounds.minZ,
+        maxZ: typeof oob.maxZ === 'number' ? oob.maxZ : this.defaultBounds.maxZ,
+        minY: typeof oob.minY === 'number' ? oob.minY : this.defaultBounds.minY
+      };
+    } else {
+      this.boundaryLimits = { ...this.defaultBounds };
+    }
   }
 
   /**
@@ -174,6 +199,12 @@ export class HazardManager {
    * Handle the ball going out of bounds
    */
   handleBallOutOfBounds() {
+    const now = Date.now();
+    if (now - this.lastOobTime < this.oobCooldownMs) {
+      return;
+    }
+    this.lastOobTime = now;
+
     this.game.debugManager.log('Ball out of bounds - applying penalty');
 
     // Show message to player
@@ -230,7 +261,11 @@ export class HazardManager {
    * @param {Object} position - Position where ball went out of bounds
    */
   publishOutOfBounds(position) {
-    this.game.eventManager.publish(EventTypes.HAZARD_DETECTED, { hazardType: 'outOfBounds', position }, this);
+    this.game.eventManager.publish(
+      EventTypes.HAZARD_DETECTED,
+      { hazardType: 'outOfBounds', position },
+      this
+    );
   }
 
   /**
@@ -249,6 +284,7 @@ export class HazardManager {
     this.clearHazards();
 
     // Reset state
+    this.lastOobTime = 0;
     this.isInitialized = false;
   }
 }

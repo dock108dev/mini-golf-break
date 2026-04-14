@@ -101,6 +101,9 @@ class PortalGate extends MechanicBase {
   }
 }
 
-registerMechanic('portal_gate', (world, group, config, sh, theme) => new PortalGate(world, group, config, sh, theme));
+registerMechanic(
+  'portal_gate',
+  (world, group, config, sh, theme) => new PortalGate(world, group, config, sh, theme)
+);
 
 export { PortalGate };

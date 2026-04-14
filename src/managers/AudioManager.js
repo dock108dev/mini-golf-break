@@ -18,6 +18,7 @@ export class AudioManager {
     this.currentVolume = 1.0;
     this.isMuted = false;
     this.storageKey = 'miniGolfBreak_audioMuted';
+    this.volumeStorageKey = 'miniGolfBreak_audioVolume';
 
     // Audio cooldown tracking
     this.lastPlayTime = {}; // soundName → timestamp (ms)
@@ -25,7 +26,8 @@ export class AudioManager {
     this.maxConcurrentMechanicSounds = 3;
     this.activeMechanicSounds = 0;
 
-    // Restore mute state from localStorage
+    // Restore persisted audio settings
+    this.loadPersistedVolume();
     this.restoreMuteState();
 
     // Initialize audio system
@@ -84,7 +86,9 @@ export class AudioManager {
    */
   isSoundOnCooldown(soundName) {
     const lastTime = this.lastPlayTime[soundName];
-    if (lastTime === undefined) return false;
+    if (lastTime === undefined) {
+      return false;
+    }
     return Date.now() - lastTime < this.cooldownInterval;
   }
 
@@ -469,7 +473,6 @@ export class AudioManager {
    * @param {number} volume - Volume level (0.0 to 1.0)
    */
   setVolume(volume) {
-    // Clamp volume between 0 and 1
     volume = Math.max(0, Math.min(1, volume));
     this.currentVolume = volume;
 
@@ -478,10 +481,76 @@ export class AudioManager {
         sound.setVolume(volume);
       }
     }
+
+    try {
+      localStorage.setItem(this.volumeStorageKey, String(volume));
+    } catch {
+      debug.log('[AudioManager] localStorage unavailable — volume not saved.');
+    }
   }
 
   /**
-   * Mute all sounds
+   * Set master volume, apply to all gain nodes, and persist.
+   * @param {number} level - Volume level (0.0 to 1.0)
+   */
+  setMasterVolume(level) {
+    level = Math.max(0, Math.min(1, level));
+    this.currentVolume = level;
+    this.isMuted = level === 0;
+    this.saveMuteState();
+
+    for (const sound of Object.values(this.sounds)) {
+      if (sound) {
+        sound.setVolume(level);
+      }
+    }
+
+    try {
+      localStorage.setItem(this.volumeStorageKey, String(level));
+    } catch {
+      debug.log('[AudioManager] localStorage unavailable — volume not saved.');
+    }
+  }
+
+  /**
+   * Get the current master volume level.
+   * @returns {number} Current volume (0.0 to 1.0)
+   */
+  getMasterVolume() {
+    return this.currentVolume;
+  }
+
+  /**
+   * Load persisted volume from localStorage on init.
+   */
+  loadPersistedVolume() {
+    try {
+      const stored = localStorage.getItem(this.volumeStorageKey);
+      if (stored !== null) {
+        const parsed = parseFloat(stored);
+        if (!isNaN(parsed)) {
+          this.currentVolume = Math.max(0, Math.min(1, parsed));
+        }
+      }
+    } catch {
+      debug.log('[AudioManager] localStorage unavailable — volume not restored.');
+    }
+  }
+
+  /**
+   * Set muted state explicitly.
+   * @param {boolean} muted - Whether to mute
+   */
+  setMuted(muted) {
+    if (muted) {
+      this.mute();
+    } else {
+      this.unmute();
+    }
+  }
+
+  /**
+   * Mute all sounds, preserving current volume for restore.
    */
   mute() {
     this.isMuted = true;
@@ -494,7 +563,7 @@ export class AudioManager {
   }
 
   /**
-   * Unmute and restore volume
+   * Unmute and restore to persisted volume.
    */
   unmute() {
     this.isMuted = false;

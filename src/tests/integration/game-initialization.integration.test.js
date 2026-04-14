@@ -66,7 +66,8 @@ jest.mock('../../objects/OrbitalDriftCourse', () => ({
       holeNumber: 1,
       totalHoles: 9,
       getHoleStartPosition: jest.fn(() => ({ x: 0, y: 0.1, z: 0, toArray: () => [0, 0.1, 0] })),
-      getHolePosition: jest.fn(() => ({ x: 0, y: 0, z: -5, toArray: () => [0, 0, -5] }))
+      getHolePosition: jest.fn(() => ({ x: 0, y: 0, z: -5, toArray: () => [0, 0, -5] })),
+      getCurrentHoleConfig: jest.fn(() => ({ par: 3 }))
     }))
   }
 }));
@@ -130,7 +131,7 @@ jest.mock('../../managers/BallManager', () => ({
         body: { position: { x: 0, y: 0, z: 0 } }
       };
     });
-    this.createBall = jest.fn((startPosition) => {
+    this.createBall = jest.fn(startPosition => {
       this.ball = {
         mesh: { position: { x: startPosition.x, y: startPosition.y, z: startPosition.z } },
         body: { position: { x: startPosition.x, y: startPosition.y, z: startPosition.z } }
@@ -210,8 +211,8 @@ describe('Game Initialization Integration', () => {
     // Force an error during initialization
     game.scene = null; // This will cause errors when trying to add objects
 
-    // Game should not throw
-    await expect(game.init()).resolves.not.toThrow();
+    // Game should propagate the error
+    await expect(game.init()).rejects.toThrow();
 
     // Verify error was logged
     expect(consoleError).toHaveBeenCalledWith(

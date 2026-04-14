@@ -25,7 +25,7 @@ describe('isWebGLAvailable', () => {
     Object.defineProperty(window, 'WebGLRenderingContext', {
       value,
       writable: true,
-      configurable: true,
+      configurable: true
     });
   }
 
@@ -42,7 +42,7 @@ describe('isWebGLAvailable', () => {
 
   test('returns false when getContext returns null for both contexts', () => {
     setWebGLRenderingContext(function () {});
-    document.createElement = jest.fn((tag) => {
+    document.createElement = jest.fn(tag => {
       if (tag === 'canvas') {
         return { getContext: jest.fn(() => null) };
       }
@@ -54,12 +54,12 @@ describe('isWebGLAvailable', () => {
 
   test('returns false when getContext throws', () => {
     setWebGLRenderingContext(function () {});
-    document.createElement = jest.fn((tag) => {
+    document.createElement = jest.fn(tag => {
       if (tag === 'canvas') {
         return {
           getContext: jest.fn(() => {
             throw new Error('blocked');
-          }),
+          })
         };
       }
       return origCreateElement(tag);
@@ -80,7 +80,7 @@ describe('showWebGLFallback', () => {
     createdElements = [];
 
     // Track created elements so we can verify them
-    document.createElement = jest.fn((tag) => {
+    document.createElement = jest.fn(tag => {
       const el = origCreateElement(tag);
       createdElements.push(el);
       return el;
@@ -93,24 +93,26 @@ describe('showWebGLFallback', () => {
   });
 
   function setupDOM({ hasMenuScreen = true, hasContainer = true } = {}) {
-    const menuScreen = hasMenuScreen
-      ? { style: { display: 'flex' }, id: 'menu-screen' }
-      : null;
+    const menuScreen = hasMenuScreen ? { style: { display: 'flex' }, id: 'menu-screen' } : null;
     const containerChildren = [];
     const container = hasContainer
       ? {
           id: 'game-container',
-          appendChild: jest.fn((child) => {
+          appendChild: jest.fn(child => {
             containerChildren.push(child);
             child.parentElement = container;
           }),
-          _children: containerChildren,
+          _children: containerChildren
         }
       : null;
 
-    document.getElementById = jest.fn((id) => {
-      if (id === 'menu-screen') return menuScreen;
-      if (id === 'game-container') return container;
+    document.getElementById = jest.fn(id => {
+      if (id === 'menu-screen') {
+        return menuScreen;
+      }
+      if (id === 'game-container') {
+        return container;
+      }
       return null;
     });
 
@@ -143,7 +145,7 @@ describe('showWebGLFallback', () => {
     const fallback = container.appendChild.mock.calls[0][0];
     // The fallback div should have children appended to it
     expect(fallback.appendChild).toHaveBeenCalled();
-    const appendedChildren = fallback.appendChild.mock.calls.map((c) => c[0]);
+    const appendedChildren = fallback.appendChild.mock.calls.map(c => c[0]);
 
     // First child should be the title (h1)
     const title = appendedChildren[0];
@@ -156,8 +158,8 @@ describe('showWebGLFallback', () => {
     // Third child should be the suggestions list (ul)
     const suggestions = appendedChildren[2];
     expect(suggestions.appendChild).toHaveBeenCalled();
-    const listItems = suggestions.appendChild.mock.calls.map((c) => c[0]);
-    const allText = listItems.map((li) => li.textContent).join(' ');
+    const listItems = suggestions.appendChild.mock.calls.map(c => c[0]);
+    const allText = listItems.map(li => li.textContent).join(' ');
     expect(allText).toContain('hardware acceleration');
     expect(allText).toContain('different browser');
     expect(allText).toContain('Update your browser');
@@ -169,7 +171,7 @@ describe('showWebGLFallback', () => {
 
     expect(() => showWebGLFallback()).not.toThrow();
     // No elements should have been appended
-    expect(createdElements.every((el) => !el.id || el.id !== 'webgl-fallback')).toBe(true);
+    expect(createdElements.every(el => !el.id || el.id !== 'webgl-fallback')).toBe(true);
   });
 
   test('handles missing menu screen gracefully', () => {

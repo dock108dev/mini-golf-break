@@ -6,6 +6,10 @@ import { GameState } from '../states/GameState';
 import { EventTypes } from '../events/EventTypes';
 import { GameLoopManager } from '../managers/GameLoopManager';
 
+jest.mock('../utils/navigation', () => ({
+  reloadPage: jest.fn()
+}));
+
 describe('Pause/Resume Functionality', () => {
   describe('GameState', () => {
     test('should include PAUSED state', () => {
@@ -128,8 +132,10 @@ describe('Pause/Resume Functionality', () => {
       const game = {
         stateManager: {
           getGameState: jest.fn(() => currentState),
-          setGameState: jest.fn((state) => { currentState = state; }),
-          isInState: jest.fn((state) => currentState === state)
+          setGameState: jest.fn(state => {
+            currentState = state;
+          }),
+          isInState: jest.fn(state => currentState === state)
         },
         gameLoopManager: {
           pause: jest.fn(),
@@ -159,6 +165,7 @@ describe('Pause/Resume Functionality', () => {
       game.pauseGame = Game.prototype.pauseGame.bind(game);
       game.resumeGame = Game.prototype.resumeGame.bind(game);
       game.handlePauseKey = Game.prototype.handlePauseKey.bind(game);
+      game.quitToMenu = Game.prototype.quitToMenu.bind(game);
 
       return game;
     }
@@ -318,6 +325,47 @@ describe('Pause/Resume Functionality', () => {
         expect(mockGame.stateManager.setGameState).not.toHaveBeenCalled();
       });
     });
+
+    describe('quitToMenu', () => {
+      afterEach(() => {
+        delete window.App;
+      });
+
+      test('should hide pause overlay and call App.returnToMenu', () => {
+        mockGame = createMockGame(GameState.PLAYING);
+        mockGame.pauseGame();
+        mockGame.stateManager.isInState.mockImplementation(state => state === GameState.PAUSED);
+
+        const mockReturnToMenu = jest.fn();
+        window.App = { returnToMenu: mockReturnToMenu };
+
+        mockGame.quitToMenu();
+
+        expect(mockGame.uiManager.hidePauseOverlay).toHaveBeenCalled();
+        expect(mockReturnToMenu).toHaveBeenCalled();
+        expect(mockGame.prePauseState).toBeNull();
+      });
+
+      test('should fallback to reload when App is not available', () => {
+        const { reloadPage } = require('../utils/navigation');
+        mockGame = createMockGame(GameState.PLAYING);
+
+        mockGame.quitToMenu();
+
+        expect(reloadPage).toHaveBeenCalled();
+      });
+
+      test('should clear prePauseState', () => {
+        mockGame = createMockGame(GameState.PLAYING);
+        mockGame.pauseGame();
+        mockGame.stateManager.isInState.mockImplementation(state => state === GameState.PAUSED);
+
+        window.App = { returnToMenu: jest.fn() };
+        mockGame.quitToMenu();
+
+        expect(mockGame.prePauseState).toBeNull();
+      });
+    });
   });
 
   describe('UIManager pause overlay', () => {
@@ -349,7 +397,8 @@ describe('Pause/Resume Functionality', () => {
         },
         courseName: 'Test Course',
         pauseGame: jest.fn(),
-        resumeGame: jest.fn()
+        resumeGame: jest.fn(),
+        quitToMenu: jest.fn()
       };
 
       const { UIManager } = require('../managers/UIManager');
@@ -390,6 +439,20 @@ describe('Pause/Resume Functionality', () => {
       const button = content.children[1];
       button.click();
       expect(mockGame.resumeGame).toHaveBeenCalled();
+    });
+
+    test('should create Quit to Menu button in pause overlay', () => {
+      const content = uiManager.pauseOverlay.children[0];
+      const quitButton = content.children[2];
+      expect(quitButton.textContent).toBe('Quit to Menu');
+      expect(quitButton.classList.contains('pause-quit-button')).toBe(true);
+    });
+
+    test('Quit to Menu button click should call game.quitToMenu', () => {
+      const content = uiManager.pauseOverlay.children[0];
+      const quitButton = content.children[2];
+      quitButton.click();
+      expect(mockGame.quitToMenu).toHaveBeenCalled();
     });
 
     test('should create mobile pause button', () => {
@@ -438,6 +501,11 @@ describe('Pause/Resume Functionality', () => {
       uiManager.cleanup();
       expect(uiManager.pauseButton).toBeNull();
       expect(button.parentNode).toBeNull();
+    });
+
+    test('cleanup should clear quitButton reference', () => {
+      uiManager.cleanup();
+      expect(uiManager.quitButton).toBeNull();
     });
 
     test('showPauseOverlay should handle missing overlay gracefully', () => {
