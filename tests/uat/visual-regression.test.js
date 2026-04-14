@@ -5,6 +5,7 @@
 
 const { test, expect } = require('@playwright/test');
 const { TestHelper } = require('./utils/TestHelper');
+const { sleep } = require('./utils/sleep');
 const fs = require('fs');
 const path = require('path');
 
@@ -58,7 +59,7 @@ class VisualRegressionHelper {
   async waitForStableVisuals() {
     // Wait for any animations or transitions to complete
     await this.page.waitForLoadState('networkidle');
-    await this.page.waitForTimeout(1000); // Additional stability wait
+    await sleep(1000); // Additional stability wait
     
     // Wait for any CSS animations to complete
     await this.page.waitForFunction(() => {
@@ -104,7 +105,7 @@ test.describe('Visual Regression Testing', () => {
     
     // Hit ball and wait for movement
     await testHelper.hitBall(0.5);
-    await page.waitForTimeout(2000); // Allow for ball movement
+    await sleep(2000); // Allow for ball movement
     await testHelper.waitForBallToStop();
     
     // Compare post-shot state
@@ -168,7 +169,7 @@ test.describe('Visual Regression Testing', () => {
     
     for (const viewport of viewportSizes) {
       await page.setViewportSize(viewport);
-      await page.waitForTimeout(1000); // Allow for responsive adjustments
+      await sleep(1000); // Allow for responsive adjustments
       await visualHelper.waitForStableVisuals();
       
       await visualHelper.compareVisual(`responsive-${viewport.name}`, {
@@ -219,7 +220,7 @@ test.describe('Visual Regression Testing', () => {
       `
     });
     
-    await page.waitForTimeout(500);
+    await sleep(500);
     await visualHelper.compareVisual('high-contrast', {
       threshold: 0.3 // Higher threshold for contrast changes
     });
@@ -242,7 +243,7 @@ test.describe('Visual Regression Testing', () => {
       }
     });
     
-    await page.waitForTimeout(3000); // Let performance stabilize
+    await sleep(3000); // Let performance stabilize
     await visualHelper.waitForStableVisuals();
     
     await visualHelper.compareVisual('performance-stress', {
@@ -272,7 +273,7 @@ test.describe('Visual Regression Testing', () => {
             window.game.stateManager.completeHole();
           }
         });
-        await page.waitForTimeout(2000); // Transition time
+        await sleep(2000); // Transition time
       }
     }
   });
@@ -301,7 +302,7 @@ test.describe('Visual Regression - Error States', () => {
       }
     });
     
-    await page.waitForTimeout(1000);
+    await sleep(1000);
     await visualHelper.waitForStableVisuals();
     
     await visualHelper.compareVisual('error-state', {

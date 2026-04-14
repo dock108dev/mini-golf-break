@@ -6,6 +6,7 @@
 
 const { test, expect } = require('@playwright/test');
 const { TestHelper } = require('./utils/TestHelper');
+const { sleep } = require('./utils/sleep');
 
 test.describe('Mobile Device Testing', () => {
   let testHelper;
@@ -49,7 +50,7 @@ test.describe('Mobile Device Testing', () => {
     );
     
     // Wait and verify ball was hit
-    await page.waitForTimeout(1000);
+    await sleep(1000);
     const strokes = await testHelper.getStrokeCount();
     expect(strokes).toBeGreaterThan(0);
     
@@ -86,7 +87,7 @@ test.describe('Mobile Device Testing', () => {
       width: currentViewport.height, 
       height: currentViewport.width 
     });
-    await page.waitForTimeout(1000);
+    await sleep(1000);
     
     // Verify game adapts to new orientation
     const responsiveness = await testHelper.checkMobileResponsiveness();
@@ -140,7 +141,7 @@ test.describe('Mobile Device Testing', () => {
     await page.touchscreen.tap(centerX + 50, centerY + 50);
     
     // Verify interaction was registered
-    await page.waitForTimeout(500);
+    await sleep(500);
     
     await testHelper.takeScreenshot('mobile-multitouch');
   });
@@ -150,7 +151,7 @@ test.describe('Mobile Device Testing', () => {
     
     // Simulate poor network conditions
     await page.context().setOffline(true);
-    await page.waitForTimeout(1000);
+    await sleep(1000);
     
     // Game should continue to work offline
     await testHelper.hitBall(0.4);
@@ -186,7 +187,7 @@ test.describe('Mobile Device Testing', () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
     
-    await page.waitForTimeout(1000);
+    await sleep(1000);
     
     // Game should throttle performance when in background
     const backgroundMetrics = await testHelper.checkPerformance();

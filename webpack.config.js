@@ -110,10 +110,13 @@ module.exports = (env, argv) => {
       devMiddleware: {
         writeToDisk: true, // Write files to disk in development
       },
-      // Playwright UAT sets NODE_ENV=test (see tests/uat/playwright.config.js). The default
-      // overlay iframe intercepts clicks and breaks locator.click on #play-course.
+      // Webpack-cli sets NODE_ENV=development for `webpack serve --mode development`, so we
+      // cannot rely on NODE_ENV=test from Playwright. Use DISABLE_WDS_OVERLAY=1 from UAT.
       client: {
-        overlay: process.env.NODE_ENV === 'test' ? false : true
+        overlay:
+          process.env.DISABLE_WDS_OVERLAY === '1' || process.env.NODE_ENV === 'test'
+            ? false
+            : true
       }
     }
   };

@@ -3,6 +3,9 @@
  * Provides common functionality for user acceptance testing
  */
 
+/** @param {number} ms */
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
 export class TestHelper {
   constructor(page) {
     this.page = page;
@@ -28,7 +31,7 @@ export class TestHelper {
         // Wait before retry with exponential backoff
         const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000);
         console.log(`[TestHelper] Retrying in ${delay}ms...`);
-        await this.page.waitForTimeout(delay);
+        await sleep(delay);
       }
     }
   }
@@ -76,10 +79,17 @@ export class TestHelper {
    */
   async dismissWebpackDevServerOverlay() {
     await this.page.evaluate(() => {
-      const el = document.getElementById('webpack-dev-server-client-overlay');
+      const id = 'webpack-dev-server-client-overlay';
+      const el = document.getElementById(id);
       if (el) {
+        el.style.pointerEvents = 'none';
+        el.style.display = 'none';
         el.remove();
       }
+      document.querySelectorAll(`iframe#${id}`).forEach(node => {
+        node.style.pointerEvents = 'none';
+        node.remove();
+      });
     });
   }
 
@@ -112,8 +122,9 @@ export class TestHelper {
         if (await playButton.isVisible()) {
           console.log('[TestHelper] Menu screen detected, clicking Play Course button...');
           await this.dismissWebpackDevServerOverlay();
-          await playButton.click();
-          await this.page.waitForTimeout(1000);
+          // force: true — overlay can reappear before click; webpack may still inject iframe when reuseExistingServer
+          await playButton.click({ force: true });
+          await sleep(1000);
         }
         
         // Phase 4: Wait for canvas to be created with extended timeout
@@ -154,7 +165,7 @@ export class TestHelper {
         console.log('[TestHelper] Game fully initialized');
         
         // Phase 8: Small delay for final setup
-        await this.page.waitForTimeout(2000);
+        await sleep(2000);
         console.log('[TestHelper] Game initialization complete');
         
         // Final validation

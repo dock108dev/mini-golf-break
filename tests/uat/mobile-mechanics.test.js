@@ -13,6 +13,7 @@
 
 const { test, expect } = require('@playwright/test');
 const { TestHelper } = require('./utils/TestHelper');
+const { sleep } = require('./utils/sleep');
 
 /**
  * Helper: find the first hole index (0-based) that contains a mechanic
@@ -52,7 +53,7 @@ async function goToHole(page, holeIndex) {
     await game.course.initializeHole(idx);
   }, holeIndex);
   // Let rendering settle
-  await page.waitForTimeout(1000);
+  await sleep(1000);
 }
 
 test.describe('Mobile Mechanics Compatibility', () => {
@@ -248,7 +249,7 @@ test.describe('Mobile Mechanics Compatibility', () => {
       return meshes[0].rotation.y;
     });
 
-    await page.waitForTimeout(1000);
+    await sleep(1000);
 
     const rotation2 = await page.evaluate(() => {
       const entity = window.game.course.currentHoleEntity;
@@ -414,7 +415,7 @@ test.describe('Mobile Mechanics Compatibility', () => {
     expect(meshState1.meshCount).toBeGreaterThan(0);
 
     // Wait for the timed mechanic to cycle state
-    await page.waitForTimeout(3000);
+    await sleep(3000);
 
     const meshState2 = await page.evaluate((mechType) => {
       const entity = window.game.course.currentHoleEntity;

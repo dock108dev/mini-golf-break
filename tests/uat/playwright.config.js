@@ -145,7 +145,10 @@ module.exports = {
     stderr: 'pipe',
     env: {
       ...process.env,
-      NODE_ENV: 'test'
+      NODE_ENV: 'test',
+      // webpack-cli forces NODE_ENV=development when resolving webpack.config.js; this flag
+      // disables the dev-server error overlay iframe that blocks Playwright clicks.
+      DISABLE_WDS_OVERLAY: '1'
     }
   },
   

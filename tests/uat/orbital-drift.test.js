@@ -6,6 +6,7 @@
 
 const { test, expect } = require('@playwright/test');
 const { TestHelper } = require('./utils/TestHelper');
+const { sleep } = require('./utils/sleep');
 
 test.describe('Orbital Drift Course', () => {
   let testHelper;
@@ -108,7 +109,7 @@ test.describe('Orbital Drift Course', () => {
       expect(holeInfo.hasMeshes).toBe(true);
 
       // Brief pause to let rendering settle
-      await page.waitForTimeout(500);
+      await sleep(500);
     }
 
     // No WebGL errors should have occurred
@@ -169,7 +170,7 @@ test.describe('Orbital Drift Course', () => {
         return meshes[0].rotation.y;
       });
 
-      await page.waitForTimeout(1000);
+      await sleep(1000);
 
       const rotation2 = await page.evaluate(() => {
         const entity = window.game.course.currentHoleEntity;
@@ -212,7 +213,7 @@ test.describe('Orbital Drift Course', () => {
     });
 
     // Wait for transition
-    await page.waitForTimeout(3000);
+    await sleep(3000);
 
     // Verify hole advanced
     const newHole = await testHelper.getCurrentHole();
@@ -258,7 +259,7 @@ test.describe('Orbital Drift Course', () => {
     expect(completionResult.success).toBe(true);
 
     // Wait for game completion UI to appear
-    await page.waitForTimeout(3000);
+    await sleep(3000);
 
     // Verify game completed state
     const gameState = await testHelper.getGameState();

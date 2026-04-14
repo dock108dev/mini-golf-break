@@ -5,6 +5,7 @@
 
 const { test, expect } = require('@playwright/test');
 const { TestHelper } = require('./utils/TestHelper');
+const { sleep } = require('./utils/sleep');
 
 class PerformanceBenchmark {
   constructor(page) {
@@ -117,11 +118,11 @@ class PerformanceBenchmark {
         x: (Math.random() - 0.5) * 2, 
         y: Math.random() 
       });
-      await this.page.waitForTimeout(200);
+      await sleep(200);
     }
     
     // Let system stabilize
-    await this.page.waitForTimeout(5000);
+    await sleep(5000);
     
     return await this.getMetrics();
   }
@@ -145,7 +146,7 @@ test.describe('Performance Benchmarking', () => {
     for (let i = 0; i < 5; i++) {
       await testHelper.hitBall(0.5 + i * 0.1);
       await testHelper.waitForBallToStop();
-      await page.waitForTimeout(1000);
+      await sleep(1000);
     }
     
     const metrics = await performanceBenchmark.getMetrics();
@@ -171,7 +172,7 @@ test.describe('Performance Benchmarking', () => {
     // Extended gameplay to test memory management
     for (let i = 0; i < 20; i++) {
       await testHelper.hitBall(Math.random() * 0.8 + 0.2);
-      await page.waitForTimeout(500);
+      await sleep(500);
     }
     
     await testHelper.waitForBallToStop();
@@ -283,7 +284,7 @@ test.describe('Performance Benchmarking', () => {
     });
     
     await performanceBenchmark.startMonitoring();
-    await page.waitForTimeout(5000); // Let physics settle
+    await sleep(5000); // Let physics settle
     
     const physicsMetrics = await performanceBenchmark.getMetrics();
     
@@ -310,7 +311,7 @@ test.describe('Performance Benchmarking', () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
     
-    await page.waitForTimeout(2000);
+    await sleep(2000);
     const backgroundMetrics = await performanceBenchmark.getMetrics();
     
     // Simulate tab coming back to foreground
@@ -321,7 +322,7 @@ test.describe('Performance Benchmarking', () => {
       document.dispatchEvent(new Event('visibilitychange'));
     });
     
-    await page.waitForTimeout(2000);
+    await sleep(2000);
     const foregroundMetrics = await performanceBenchmark.getMetrics();
     
     // Performance should adapt to visibility changes
@@ -382,7 +383,7 @@ test.describe('Performance Regression Detection', () => {
       // Standard gameplay
       await testHelper.hitBall(0.5);
       await testHelper.waitForBallToStop();
-      await page.waitForTimeout(2000);
+      await sleep(2000);
       
       const metrics = await performanceBenchmark.getMetrics();
       sessions.push(metrics);

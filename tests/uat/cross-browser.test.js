@@ -8,6 +8,7 @@
 
 const { test, expect } = require('@playwright/test');
 const { TestHelper } = require('./utils/TestHelper');
+const { sleep } = require('./utils/sleep');
 
 test.describe('Cross-Browser Compatibility', () => {
   let testHelper;
@@ -53,7 +54,7 @@ test.describe('Cross-Browser Compatibility', () => {
     await page.mouse.up();
 
     // Allow time for the shot to register
-    await page.waitForTimeout(1000);
+    await sleep(1000);
 
     // Verify the game is still responsive after mouse interaction
     const gameState = await testHelper.getGameState();
@@ -131,7 +132,7 @@ test.describe('Cross-Browser Compatibility', () => {
 
     // Interact with the game to trigger any browser-specific issues
     await testHelper.hitBall(0.5, { x: 0, y: 1 });
-    await page.waitForTimeout(3000);
+    await sleep(3000);
 
     // No uncaught page errors
     expect(pageErrors).toEqual([]);
@@ -201,7 +202,7 @@ test.describe('Cross-Browser Compatibility', () => {
 
     await page.goto('/');
     // Wait for the app to attempt initialization
-    await page.waitForTimeout(5000);
+    await sleep(5000);
 
     // The game should either show a fallback message or not crash
     const pageErrors = [];

@@ -5,6 +5,7 @@
 
 const { test, expect } = require('@playwright/test');
 const { TestHelper } = require('./utils/TestHelper');
+const { sleep } = require('./utils/sleep');
 
 test.describe('Core Game Flow', () => {
   let testHelper;
@@ -67,7 +68,7 @@ test.describe('Core Game Flow', () => {
       expect(strokes).toBe(i);
       
       // Small delay between shots
-      await page.waitForTimeout(500);
+      await sleep(500);
     }
     
     await testHelper.takeScreenshot('multiple-strokes');
@@ -86,7 +87,7 @@ test.describe('Core Game Flow', () => {
     });
     
     // Wait for hole transition
-    await page.waitForTimeout(2000);
+    await sleep(2000);
     
     // Verify hole number increased
     const newHole = await testHelper.getCurrentHole();
@@ -123,7 +124,7 @@ test.describe('Core Game Flow', () => {
     });
     
     // Wait for game completion UI
-    await page.waitForTimeout(3000);
+    await sleep(3000);
     
     // Verify game completion state
     const gameState = await testHelper.getGameState();
@@ -141,7 +142,7 @@ test.describe('Core Game Flow', () => {
     // Simulate intensive gameplay
     for (let i = 0; i < 5; i++) {
       await testHelper.hitBall(0.8, { x: Math.random() - 0.5, y: Math.random() });
-      await page.waitForTimeout(1000);
+      await sleep(1000);
     }
     
     const finalMetrics = await testHelper.checkPerformance();
@@ -177,7 +178,7 @@ test.describe('Core Game Flow', () => {
     
     // Verify game continues to function
     await testHelper.hitBall(0.5);
-    await page.waitForTimeout(2000);
+    await sleep(2000);
     
     // Game should still be responsive
     const gameState = await testHelper.getGameState();
