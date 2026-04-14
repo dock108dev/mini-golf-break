@@ -13,6 +13,9 @@
   "homepage": "https://github.com/highlyprofitable108/mini-golf-break#readme",
   "author": "",
   "license": "ISC",
+  "engines": {
+    "node": ">=20"
+  },
   "sideEffects": false,
   "scripts": {
     "start": "webpack serve --mode development",
