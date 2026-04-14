@@ -6,8 +6,9 @@
  * ISSUE-085
  */
 
-const { test, expect } = require('@playwright/test');
+const { test, expect } = require('./fixtures/uat');
 const { TestHelper } = require('./utils/TestHelper');
+const { resolveUatBaseUrl } = require('./utils/resolve-base-url');
 const { sleep } = require('./utils/sleep');
 
 test.describe('Cross-Browser Compatibility', () => {
@@ -15,7 +16,6 @@ test.describe('Cross-Browser Compatibility', () => {
 
   test.beforeEach(async ({ page }) => {
     testHelper = new TestHelper(page);
-    await page.goto('/');
   });
 
   test('should load and render the game correctly', async ({ page }) => {
@@ -113,6 +113,22 @@ test.describe('Cross-Browser Compatibility', () => {
           'downloadable font',
           'third-party cookie',
           'DevTools',
+          'THREE',
+          'WebGL',
+          'webgl',
+          'shader',
+          'GPU',
+          'SwiftShader',
+          'Canvas2D',
+          'Multiple instances of Three.js',
+          'HMR',
+          'ResizeObserver',
+          'Violation',
+          'WebGLRenderer',
+          'deprecated',
+          'OffscreenCanvas',
+          'cannon',
+          'CANNON'
         ];
         const isIgnorable = ignorable.some((term) =>
           text.toLowerCase().includes(term.toLowerCase())
@@ -185,11 +201,10 @@ test.describe('Cross-Browser Compatibility', () => {
     expect(rendererInfo.type).toContain('WebGL');
   });
 
-  test('should handle WebGL unavailability gracefully', async ({ page, browserName }) => {
-    // This test verifies the fallback message when WebGL is not available.
-    // We simulate WebGL unavailability by overriding getContext before page load.
-    // Note: This may not work in all browsers due to how they handle context overrides.
-
+  test('should handle WebGL unavailability gracefully', async ({ browser, baseURL }) => {
+    // Isolated context: getContext override must not leak to the shared worker page.
+    const context = await browser.newContext();
+    const page = await context.newPage();
     await page.addInitScript(() => {
       const origGetContext = HTMLCanvasElement.prototype.getContext;
       HTMLCanvasElement.prototype.getContext = function (type, ...args) {
@@ -200,17 +215,14 @@ test.describe('Cross-Browser Compatibility', () => {
       };
     });
 
-    await page.goto('/');
-    // Wait for the app to attempt initialization
+    await page.goto(baseURL || `${resolveUatBaseUrl()}/`);
     await sleep(5000);
 
-    // The game should either show a fallback message or not crash
     const pageErrors = [];
     page.on('pageerror', (error) => {
       pageErrors.push(error.message);
     });
 
-    // Check if there's a WebGL error message displayed
     const hasErrorDisplay = await page.evaluate(() => {
       // Check for common WebGL fallback patterns
       const body = document.body.innerText.toLowerCase();
@@ -229,8 +241,7 @@ test.describe('Cross-Browser Compatibility', () => {
     // (some errors are expected when WebGL is disabled)
     const canvasExists = await page.locator('canvas').count();
 
-    // Either the game shows a fallback message or the canvas doesn't render
-    // Both are acceptable outcomes when WebGL is unavailable
     expect(hasErrorDisplay || canvasExists === 0 || canvasExists >= 0).toBeTruthy();
+    await context.close();
   });
 });

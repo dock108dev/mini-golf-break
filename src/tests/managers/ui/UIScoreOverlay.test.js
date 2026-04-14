@@ -141,7 +141,7 @@ describe('UIScoreOverlay', () => {
       uiScoreOverlay.init();
 
       expect(uiScoreOverlay.holeInfoElement.textContent).toContain('Hole');
-      expect(uiScoreOverlay.strokesElement.textContent).toBe('Strokes: 0');
+      expect(uiScoreOverlay.strokesCountSpan.textContent).toBe('0');
       expect(uiScoreOverlay.scoreElement.textContent).toBe('Total Strokes: 0');
     });
   });
@@ -211,7 +211,7 @@ describe('UIScoreOverlay', () => {
 
       uiScoreOverlay.updateStrokes();
 
-      expect(uiScoreOverlay.strokesElement.textContent).toBe('Strokes: 3');
+      expect(uiScoreOverlay.strokesCountSpan.textContent).toBe('3');
     });
 
     test('should handle zero strokes', () => {
@@ -219,7 +219,7 @@ describe('UIScoreOverlay', () => {
 
       uiScoreOverlay.updateStrokes();
 
-      expect(uiScoreOverlay.strokesElement.textContent).toBe('Strokes: 0');
+      expect(uiScoreOverlay.strokesCountSpan.textContent).toBe('0');
     });
   });
 

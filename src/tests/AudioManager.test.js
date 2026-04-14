@@ -10,19 +10,9 @@ describe('AudioManager', () => {
   let mockCamera;
   let audioManager;
   let mockAudioListener;
-  let mockAudio;
 
   beforeEach(() => {
     // Use the existing mocks from jest.setup.js rather than overriding them
-    mockAudio = {
-      setBuffer: jest.fn().mockReturnThis(),
-      setVolume: jest.fn().mockReturnThis(),
-      play: jest.fn(),
-      stop: jest.fn(),
-      pause: jest.fn(),
-      isPlaying: false
-    };
-
     mockAudioListener = {
       context: { state: 'running' },
       getInput: jest.fn(),

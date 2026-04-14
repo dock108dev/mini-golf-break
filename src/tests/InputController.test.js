@@ -1,5 +1,4 @@
 import { InputController } from '../controls/InputController';
-import { EventTypes } from '../events/EventTypes';
 
 // Mock Three.js classes
 jest.mock('three', () => ({
@@ -426,7 +425,7 @@ describe('InputController', () => {
       });
 
       // Mock requestAnimationFrame / cancelAnimationFrame
-      jest.spyOn(global, 'requestAnimationFrame').mockImplementation(cb => {
+      jest.spyOn(global, 'requestAnimationFrame').mockImplementation(_cb => {
         return 42; // Return a fake ID
       });
       jest.spyOn(global, 'cancelAnimationFrame').mockImplementation(() => {});

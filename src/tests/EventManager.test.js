@@ -1,6 +1,5 @@
 import { EventManager } from '../managers/EventManager';
 import { EventTypes } from '../events/EventTypes';
-import { GameEvent } from '../events/GameEvent';
 
 // Mock GameEvent
 jest.mock('../events/GameEvent', () => ({

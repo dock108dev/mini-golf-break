@@ -34,31 +34,47 @@ export const debug = {
   },
 
   group: label => {
-    if (DEBUG_MODE && console.group) {
-      // eslint-disable-next-line no-console
+    if (!DEBUG_MODE) {
+      return;
+    }
+    /* eslint-disable no-console -- dev-only console.group API */
+    if (typeof console.group === 'function') {
       console.group(label);
     }
+    /* eslint-enable no-console */
   },
 
   groupEnd: () => {
-    if (DEBUG_MODE && console.groupEnd) {
-      // eslint-disable-next-line no-console
+    if (!DEBUG_MODE) {
+      return;
+    }
+    /* eslint-disable no-console -- dev-only console.groupEnd API */
+    if (typeof console.groupEnd === 'function') {
       console.groupEnd();
     }
+    /* eslint-enable no-console */
   },
 
   time: label => {
-    if (DEBUG_MODE && console.time) {
-      // eslint-disable-next-line no-console
+    if (!DEBUG_MODE) {
+      return;
+    }
+    /* eslint-disable no-console -- dev-only console.time API */
+    if (typeof console.time === 'function') {
       console.time(label);
     }
+    /* eslint-enable no-console */
   },
 
   timeEnd: label => {
-    if (DEBUG_MODE && console.timeEnd) {
-      // eslint-disable-next-line no-console
+    if (!DEBUG_MODE) {
+      return;
+    }
+    /* eslint-disable no-console -- dev-only console.timeEnd API */
+    if (typeof console.timeEnd === 'function') {
       console.timeEnd(label);
     }
+    /* eslint-enable no-console */
   }
 };
 

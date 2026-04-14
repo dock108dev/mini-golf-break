@@ -68,7 +68,7 @@ function createMockScenarios() {
 describe('PerformanceManager Null Reference Handling', () => {
   const scenarios = createMockScenarios();
 
-  scenarios.forEach((scenario, index) => {
+  scenarios.forEach(scenario => {
     test(`${scenario.name} - ${scenario.expectation}`, () => {
       expect(() => {
         // Create manager with the test scenario

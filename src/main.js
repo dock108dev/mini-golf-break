@@ -1,9 +1,15 @@
+import * as THREE from 'three';
 import { debug } from './utils/debug';
 import { Game } from './scenes/Game';
 import { HighScoreManager } from './game/HighScoreManager';
 import { isWebGLAvailable, showWebGLFallback } from './utils/webglDetect';
 import { parseDevParams, getInitialHoleNumber, setupConfigHotReload } from './utils/devHoleHarness';
 import '../public/style.css';
+
+// Expose THREE for UAT (Playwright page.evaluate needs Vector3.clone in BallManager.hitBall)
+if (typeof window !== 'undefined') {
+  window.THREE = THREE;
+}
 
 const COURSE_NAME = 'Orbital Drift';
 const COURSE_PAR = 24;

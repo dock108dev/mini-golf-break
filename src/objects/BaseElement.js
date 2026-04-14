@@ -1,6 +1,5 @@
 import { debug } from '../utils/debug';
 import * as THREE from 'three';
-import * as CANNON from 'cannon-es';
 
 /**
  * BaseElement - Base class for all course elements
@@ -71,7 +70,7 @@ export class BaseElement {
    * Update the element - for any animations or state changes
    * @param {number} dt - Delta time in seconds
    */
-  update(dt) {
+  update(_dt) {
     // Default implementation does nothing
     // Subclasses can override to implement animations or state changes
   }

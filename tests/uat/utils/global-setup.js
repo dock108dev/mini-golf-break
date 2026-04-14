@@ -4,6 +4,7 @@
  */
 
 const { chromium } = require('@playwright/test');
+const { resolveUatBaseUrl } = require('./resolve-base-url');
 
 async function globalSetup() {
   console.log('[Global Setup] Starting UAT test environment setup...');
@@ -21,7 +22,7 @@ async function globalSetup() {
     
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        await page.goto('http://localhost:8080', { 
+        await page.goto(resolveUatBaseUrl(), { 
           waitUntil: 'networkidle',
           timeout: 10000 
         });

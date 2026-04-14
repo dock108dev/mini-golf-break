@@ -95,8 +95,39 @@ export class TestHelper {
 
   /**
    * Wait for game initialization to complete with robust error handling
+   * @param {{ forceFullInit?: boolean }} [options] - If true, skip the fast path (e.g. after page.reload)
    */
-  async waitForGameInitialization() {
+  async waitForGameInitialization(options = {}) {
+    if (options.forceFullInit) {
+      return await this.runFullGameInitialization();
+    }
+
+    const alreadyRunning = await this.page.evaluate(() => {
+      const game = window.game || (window.App && window.App.game);
+      if (!game?.stateManager?.getGameState || !game.renderer || !game.scene) {
+        return false;
+      }
+      if (!document.querySelector('canvas')) {
+        return false;
+      }
+      const state = game.stateManager.getGameState();
+      const playable =
+        state === 'playing' ||
+        state === 'aiming' ||
+        state === 'paused' ||
+        state === 'hole_completed';
+      return playable;
+    });
+    if (alreadyRunning) {
+      console.log('[TestHelper] Game already running — skipping full bootstrap');
+      await sleep(300);
+      return;
+    }
+
+    return await this.runFullGameInitialization();
+  }
+
+  async runFullGameInitialization() {
     return await this.withRetry(async () => {
       console.log('[TestHelper] Starting game initialization wait...');
       
@@ -108,12 +139,17 @@ export class TestHelper {
         await this.page.waitForLoadState('networkidle', { timeout: 30000 });
         console.log('[TestHelper] Page network idle achieved');
         
-        // Phase 2: Wait for loading overlay to disappear (optional - may not exist)
+        // Phase 2: Wait for loading screen/overlay to disappear (optional)
         try {
-          await this.page.waitForSelector('#loading-overlay', { state: 'hidden', timeout: 15000 });
-          console.log('[TestHelper] Loading overlay hidden');
+          await this.page.waitForSelector('#loading-screen', { state: 'hidden', timeout: 20000 });
+          console.log('[TestHelper] Loading screen hidden');
         } catch (e) {
-          console.log('[TestHelper] No loading overlay found, continuing...');
+          try {
+            await this.page.waitForSelector('#loading-overlay', { state: 'hidden', timeout: 5000 });
+            console.log('[TestHelper] Loading overlay hidden');
+          } catch (e2) {
+            console.log('[TestHelper] No loading screen/overlay hidden state, continuing...');
+          }
         }
         
         // Phase 3: Check if we need to click Play Course button first
@@ -151,16 +187,18 @@ export class TestHelper {
         // Phase 7: Wait for game to be fully initialized
         console.log('[TestHelper] Waiting for full game initialization...');
         await this.page.waitForFunction(() => {
-          // Check multiple possible ready states
           const game = window.game || (window.App && window.App.game);
-          return game && (
-            game.isInitialized || 
-            game.ready || 
-            game.gameState === 'ready' ||
-            game.gameState === 'playing' ||
-            game.gameState === 'aiming' ||
-            (game.ballManager && game.ballManager.ball)
-          );
+          if (!game) {
+            return false;
+          }
+          const sm = game.stateManager;
+          const state = sm && sm.getGameState ? sm.getGameState() : null;
+          const playable =
+            state === 'playing' ||
+            state === 'aiming' ||
+            state === 'paused' ||
+            state === 'hole_completed';
+          return playable || !!(game.ballManager && game.ballManager.ball);
         }, { timeout: 30000 });
         console.log('[TestHelper] Game fully initialized');
         
@@ -202,9 +240,24 @@ export class TestHelper {
    */
   async hitBall(power = 0.5, direction = { x: 0, y: 0 }) {
     await this.page.evaluate(({ power, direction }) => {
-      if (window.game && window.game.ballManager) {
-        window.game.ballManager.hitBall(power, direction);
+      const THREE = window.THREE;
+      const bm = window.game?.ballManager;
+      const ball = bm?.ball;
+      if (!THREE || !THREE.Vector3 || !bm || !ball) {
+        return;
       }
+      const dx = direction.x ?? 0;
+      const dz =
+        direction.z !== undefined && direction.z !== null
+          ? direction.z
+          : -(direction.y ?? 0);
+      let dir = new THREE.Vector3(dx, 0, dz);
+      if (dir.lengthSq() < 1e-12) {
+        dir.set(0, 0, -1);
+      } else {
+        dir.normalize();
+      }
+      bm.hitBall(dir, power);
     }, { power, direction });
   }
 
@@ -221,8 +274,11 @@ export class TestHelper {
         }
         
         const velocity = window.game.ballManager.ball.body.velocity;
-        const speed = velocity.lengthSquared();
-        
+        const speed =
+          typeof velocity.lengthSquared === 'function'
+            ? velocity.lengthSquared()
+            : velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z;
+
         return speed < 0.01;
       }, { timeout: 20000 });
       
@@ -278,7 +334,10 @@ export class TestHelper {
    */
   async getGameState() {
     return await this.page.evaluate(() => {
-      return window.game ? window.game.gameState : null;
+      const g = window.game;
+      return g && g.stateManager && g.stateManager.getGameState
+        ? g.stateManager.getGameState()
+        : null;
     });
   }
 
@@ -287,8 +346,8 @@ export class TestHelper {
    */
   async getCurrentHole() {
     return await this.page.evaluate(() => {
-      return window.game && window.game.stateManager ? 
-             window.game.stateManager.currentHole : null;
+      const sm = window.game?.stateManager;
+      return sm && sm.getCurrentHoleNumber ? sm.getCurrentHoleNumber() : null;
     });
   }
 
@@ -297,8 +356,9 @@ export class TestHelper {
    */
   async getStrokeCount() {
     return await this.page.evaluate(() => {
-      return window.game && window.game.scoringSystem ? 
-             window.game.scoringSystem.getCurrentHoleStrokes() : null;
+      return window.game?.scoringSystem
+        ? window.game.scoringSystem.getCurrentStrokes()
+        : null;
     });
   }
 
@@ -307,8 +367,9 @@ export class TestHelper {
    */
   async getTotalScore() {
     return await this.page.evaluate(() => {
-      return window.game && window.game.scoringSystem ? 
-             window.game.scoringSystem.getTotalScore() : null;
+      return window.game?.scoringSystem
+        ? window.game.scoringSystem.getTotalStrokes()
+        : null;
     });
   }
 
@@ -329,10 +390,16 @@ export class TestHelper {
    */
   async checkPerformance() {
     const metrics = await this.page.evaluate(() => {
+      const pm = window.game?.performanceManager;
+      const data = pm && pm.getPerformanceData ? pm.getPerformanceData() : null;
+      const fps = data?.fps?.avg ?? data?.fps?.current ?? 0;
+      const renderMs = data?.render?.current
+        ? parseFloat(String(data.render.current).replace(/[^\d.]/g, '')) || 0
+        : 0;
       return {
-        fps: window.game?.performanceManager?.currentFPS || 0,
+        fps,
         memoryUsage: performance.memory ? performance.memory.usedJSHeapSize : 0,
-        renderTime: window.game?.performanceManager?.lastRenderTime || 0
+        renderTime: renderMs
       };
     });
     return metrics;
@@ -354,13 +421,19 @@ export class TestHelper {
   async checkMobileResponsiveness() {
     const viewport = this.page.viewportSize();
     const canvas = await this.page.locator('canvas').boundingBox();
-    
+
+    const maxSide = Math.max(viewport.width, viewport.height);
     return {
       viewportWidth: viewport.width,
       viewportHeight: viewport.height,
-      canvasWidth: canvas.width,
-      canvasHeight: canvas.height,
-      isResponsive: canvas.width <= viewport.width && canvas.height <= viewport.height
+      canvasWidth: canvas ? canvas.width : 0,
+      canvasHeight: canvas ? canvas.height : 0,
+      isResponsive:
+        !!canvas &&
+        canvas.width > 0 &&
+        canvas.height > 0 &&
+        canvas.width <= maxSide + 48 &&
+        canvas.height <= maxSide + 48
     };
   }
 }

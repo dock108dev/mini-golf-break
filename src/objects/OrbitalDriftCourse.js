@@ -3,7 +3,6 @@ import { CoursesManager } from '../managers/CoursesManager.js';
 import { HoleEntity } from './HoleEntity';
 import { createOrbitalDriftConfigs } from '../config/orbitalDriftConfigs';
 import { hydrateHoleConfig } from '../config/hydrateHoleConfig';
-import { debug } from '../utils/debug';
 
 /**
  * OrbitalDriftCourse - space-themed course with advanced mechanics.

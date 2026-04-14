@@ -29,6 +29,7 @@
     "test:coverage:unit": "jest --selectProjects=unit --coverage",
     "test:all": "npm run test:unit && npm run test:integration && npm run test:uat",
     "test:uat": "playwright test --config=tests/uat/playwright.config.js",
+    "test:uat:ci": "playwright test --config=tests/uat/playwright.config.js --project=chromium-desktop",
     "test:uat:headed": "playwright test --config=tests/uat/playwright.config.js --headed",
     "test:uat:debug": "playwright test --config=tests/uat/playwright.config.js --debug",
     "lint": "eslint src/**/*.js",

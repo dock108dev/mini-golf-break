@@ -375,7 +375,7 @@ describe('BallManager Branch Coverage Tests', () => {
       // Test with null worldStartPosition, null course fallback, uses absolute default
       mockGame.course.getHoleStartPosition.mockReturnValue(null);
 
-      const result = ballManager.createBall(null);
+      ballManager.createBall(null);
 
       expect(consoleSpy).toHaveBeenCalledWith(
         '[BallManager] Using course start position as fallback.'
@@ -410,7 +410,7 @@ describe('BallManager Branch Coverage Tests', () => {
       };
       mockGame.course.getHoleStartPosition.mockReturnValue(validFallback);
 
-      const result = ballManager.createBall('invalid');
+      ballManager.createBall('invalid');
 
       expect(consoleErrorSpy).toHaveBeenCalledWith(
         '[BallManager] Invalid worldStartPosition argument provided:',
@@ -430,44 +430,6 @@ describe('BallManager Branch Coverage Tests', () => {
 
       // Mock Ball constructor to return object without body
       const { Ball } = require('../objects/Ball');
-      const originalMockBall = jest.fn(() => ({
-        mesh: {
-          position: {
-            x: 0,
-            y: 0,
-            z: 0,
-            copy: jest.fn(),
-            clone: jest.fn(() => ({ x: 0, y: 0, z: 0 })),
-            distanceTo: jest.fn(() => 5)
-          },
-          geometry: { dispose: jest.fn() },
-          material: { dispose: jest.fn() }
-        },
-        body: {
-          position: { x: 0, y: 0, z: 0 },
-          velocity: {
-            x: 0,
-            y: 0,
-            z: 0,
-            set: jest.fn(),
-            clone: jest.fn(() => ({ x: 0, y: 0, z: 0 }))
-          },
-          angularVelocity: { x: 0, y: 0, z: 0, set: jest.fn() },
-          wakeUp: jest.fn()
-        },
-        setPosition: jest.fn(),
-        applyForce: jest.fn(),
-        applyImpulse: jest.fn(),
-        isStopped: jest.fn(() => true),
-        isMoving: false,
-        resetPosition: jest.fn(),
-        resetVelocity: jest.fn(),
-        cleanup: jest.fn(),
-        setHolePosition: jest.fn(),
-        update: jest.fn(),
-        updateMeshFromBody: jest.fn(),
-        handleHoleSuccess: jest.fn()
-      }));
 
       // Save original implementation
       const originalImplementation = Ball.getMockImplementation();

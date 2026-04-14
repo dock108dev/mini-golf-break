@@ -9,6 +9,7 @@ export class UIScoreOverlay {
 
     this.scoreElement = null;
     this.strokesElement = null;
+    this.strokesCountSpan = null;
     this.holeInfoElement = null;
     this.scorecardElement = null;
     this.nameEntryElement = null;
@@ -48,15 +49,21 @@ export class UIScoreOverlay {
     this.scoreContainer.appendChild(this.courseNameElement);
 
     this.holeInfoElement = document.createElement('div');
+    this.holeInfoElement.id = 'hole-info';
     this.holeInfoElement.classList.add(this.INFO_BOX_CLASS);
     this.scoreContainer.appendChild(this.holeInfoElement);
 
     this.strokesElement = document.createElement('div');
     this.strokesElement.classList.add(this.INFO_BOX_CLASS);
     this.strokesElement.setAttribute('aria-live', 'polite');
+    this.strokesCountSpan = document.createElement('span');
+    this.strokesCountSpan.id = 'stroke-count';
+    this.strokesElement.appendChild(document.createTextNode('Strokes: '));
+    this.strokesElement.appendChild(this.strokesCountSpan);
     this.scoreContainer.appendChild(this.strokesElement);
 
     this.scoreElement = document.createElement('div');
+    this.scoreElement.id = 'score-info';
     this.scoreElement.classList.add(this.INFO_BOX_CLASS);
     this.scoreElement.setAttribute('aria-live', 'polite');
     this.scoreContainer.appendChild(this.scoreElement);
@@ -85,7 +92,9 @@ export class UIScoreOverlay {
     const currentStrokes = this.game.scoringSystem.getCurrentStrokes();
 
     if (currentStrokes !== this.lastDisplayedStrokes) {
-      this.strokesElement.textContent = `Strokes: ${currentStrokes}`;
+      if (this.strokesCountSpan) {
+        this.strokesCountSpan.textContent = String(currentStrokes);
+      }
       const holeNumber = this.game.course?.getCurrentHoleNumber
         ? this.game.course.getCurrentHoleNumber()
         : '';
@@ -440,6 +449,7 @@ export class UIScoreOverlay {
     this.parElement = null;
     this.scoreElement = null;
     this.strokesElement = null;
+    this.strokesCountSpan = null;
     this.holeInfoElement = null;
     this.totalScoreElement = null;
     this.scorecardElement = null;

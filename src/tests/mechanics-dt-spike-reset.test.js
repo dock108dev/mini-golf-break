@@ -526,7 +526,6 @@ describe('MovingSweeper onDtSpike and elapsed-time angle', () => {
       sweeper.update(1 / 60, null);
     }
     const angleBeforeSpike = sweeper.angle;
-    const elapsedBeforeSpike = sweeper.elapsedTime;
 
     // onDtSpike should recalculate elapsedTime from current angle
     sweeper.onDtSpike();

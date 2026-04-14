@@ -2,12 +2,15 @@
  * Playwright configuration for UAT testing
  * @see https://playwright.dev/docs/test-configuration
  */
+const { resolveUatBaseUrl } = require('./utils/resolve-base-url');
+
 module.exports = {
   testDir: '.',
   timeout: 120000, // Increased to 2 minutes for game initialization
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 3 : 1, // Increased retries for flaky game loading
+  // Each worker runs one UAT bootstrap (see tests/uat/fixtures/uat.js). Use workers=1 if the dev server flakes under load.
   workers: process.env.CI ? 1 : undefined,
   reporter: [
     ['html', { outputFolder: 'coverage/uat-results' }],
@@ -15,7 +18,7 @@ module.exports = {
     ['list'] // Add list reporter for better console output
   ],
   use: {
-    baseURL: 'http://localhost:8080',
+    baseURL: resolveUatBaseUrl(),
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -118,27 +121,10 @@ module.exports = {
         }
       },
     },
-    {
-      name: 'edge-desktop',
-      use: {
-        ...require('@playwright/test').devices['Desktop Edge'],
-        viewport: { width: 1920, height: 1080 },
-        channel: 'msedge',
-        launchOptions: {
-          args: [
-            '--enable-webgl',
-            '--enable-gpu',
-            '--use-gl=swiftshader',
-            '--no-sandbox',
-            '--disable-setuid-sandbox'
-          ]
-        }
-      },
-    }
   ],
   webServer: {
     command: 'npm start',
-    port: 8080,
+    url: resolveUatBaseUrl(),
     reuseExistingServer: !process.env.CI,
     timeout: 120000, // Increased timeout for webpack dev server startup
     stdout: 'pipe',

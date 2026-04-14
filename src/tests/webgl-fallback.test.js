@@ -95,16 +95,17 @@ describe('showWebGLFallback', () => {
   function setupDOM({ hasMenuScreen = true, hasContainer = true } = {}) {
     const menuScreen = hasMenuScreen ? { style: { display: 'flex' }, id: 'menu-screen' } : null;
     const containerChildren = [];
-    const container = hasContainer
-      ? {
-          id: 'game-container',
-          appendChild: jest.fn(child => {
-            containerChildren.push(child);
-            child.parentElement = container;
-          }),
-          _children: containerChildren
-        }
-      : null;
+    let container = null;
+    if (hasContainer) {
+      container = {
+        id: 'game-container',
+        appendChild: jest.fn(child => {
+          containerChildren.push(child);
+          child.parentElement = container;
+        }),
+        _children: containerChildren
+      };
+    }
 
     document.getElementById = jest.fn(id => {
       if (id === 'menu-screen') {

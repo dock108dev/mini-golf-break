@@ -11,6 +11,64 @@ import { MATERIAL_PALETTE } from '../themes/palette';
 // Trigger mechanic self-registration
 import '../mechanics/index';
 
+function resolveSceneContext(scene) {
+  const sceneIsGroup = scene instanceof THREE.Group;
+  return {
+    actualScene: sceneIsGroup ? scene.parent || scene : scene,
+    targetGroup: sceneIsGroup ? scene : null
+  };
+}
+
+function attachHoleGroupToScene(targetGroup, group, scene) {
+  if (targetGroup) {
+    if (group && !group.parent) {
+      targetGroup.add(group);
+    }
+    return targetGroup;
+  }
+  if (group && !group.parent) {
+    scene.add(group);
+  }
+  return null;
+}
+
+function normalizeBoundaryShape(config) {
+  if (Array.isArray(config.boundaryShape) && config.boundaryShape.length >= 3) {
+    return config.boundaryShape.map(p => new THREE.Vector2(p.x, p.y));
+  }
+  return [
+    new THREE.Vector2(-2, -10),
+    new THREE.Vector2(-2, 10),
+    new THREE.Vector2(2, 10),
+    new THREE.Vector2(2, -10),
+    new THREE.Vector2(-2, -10)
+  ];
+}
+
+function vector3FromConfig(value) {
+  if (value instanceof THREE.Vector3) {
+    return value.clone();
+  }
+  return new THREE.Vector3(value?.x || 0, value?.y || 0, value?.z || 0);
+}
+
+function eulerFromConfig(value) {
+  if (value instanceof THREE.Euler) {
+    return value.clone();
+  }
+  return new THREE.Euler(value?.x || 0, value?.y || 0, value?.z || 0);
+}
+
+function mergeResolvedTheme(config) {
+  const resolvedTheme = { ...defaultTheme, ...(config.theme || {}) };
+  for (const key of Object.keys(defaultTheme)) {
+    if (typeof defaultTheme[key] === 'object' && defaultTheme[key] !== null) {
+      resolvedTheme[key] = { ...defaultTheme[key], ...(config.theme?.[key] || {}) };
+    }
+  }
+  return resolvedTheme;
+}
+
 /**
  * HoleEntity - Encapsulates all resources and physics for a single hole
  * Now extends BaseElement
@@ -18,85 +76,30 @@ import '../mechanics/index';
  */
 export class HoleEntity extends BaseElement {
   constructor(world, config, scene) {
-    // Scene can be a THREE.Group when used with course manager
-    const sceneIsGroup = scene instanceof THREE.Group;
-    const actualScene = sceneIsGroup ? scene.parent || scene : scene;
-    const targetGroup = sceneIsGroup ? scene : null; // The specific group for this hole if provided
+    const { actualScene, targetGroup } = resolveSceneContext(scene);
 
-    // BaseElement config: Use (0,0,0) as the position for the HoleEntity's group itself.
-    // The actual geometry placement will use the WORLD coordinates from the config.
     const baseConfig = {
       ...config,
-      position: new THREE.Vector3(0, 0, 0), // Force HoleEntity group to be at world origin
+      position: new THREE.Vector3(0, 0, 0),
       type: 'hole',
       name: `Hole ${config.index + 1}`
     };
 
-    // BaseElement constructor creates this.group at baseConfig.position (0,0,0)
     super(world, baseConfig, actualScene);
+    this.parentGroup = attachHoleGroupToScene(targetGroup, this.group, this.scene);
 
-    // Store the target group if one was provided (e.g., Hole_1_Group)
-    // If targetGroup exists, add this.group (at 0,0,0) to it.
-    // Otherwise, add this.group directly to the main scene.
-    if (targetGroup) {
-      if (this.group && !this.group.parent) {
-        targetGroup.add(this.group);
-      }
-      this.parentGroup = targetGroup; // Store reference if needed
-    } else {
-      if (this.group && !this.group.parent) {
-        this.scene.add(this.group);
-      }
-      this.parentGroup = null;
-    }
+    this.boundaryShape = normalizeBoundaryShape(config);
 
-    // Validate boundary shape
-    this.boundaryShape =
-      Array.isArray(config.boundaryShape) && config.boundaryShape.length >= 3
-        ? config.boundaryShape.map(p => new THREE.Vector2(p.x, p.y)) // Ensure Vector2, use y for world z
-        : [
-            // Default rectangular shape if invalid
-            new THREE.Vector2(-2, -10),
-            new THREE.Vector2(-2, 10),
-            new THREE.Vector2(2, 10),
-            new THREE.Vector2(2, -10),
-            new THREE.Vector2(-2, -10)
-          ];
-
-    // Hole-specific properties
     this.wallHeight = 1.0;
     this.wallThickness = 0.2;
-    this.holeRadius = 0.35; // Physics radius
-    this.surfaceHeight = 0.2; // Local Y height of the green surface relative to group (0,0,0)
+    this.holeRadius = 0.35;
+    this.surfaceHeight = 0.2;
     this.visualGreenY = this.surfaceHeight;
 
-    // Store WORLD coordinates from config, ensuring they are Vector3
-    this.worldStartPosition =
-      config.startPosition instanceof THREE.Vector3
-        ? config.startPosition.clone()
-        : new THREE.Vector3(
-            config.startPosition?.x || 0,
-            config.startPosition?.y || 0,
-            config.startPosition?.z || 0
-          );
-    this.worldHolePosition =
-      config.holePosition instanceof THREE.Vector3
-        ? config.holePosition.clone()
-        : new THREE.Vector3(
-            config.holePosition?.x || 0,
-            config.holePosition?.y || 0,
-            config.holePosition?.z || 0
-          );
+    this.worldStartPosition = vector3FromConfig(config.startPosition);
+    this.worldHolePosition = vector3FromConfig(config.holePosition);
 
-    // Resolve theme: use config.theme if provided, fall back to defaultTheme
-    this.resolvedTheme = { ...defaultTheme, ...(config.theme || {}) };
-    // Merge nested theme keys so partial overrides work
-    for (const key of Object.keys(defaultTheme)) {
-      if (typeof defaultTheme[key] === 'object' && defaultTheme[key] !== null) {
-        this.resolvedTheme[key] = { ...defaultTheme[key], ...(config.theme?.[key] || {}) };
-      }
-    }
-    // Store resolved theme on config for builders that read config.theme
+    this.resolvedTheme = mergeResolvedTheme(config);
     this.config = { ...this.config, theme: this.resolvedTheme };
 
     debug.log(`[HoleEntity] Created for hole index ${config.index + 1}. Group at (0,0,0).`);
@@ -374,15 +377,7 @@ export class HoleEntity extends BaseElement {
 
     hazardConfigs.forEach(hazardConfig => {
       try {
-        // Ensure position is WORLD Vector3
-        const worldHazardPos =
-          hazardConfig.position instanceof THREE.Vector3
-            ? hazardConfig.position.clone()
-            : new THREE.Vector3(
-                hazardConfig.position?.x || 0,
-                hazardConfig.position?.y || 0,
-                hazardConfig.position?.z || 0
-              );
+        const worldHazardPos = vector3FromConfig(hazardConfig.position);
 
         // Create config to pass, ensuring WORLD position is used
         const factoryConfig = {
@@ -416,25 +411,8 @@ export class HoleEntity extends BaseElement {
 
     bumperConfigs.forEach((bumperConfig, index) => {
       try {
-        // Ensure bumper position is WORLD Vector3
-        const worldBumperPos =
-          bumperConfig.position instanceof THREE.Vector3
-            ? bumperConfig.position.clone()
-            : new THREE.Vector3(
-                bumperConfig.position?.x || 0,
-                bumperConfig.position?.y || 0,
-                bumperConfig.position?.z || 0
-              );
-
-        // Ensure bumper rotation is Euler
-        const worldBumperRot =
-          bumperConfig.rotation instanceof THREE.Euler
-            ? bumperConfig.rotation.clone()
-            : new THREE.Euler(
-                bumperConfig.rotation?.x || 0,
-                bumperConfig.rotation?.y || 0,
-                bumperConfig.rotation?.z || 0
-              );
+        const worldBumperPos = vector3FromConfig(bumperConfig.position);
+        const worldBumperRot = eulerFromConfig(bumperConfig.rotation);
 
         // Create visual mesh
         const bumperMaterial = new THREE.MeshStandardMaterial({

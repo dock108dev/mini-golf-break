@@ -91,19 +91,6 @@ function createMockGroup() {
 }
 
 // ---------------------------------------------------------------------------
-// Helper to create a mock ball body
-// ---------------------------------------------------------------------------
-
-function createMockBallBody(x = 0, z = 0) {
-  return {
-    position: { x, y: 0.2, z },
-    velocity: { x: 0, y: 0, z: 0 },
-    sleepState: 0,
-    applyImpulse: jest.fn()
-  };
-}
-
-// ---------------------------------------------------------------------------
 // 1. GameLoopManager dt clamping
 // ---------------------------------------------------------------------------
 
@@ -674,9 +661,6 @@ describe('Page visibility change handling', () => {
       configurable: true
     });
     gameLoopManager._onVisibilityChange();
-
-    // Wait simulated time (advance performance.now)
-    const timeBeforeResume = performance.now();
 
     // Resume
     Object.defineProperty(document, 'visibilityState', {
