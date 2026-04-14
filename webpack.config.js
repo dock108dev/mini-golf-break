@@ -109,6 +109,11 @@ module.exports = (env, argv) => {
       historyApiFallback: true,
       devMiddleware: {
         writeToDisk: true, // Write files to disk in development
+      },
+      // Playwright UAT sets NODE_ENV=test (see tests/uat/playwright.config.js). The default
+      // overlay iframe intercepts clicks and breaks locator.click on #play-course.
+      client: {
+        overlay: process.env.NODE_ENV === 'test' ? false : true
       }
     }
   };

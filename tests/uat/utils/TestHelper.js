@@ -71,6 +71,19 @@ export class TestHelper {
   }
 
   /**
+   * Remove webpack-dev-server's full-page overlay iframe if present (blocks pointer events).
+   * Needed when reuseExistingServer runs a dev server started without NODE_ENV=test.
+   */
+  async dismissWebpackDevServerOverlay() {
+    await this.page.evaluate(() => {
+      const el = document.getElementById('webpack-dev-server-client-overlay');
+      if (el) {
+        el.remove();
+      }
+    });
+  }
+
+  /**
    * Wait for game initialization to complete with robust error handling
    */
   async waitForGameInitialization() {
@@ -98,6 +111,7 @@ export class TestHelper {
         const playButton = await this.page.locator('#play-course');
         if (await playButton.isVisible()) {
           console.log('[TestHelper] Menu screen detected, clicking Play Course button...');
+          await this.dismissWebpackDevServerOverlay();
           await playButton.click();
           await this.page.waitForTimeout(1000);
         }
