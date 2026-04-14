@@ -1,5 +1,3 @@
-import * as CANNON from 'cannon-es';
-import * as THREE from 'three';
 import { PhysicsWorld } from '../physics/PhysicsWorld';
 import { debug } from '../utils/debug';
 
@@ -119,15 +117,15 @@ export class PhysicsManager {
    * Handle collision end events
    * @param {object} event - Collision event
    */
-  handleCollisionEnd(event) {
+  handleCollisionEnd(_event) {
     // Handle end of collision if needed
   }
 
   /**
    * Update the physics simulation
-   * @param {number} deltaTime - Time since last update in seconds
+   * @param {number} _deltaTime - Time since last update in seconds
    */
-  update(deltaTime) {
+  update(_deltaTime) {
     // Skip update if we're in the middle of resetting
     if (this.isResetting) {
       return this;

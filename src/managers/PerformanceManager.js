@@ -1,5 +1,4 @@
 import { debug } from '../utils/debug';
-import * as THREE from 'three';
 
 /**
  * Configuration options for the PerformanceManager

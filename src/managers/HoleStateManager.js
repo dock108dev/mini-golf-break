@@ -122,7 +122,7 @@ export class HoleStateManager {
    * Handle hole started event
    * @param {GameEvent} event - Hole started event
    */
-  handleHoleStarted(event) {
+  handleHoleStarted(_event) {
     const holeIndex = this.game.stateManager.getCurrentHoleNumber() - 1;
     this.updateHoleState(holeIndex, {
       startTime: Date.now(),
@@ -135,7 +135,7 @@ export class HoleStateManager {
    * Handle hole completed event
    * @param {GameEvent} event - Hole completed event
    */
-  handleHoleCompleted(event) {
+  handleHoleCompleted(_event) {
     const holeIndex = this.game.stateManager.getCurrentHoleNumber() - 1;
     const totalStrokes = this.game.scoringSystem.getTotalStrokes();
 

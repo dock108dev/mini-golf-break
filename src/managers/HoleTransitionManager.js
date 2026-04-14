@@ -1,6 +1,4 @@
-import * as THREE from 'three';
 import { EventTypes } from '../events/EventTypes';
-import { GameState } from '../states/GameState';
 import { debug } from '../utils/debug';
 
 /**
@@ -20,10 +18,139 @@ export class HoleTransitionManager {
   }
 
   /**
+   * When the player is past the last hole, publish completion and stop.
+   * @param {number} currentHoleNumber
+   * @param {number} totalHoles
+   * @returns {false}
+   */
+  _abortTransitionNoMoreHoles(currentHoleNumber, totalHoles) {
+    console.warn(
+      `[HoleTransitionManager] No more holes available (current: ${currentHoleNumber}, total: ${totalHoles})`
+    );
+
+    if (this.game.eventManager) {
+      const eventData = { timestamp: Date.now() };
+      debug.log('[HoleTransitionManager] Publishing GAME_COMPLETED event.', eventData);
+      this.game.eventManager.publish(EventTypes.GAME_COMPLETED, eventData, this);
+    } else {
+      console.error(
+        '[HoleTransitionManager] EventManager not available to publish GAME_COMPLETED.'
+      );
+    }
+
+    return false;
+  }
+
+  /**
+   * @param {import('../physics/PhysicsWorld').PhysicsWorld | null} newWorld
+   * @returns {boolean}
+   */
+  _syncCannonDebugAfterReset(newWorld) {
+    if (!newWorld || !newWorld.world) {
+      console.error(
+        '[HoleTransitionManager] Physics world reset failed or returned invalid world.'
+      );
+      return false;
+    }
+
+    debug.log('[HoleTransitionManager] Physics world reset for new hole');
+    if (this.game.cannonDebugRenderer) {
+      this.game.cannonDebugRenderer.clearMeshes();
+      this.game.cannonDebugRenderer.world = newWorld.world;
+      debug.log('[HoleTransitionManager] Updated CannonDebugRenderer world reference.');
+    }
+
+    return true;
+  }
+
+  /**
+   * @param {import('three').Vector3} startPosition
+   */
+  _finalizeNewHoleGameplay(startPosition) {
+    debug.log('[HoleTransitionManager] Creating ball for the new hole...');
+    if (this.game.ballManager) {
+      const ballCreated = this.game.ballManager.createBall(startPosition);
+      if (!ballCreated) {
+        console.error('[HoleTransitionManager] Failed to create ball for new hole!');
+      } else {
+        debug.log('[HoleTransitionManager] Ball created successfully for new hole.');
+      }
+    } else {
+      console.error(
+        '[HoleTransitionManager] BallManager not available to create ball for new hole.'
+      );
+    }
+
+    debug.log('[HoleTransitionManager] Enabling input controller for new hole...');
+    if (this.game.inputController) {
+      this.game.inputController.enableInput();
+      debug.log('[HoleTransitionManager] Input controller enabled.');
+    } else {
+      console.warn('[HoleTransitionManager] InputController not available to enable for new hole.');
+    }
+
+    const debugMode = this.game.stateManager.state.debugMode;
+    if (debugMode) {
+      debug.log('[HoleTransitionManager] Preserving debug mode state:', debugMode);
+      this.game.stateManager.state.debugMode = debugMode;
+    }
+
+    if (this.game.uiManager) {
+      this.game.uiManager.hideTransitionOverlay();
+    }
+  }
+
+  /**
+   * Unload, reset physics, load hole, spawn ball, enable input, hide overlay.
+   * @param {number} targetHoleNumber
+   * @param {number} totalHoles
+   * @returns {Promise<boolean>}
+   */
+  async _executeHoleTransition(targetHoleNumber, totalHoles) {
+    await this.unloadCurrentHole();
+
+    if (this.game.physicsManager?.resetWorld) {
+      const newWorld = await this.game.physicsManager.resetWorld();
+      if (!this._syncCannonDebugAfterReset(newWorld)) {
+        return false;
+      }
+    } else {
+      console.warn('[HoleTransitionManager] Physics world reset not available');
+    }
+
+    const success = await this.loadNewHole(targetHoleNumber);
+    if (!success) {
+      console.error(`[HoleTransitionManager] Failed to load hole ${targetHoleNumber}`);
+      return false;
+    }
+
+    this.game.stateManager.resetForNextHole();
+
+    const newHoleNumber = this.game.stateManager.getCurrentHoleNumber();
+    debug.log(
+      `[HoleTransitionManager] Successfully transitioned to hole ${newHoleNumber} of ${totalHoles}`
+    );
+
+    const holePosition = this.game.course.getHolePosition();
+    const startPosition = this.game.course.getHoleStartPosition();
+
+    if (!holePosition || !startPosition) {
+      console.error('[HoleTransitionManager] Failed to get valid positions for new hole');
+      return false;
+    }
+
+    debug.log('[HoleTransitionManager] New hole position:', holePosition);
+    debug.log('[HoleTransitionManager] New start position:', startPosition);
+
+    this._finalizeNewHoleGameplay(startPosition);
+
+    return true;
+  }
+
+  /**
    * Load the next hole
    */
   async transitionToNextHole() {
-    // Get current hole number from state manager BEFORE unloading
     const currentHoleNumber = this.game.stateManager.getCurrentHoleNumber();
     const totalHoles = this.game.course.getTotalHoles();
     const targetHoleNumber = currentHoleNumber + 1;
@@ -32,141 +159,22 @@ export class HoleTransitionManager {
       `[HoleTransitionManager] Checking transition from hole ${currentHoleNumber} to ${targetHoleNumber} (Total holes: ${totalHoles})`
     );
 
-    // Check if the current hole number is the last hole or beyond
     if (currentHoleNumber >= totalHoles) {
-      console.warn(
-        `[HoleTransitionManager] No more holes available (current: ${currentHoleNumber}, total: ${totalHoles})`
-      );
-
-      // --- PUBLISH GAME COMPLETED EVENT ---
-      if (this.game.eventManager) {
-        // Publish event - UIManager will fetch scores directly
-        const eventData = { timestamp: Date.now() }; // Simple payload
-        debug.log('[HoleTransitionManager] Publishing GAME_COMPLETED event.', eventData);
-        this.game.eventManager.publish(EventTypes.GAME_COMPLETED, eventData, this);
-      } else {
-        console.error(
-          '[HoleTransitionManager] EventManager not available to publish GAME_COMPLETED.'
-        );
-      }
-      // --- END PUBLISH ---
-
-      // Optionally set game state if needed, but event should trigger UI
-      // this.game.stateManager.setGameState(GameState.GAME_COMPLETED);
-
-      return false; // Stop the transition process
+      return this._abortTransitionNoMoreHoles(currentHoleNumber, totalHoles);
     }
 
     debug.log(
       `[HoleTransitionManager] Starting transition to hole ${targetHoleNumber} of ${totalHoles}`
     );
 
-    // Show loading overlay during transition
     if (this.game.uiManager) {
       this.game.uiManager.showTransitionOverlay();
     }
 
     try {
-      // First clean up the current hole completely
-      await this.unloadCurrentHole();
-
-      // Initialize physics world through the physics manager's reset method
-      let newWorld = null;
-      if (this.game.physicsManager?.resetWorld) {
-        newWorld = await this.game.physicsManager.resetWorld(); // Capture the returned world
-        if (newWorld && newWorld.world) {
-          debug.log('[HoleTransitionManager] Physics world reset for new hole');
-          // Update the CannonDebugRenderer with the new world instance
-          if (this.game.cannonDebugRenderer) {
-            // Explicitly clear old meshes from the renderer
-            this.game.cannonDebugRenderer.clearMeshes();
-            this.game.cannonDebugRenderer.world = newWorld.world; // Assign the inner CANNON.World
-            debug.log('[HoleTransitionManager] Updated CannonDebugRenderer world reference.');
-          }
-        } else {
-          console.error(
-            '[HoleTransitionManager] Physics world reset failed or returned invalid world.'
-          );
-          return false; // Stop transition if physics reset failed
-        }
-      } else {
-        console.warn('[HoleTransitionManager] Physics world reset not available');
-      }
-
-      // Load the new hole - pass the target hole number explicitly
-      const success = await this.loadNewHole(targetHoleNumber);
-      if (!success) {
-        console.error(`[HoleTransitionManager] Failed to load hole ${targetHoleNumber}`);
-        return false;
-      }
-
-      // Update state after successful hole load
-      // This updates the state manager's internal hole number to match the loaded hole
-      this.game.stateManager.resetForNextHole();
-
-      // Log the actual hole number after state update
-      const newHoleNumber = this.game.stateManager.getCurrentHoleNumber();
-      debug.log(
-        `[HoleTransitionManager] Successfully transitioned to hole ${newHoleNumber} of ${totalHoles}`
-      );
-
-      // Get hole positions for verification
-      const holePosition = this.game.course.getHolePosition();
-      const startPosition = this.game.course.getHoleStartPosition();
-
-      if (!holePosition || !startPosition) {
-        console.error('[HoleTransitionManager] Failed to get valid positions for new hole');
-        return false;
-      }
-
-      debug.log('[HoleTransitionManager] New hole position:', holePosition);
-      debug.log('[HoleTransitionManager] New start position:', startPosition);
-
-      // --- CREATE BALL FOR NEW HOLE ---
-      debug.log('[HoleTransitionManager] Creating ball for the new hole...');
-      if (this.game.ballManager) {
-        const ballCreated = this.game.ballManager.createBall(startPosition);
-        if (!ballCreated) {
-          console.error('[HoleTransitionManager] Failed to create ball for new hole!');
-          // Maybe return false or throw error?
-        } else {
-          debug.log('[HoleTransitionManager] Ball created successfully for new hole.');
-        }
-      } else {
-        console.error(
-          '[HoleTransitionManager] BallManager not available to create ball for new hole.'
-        );
-      }
-      // --- END CREATE BALL ---
-
-      // --- ENABLE INPUT FOR NEW HOLE ---
-      debug.log('[HoleTransitionManager] Enabling input controller for new hole...');
-      if (this.game.inputController) {
-        this.game.inputController.enableInput();
-        debug.log('[HoleTransitionManager] Input controller enabled.');
-      } else {
-        console.warn(
-          '[HoleTransitionManager] InputController not available to enable for new hole.'
-        );
-      }
-      // --- END ENABLE INPUT ---
-
-      // Preserve debug mode state
-      const debugMode = this.game.stateManager.state.debugMode;
-      if (debugMode) {
-        debug.log('[HoleTransitionManager] Preserving debug mode state:', debugMode);
-        this.game.stateManager.state.debugMode = debugMode;
-      }
-
-      // Hide loading overlay now that the new hole is ready
-      if (this.game.uiManager) {
-        this.game.uiManager.hideTransitionOverlay();
-      }
-
-      return true;
+      return await this._executeHoleTransition(targetHoleNumber, totalHoles);
     } catch (error) {
       console.error('[HoleTransitionManager] Error during hole transition:', error);
-      // Hide loading overlay on error as well
       if (this.game.uiManager) {
         this.game.uiManager.hideTransitionOverlay();
       }
@@ -374,7 +382,7 @@ export class HoleTransitionManager {
    * Update loop for the transition manager
    * @param {number} dt - Delta time in seconds
    */
-  update(dt) {
+  update(_dt) {
     if (!this.isTransitioning) {
       return;
     }
