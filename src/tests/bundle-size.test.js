@@ -4,17 +4,18 @@
  * Validates that the production build stays within acceptable size limits.
  * Run after `npm run build` to check chunk sizes.
  *
- * Baseline recorded 2026-04-09:
+ * Baseline recorded 2026-04-14 (production `npm run build`):
  *
  * | Chunk    | Raw (KB) | Gzipped (KB) | Contents                        |
- * |----------|----------|-------------- |---------------------------------|
- * | runtime  |     1.2  |         0.7   | Webpack runtime                 |
- * | three    |   808.4  |       202.8   | Three.js                        |
- * | cannon   |   121.0  |        34.2   | Cannon-es physics               |
- * | vendors  |    11.4  |         4.0   | three-csg-ts, css-loader, etc.  |
- * | main     |   345.7  |        71.5   | App code + mechanics + themes   |
- * |----------|----------|---------------|                                 |
- * | TOTAL    |  1287    |       313     |                                 |
+ * |----------|----------|--------------|---------------------------------|
+ * | runtime  |     ~3   |         ~1   | Webpack runtime                 |
+ * | three    |   ~808   |       ~204   | Three.js                        |
+ * | cannon   |   ~121   |        ~34   | Cannon-es physics               |
+ * | vendors  |    ~19   |         ~7   | three-csg-ts, Capacitor, etc.   |
+ * | main     |   ~296   |        ~64   | App code + mechanics + themes   |
+ * | course   |   ~159   |        ~27   | Async course chunk              |
+ * |----------|----------|--------------|---------------------------------|
+ * | TOTAL    |  ~1.5MB  |       ~338   | All .js gzipped                 |
  *
  * Mechanics code (MechanicBase, MechanicRegistry, all 12 mechanic types,
  * OrbitalDriftCourse, theme system) is bundled in the main chunk only —
@@ -30,17 +31,33 @@ const zlib = require('zlib');
 
 const DIST_DIR = path.resolve(__dirname, '../../dist');
 const GZIP_LIMIT_BYTES = 500 * 1024; // 500KB gzipped per chunk
+const TOTAL_GZIP_LIMIT_BYTES = 650 * 1024; // ~2x current ~338KB total (all JS)
+
+function distNeedsProductionBuild() {
+  if (!fs.existsSync(DIST_DIR)) {
+    return true;
+  }
+  const files = fs.readdirSync(DIST_DIR);
+  const jsCount = files.filter(f => f.endsWith('.js')).length;
+  if (jsCount === 0) {
+    return true;
+  }
+  // Dev server writes bundle.js without contenthash — never use it for size checks
+  if (files.includes('bundle.js')) {
+    return true;
+  }
+  // Production entry is main.<contenthash>.js
+  const hasProdMain = files.some(f => /^main\.[a-f0-9]+\.js$/i.test(f));
+  return !hasProdMain;
+}
 
 describe('Production Bundle Size', () => {
   let jsFiles;
 
   beforeAll(() => {
-    // Build if dist doesn't exist or is stale
-    if (
-      !fs.existsSync(DIST_DIR) ||
-      fs.readdirSync(DIST_DIR).filter(f => f.endsWith('.js')).length === 0
-    ) {
-      execSync('npm run build', { cwd: path.resolve(__dirname, '../..'), stdio: 'pipe' });
+    const root = path.resolve(__dirname, '../..');
+    if (distNeedsProductionBuild()) {
+      execSync('npm run build', { cwd: root, stdio: 'pipe' });
     }
     jsFiles = fs.readdirSync(DIST_DIR).filter(f => f.endsWith('.js'));
   });
@@ -52,7 +69,7 @@ describe('Production Bundle Size', () => {
     });
 
     expect(chunkNames).toEqual(
-      expect.arrayContaining(['runtime', 'three', 'cannon', 'vendors', 'main'])
+      expect.arrayContaining(['runtime', 'three', 'cannon', 'vendors', 'main', 'course'])
     );
   });
 
@@ -104,7 +121,7 @@ describe('Production Bundle Size', () => {
   });
 
   test('main chunk raw size is logged for budget tracking', () => {
-    const mainFile = jsFiles.find(f => f.startsWith('main.'));
+    const mainFile = jsFiles.find(f => /^main\.[a-f0-9]+\.js$/i.test(f));
     expect(mainFile).toBeDefined();
     const mainSize = fs.statSync(path.join(DIST_DIR, mainFile)).size;
     const mainKB = (mainSize / 1024).toFixed(1);
@@ -113,7 +130,7 @@ describe('Production Bundle Size', () => {
     expect(mainSize).toBeGreaterThan(0);
   });
 
-  test('total gzipped bundle is under 500KB', () => {
+  test('total gzipped bundle stays within budget', () => {
     let totalGzip = 0;
     for (const file of jsFiles) {
       const raw = fs.readFileSync(path.join(DIST_DIR, file));
@@ -122,7 +139,6 @@ describe('Production Bundle Size', () => {
     const totalKB = (totalGzip / 1024).toFixed(1);
     // eslint-disable-next-line no-console
     console.log(`  Total gzipped: ${totalKB} KB`);
-    // Total should stay reasonable — allow 2x current baseline (~313KB) for growth
-    expect(totalGzip).toBeLessThan(650 * 1024);
+    expect(totalGzip).toBeLessThan(TOTAL_GZIP_LIMIT_BYTES);
   });
 });

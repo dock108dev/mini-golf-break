@@ -1,6 +1,7 @@
 module.exports = {
   // Root level options that apply to all projects
   testTimeout: 10000,
+  coverageReporters: ['text', 'lcov', 'html', 'json'],
   moduleNameMapper: {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy'
   },
@@ -30,7 +31,6 @@ module.exports = {
         '!src/**/*.spec.js'
       ],
       coverageDirectory: 'coverage',
-      coverageReporters: ['text', 'lcov', 'html', 'json'],
       coverageThreshold: {
         global: {
           functions: 60,
