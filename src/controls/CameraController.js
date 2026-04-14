@@ -297,6 +297,72 @@ export class CameraController {
   }
 
   /**
+   * @param {{clone?:Function,x?:number,y?:number,z?:number}} v
+   * @returns {THREE.Vector3}
+   */
+  _vector3FromLike(v) {
+    return v.clone ? v.clone() : new THREE.Vector3(v.x, v.y, v.z);
+  }
+
+  /**
+   * @param {object} hint
+   * @returns {{ cameraPosition: THREE.Vector3, lookAtPoint: THREE.Vector3 }}
+   */
+  _computeCameraFromHint(hint) {
+    const cameraPosition = this._vector3FromLike(hint.offset);
+    const lookAtPoint = this._vector3FromLike(hint.lookAt);
+    debug.log(
+      `Using camera hint: offset=${cameraPosition.x},${cameraPosition.y},${cameraPosition.z} lookAt=${lookAtPoint.x},${lookAtPoint.y},${lookAtPoint.z}`
+    );
+    return { cameraPosition, lookAtPoint };
+  }
+
+  /**
+   * @param {THREE.Vector3} worldStartPosition
+   * @param {THREE.Vector3} worldHolePosition
+   * @returns {{ cameraPosition: THREE.Vector3, lookAtPoint: THREE.Vector3 }}
+   */
+  _computeDefaultHoleCamera(worldStartPosition, worldHolePosition) {
+    const midpoint = new THREE.Vector3()
+      .addVectors(worldStartPosition, worldHolePosition)
+      .multiplyScalar(0.5);
+
+    const width = Math.abs(worldStartPosition.x - worldHolePosition.x);
+    const length = Math.abs(worldStartPosition.z - worldHolePosition.z);
+    const diagonal = Math.sqrt(width * width + length * length);
+
+    const minHeight = 12.0;
+    const baseHeight = Math.max(diagonal * 1.0, minHeight);
+    const courseDirection = new THREE.Vector3()
+      .subVectors(worldHolePosition, worldStartPosition)
+      .normalize();
+    const cameraOffset = new THREE.Vector3(
+      -courseDirection.z * 0.6,
+      baseHeight,
+      courseDirection.x * 0.6
+    )
+      .normalize()
+      .multiplyScalar(diagonal * 1.2);
+    const weightToStart = 0.65;
+    const weightedMidpoint = new THREE.Vector3().lerpVectors(
+      midpoint,
+      worldStartPosition,
+      weightToStart
+    );
+    const behindBallDirection = new THREE.Vector3()
+      .subVectors(worldStartPosition, worldHolePosition)
+      .normalize();
+    const behindBallOffset = behindBallDirection.multiplyScalar(diagonal * 0.2);
+    const adjustedMidpoint = weightedMidpoint.clone().add(behindBallOffset);
+    const cameraPosition = adjustedMidpoint.clone().add(cameraOffset);
+
+    const lookAtPoint = new THREE.Vector3().lerpVectors(midpoint, worldStartPosition, 0.2);
+    lookAtPoint.y -= 1.5;
+
+    return { cameraPosition, lookAtPoint };
+  }
+
+  /**
    * Position camera to view the current hole
    * @param {Object} [cameraHint] - Optional camera hint with offset and lookAt vectors
    * @param {THREE.Vector3} [cameraHint.offset] - Camera position offset from hole center
@@ -308,7 +374,6 @@ export class CameraController {
       return this;
     }
 
-    // Get WORLD hole and start positions directly from course manager
     const worldHolePosition = this.course.getHolePosition();
     if (!worldHolePosition) {
       console.warn('Cannot position camera: Hole position not available');
@@ -325,82 +390,33 @@ export class CameraController {
         `World Start: ${worldStartPosition.toArray().join(',')}, World Hole: ${worldHolePosition.toArray().join(',')}`
     );
 
-    // If no hint passed explicitly, check the course for one
     const hint = cameraHint || (this.course.getCameraHint ? this.course.getCameraHint() : null);
 
-    // Temporarily adjust controls to allow more flexible camera placement
     let originalMaxPolarAngle = Math.PI / 2;
     if (this.controls) {
       originalMaxPolarAngle = this.controls.maxPolarAngle;
-      this.controls.maxPolarAngle = Math.PI; // Allow full rotation for initial positioning
+      this.controls.maxPolarAngle = Math.PI;
     }
 
     let cameraPosition;
     let lookAtPoint;
 
     if (hint && hint.offset && hint.lookAt) {
-      // Use camera hint values directly
-      cameraPosition = hint.offset.clone
-        ? hint.offset.clone()
-        : new THREE.Vector3(hint.offset.x, hint.offset.y, hint.offset.z);
-      lookAtPoint = hint.lookAt.clone
-        ? hint.lookAt.clone()
-        : new THREE.Vector3(hint.lookAt.x, hint.lookAt.y, hint.lookAt.z);
-      debug.log(
-        `Using camera hint: offset=${cameraPosition.x},${cameraPosition.y},${cameraPosition.z} lookAt=${lookAtPoint.x},${lookAtPoint.y},${lookAtPoint.z}`
-      );
+      ({ cameraPosition, lookAtPoint } = this._computeCameraFromHint(hint));
     } else {
-      // Default positioning: calculate from hole geometry
-      // Calculate midpoint between WORLD tee and hole
-      const midpoint = new THREE.Vector3()
-        .addVectors(worldStartPosition, worldHolePosition)
-        .multiplyScalar(0.5);
-
-      // --- Calculate course dimensions (using WORLD coordinates) ---
-      const width = Math.abs(worldStartPosition.x - worldHolePosition.x);
-      const length = Math.abs(worldStartPosition.z - worldHolePosition.z);
-      const diagonal = Math.sqrt(width * width + length * length);
-
-      // --- Calculate viewing parameters (using WORLD coordinates) ---
-      const minHeight = 12.0;
-      const baseHeight = Math.max(diagonal * 1.0, minHeight);
-      const courseDirection = new THREE.Vector3()
-        .subVectors(worldHolePosition, worldStartPosition)
-        .normalize();
-      const cameraOffset = new THREE.Vector3(
-        -courseDirection.z * 0.6,
-        baseHeight,
-        courseDirection.x * 0.6
-      )
-        .normalize()
-        .multiplyScalar(diagonal * 1.2);
-      const weightToStart = 0.65;
-      const weightedMidpoint = new THREE.Vector3().lerpVectors(
-        midpoint,
+      ({ cameraPosition, lookAtPoint } = this._computeDefaultHoleCamera(
         worldStartPosition,
-        weightToStart
-      );
-      const behindBallDirection = new THREE.Vector3()
-        .subVectors(worldStartPosition, worldHolePosition)
-        .normalize();
-      const behindBallOffset = behindBallDirection.multiplyScalar(diagonal * 0.2);
-      const adjustedMidpoint = weightedMidpoint.clone().add(behindBallOffset);
-      cameraPosition = adjustedMidpoint.clone().add(cameraOffset);
-
-      // Look at a point that ensures we can see the entire hole (WORLD coordinates)
-      lookAtPoint = new THREE.Vector3().lerpVectors(midpoint, worldStartPosition, 0.2);
-      lookAtPoint.y -= 1.5; // Lower the look-at point
+        worldHolePosition
+      ));
     }
 
-    // Set camera position
     this.camera.position.copy(cameraPosition);
     this.camera.lookAt(lookAtPoint);
 
-    // Update orbit controls target
     if (this.controls) {
       this.controls.target.copy(lookAtPoint);
       this.controls.update();
-      this.controls.maxPolarAngle = originalMaxPolarAngle; // Restore angle limit
+      this.controls.maxPolarAngle = originalMaxPolarAngle;
     }
 
     return this;
@@ -425,144 +441,148 @@ export class CameraController {
   }
 
   /**
-   * Update camera position to follow the ball
-   * @param {number} deltaTime - Time since last update in seconds
+   * @param {object} ball
+   * @param {THREE.Vector3} ballPosition
    */
-  updateCameraFollowBall(deltaTime) {
-    // Get the ball reference from the ball manager
+  _followCameraDuringTransition(ball, ballPosition) {
+    let cameraPosition;
+    if (ball.body && ball.body.velocity) {
+      const velocity = ball.body.velocity;
+      const speed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+      if (speed > 0.5) {
+        const directionNormalized = new THREE.Vector3(velocity.x, 0, velocity.z).normalize();
+        cameraPosition = ballPosition
+          .clone()
+          .sub(directionNormalized.multiplyScalar(4))
+          .add(new THREE.Vector3(0, 8, 0));
+      } else {
+        cameraPosition = ballPosition.clone().add(new THREE.Vector3(2, 8, 4));
+      }
+    } else {
+      cameraPosition = ballPosition.clone().add(new THREE.Vector3(2, 8, 4));
+    }
+
+    this.camera.position.lerp(cameraPosition, 0.15);
+
+    const lookPoint = ballPosition.clone();
+    lookPoint.y -= 1.5;
+    this.camera.lookAt(lookPoint);
+
+    if (this.controls) {
+      this.controls.target.copy(lookPoint);
+      this.controls.update();
+    }
+  }
+
+  /**
+   * @param {object} ball
+   * @param {THREE.Vector3} ballPosition
+   */
+  _followCameraBallInMotion(ball, ballPosition) {
+    this._userAdjustedCamera = false;
+
+    if (this.controls) {
+      const targetPosition = ballPosition.clone();
+      const velocity = ball.body.velocity;
+      const speed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
+      const lookAheadDistance = 1.5;
+      const minSpeedForLookAhead = 0.1;
+
+      if (speed > minSpeedForLookAhead) {
+        const lookAheadDirection = new THREE.Vector3(velocity.x, 0, velocity.z).normalize();
+        targetPosition.add(lookAheadDirection.multiplyScalar(lookAheadDistance));
+      }
+      targetPosition.y -= 1.5;
+      this.controls.target.lerp(targetPosition, 0.1);
+
+      const cameraDistance = 8;
+      const cameraHeight = 6;
+      let idealCameraPosition;
+      if (speed > minSpeedForLookAhead) {
+        const cameraOffset = new THREE.Vector3(-velocity.x, cameraHeight, -velocity.z)
+          .normalize()
+          .multiplyScalar(cameraDistance);
+        idealCameraPosition = ballPosition.clone().add(cameraOffset);
+      } else {
+        const currentDir = new THREE.Vector3()
+          .subVectors(this.camera.position, ballPosition)
+          .normalize();
+        currentDir.y = 0;
+        currentDir.normalize().multiplyScalar(cameraDistance * 0.7);
+        currentDir.y = cameraHeight;
+        idealCameraPosition = ballPosition.clone().add(currentDir);
+      }
+      this.camera.position.lerp(idealCameraPosition, 0.05);
+      this.controls.update();
+    } else {
+      const cameraTargetPosition = ballPosition.clone().add(new THREE.Vector3(3, 15, 8));
+      this.camera.position.lerp(cameraTargetPosition, 0.1);
+      this.camera.lookAt(ballPosition);
+    }
+  }
+
+  /**
+   * @param {object} _ball
+   * @param {THREE.Vector3} ballPosition
+   */
+  _followCameraBallStopped(_ball, ballPosition) {
+    if (!this._userAdjustedCamera && this.controls && this.course) {
+      const worldHolePosition = this.course.getHolePosition();
+      if (worldHolePosition) {
+        const directionToHole = new THREE.Vector3()
+          .subVectors(worldHolePosition, ballPosition)
+          .normalize();
+        const weightedMidpoint = new THREE.Vector3().lerpVectors(
+          ballPosition,
+          worldHolePosition,
+          0.4
+        );
+        weightedMidpoint.y -= 1.5;
+        this.controls.target.lerp(weightedMidpoint, 0.03);
+
+        if (this.camera && !this._isRepositioning) {
+          const distanceToHole = ballPosition.distanceTo(worldHolePosition);
+          const reversedDirection = directionToHole.clone().negate().normalize();
+          const idealOffset = new THREE.Vector3(
+            -directionToHole.z * 0.4,
+            Math.max(12, distanceToHole * 0.8),
+            directionToHole.x * 0.4
+          )
+            .normalize()
+            .multiplyScalar(distanceToHole * 1.2);
+          const behindBallOffset = reversedDirection.multiplyScalar(
+            Math.max(6, distanceToHole * 0.3)
+          );
+          const desiredCameraPos = ballPosition.clone().add(behindBallOffset).add(idealOffset);
+          this.camera.position.lerp(desiredCameraPos, 0.02);
+        }
+      }
+    } else if (this.controls && !this._userAdjustedCamera) {
+      this.controls.target.lerp(ballPosition, 0.1);
+    }
+  }
+
+  /**
+   * Update camera position to follow the ball
+   * @param {number} _deltaTime - Time since last update in seconds (reserved for smoothing)
+   */
+  updateCameraFollowBall(_deltaTime) {
     const ball = this.game.ballManager ? this.game.ballManager.ball : null;
     if (!ball || !ball.mesh) {
       return;
     }
 
-    const ballPosition = ball.mesh.position.clone(); // Ball position is already WORLD
+    const ballPosition = ball.mesh.position.clone();
 
-    // During transition, always follow the ball regardless of user adjustment
     if (this.isTransitioning) {
-      // Position camera slightly above and behind ball with high angle
-      // Calculate direction based on ball's velocity if available
-      let cameraPosition;
-      if (ball.body && ball.body.velocity) {
-        const velocity = ball.body.velocity;
-        const speed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
-        if (speed > 0.5) {
-          // If ball is moving with speed, position camera behind the movement direction
-          const directionNormalized = new THREE.Vector3(velocity.x, 0, velocity.z).normalize();
-          cameraPosition = ballPosition
-            .clone()
-            .sub(directionNormalized.multiplyScalar(4)) // Position behind ball
-            .add(new THREE.Vector3(0, 8, 0)); // Raise up
-        } else {
-          // Default position if not moving fast
-          cameraPosition = ballPosition.clone().add(new THREE.Vector3(2, 8, 4));
-        }
-      } else {
-        // Fallback if no velocity data
-        cameraPosition = ballPosition.clone().add(new THREE.Vector3(2, 8, 4));
-      }
-
-      // Smooth camera movement
-      this.camera.position.lerp(cameraPosition, 0.15); // Increased lerp factor for transition
-
-      // Look at a point slightly below the ball to shift view down
-      const lookPoint = ballPosition.clone();
-      lookPoint.y -= 1.5;
-      this.camera.lookAt(lookPoint);
-
-      if (this.controls) {
-        this.controls.target.copy(lookPoint);
-        this.controls.update();
-      }
+      this._followCameraDuringTransition(ball, ballPosition);
       return;
     }
 
-    // Always reset user adjustment flag when ball is moving
-    // This ensures that after a shot, the camera starts following again
     if (this.game.stateManager && this.game.stateManager.isBallInMotion()) {
-      // Reset the user adjustment flag when ball starts moving
-      this._userAdjustedCamera = false;
-
-      if (this.controls) {
-        // Calculate target point slightly ahead of the ball (WORLD)
-        const targetPosition = ballPosition.clone(); // Default to ball world position
-        const velocity = ball.body.velocity;
-        const speed = Math.sqrt(velocity.x * velocity.x + velocity.z * velocity.z);
-        const lookAheadDistance = 1.5;
-        const minSpeedForLookAhead = 0.1;
-
-        if (speed > minSpeedForLookAhead) {
-          const lookAheadDirection = new THREE.Vector3(velocity.x, 0, velocity.z).normalize();
-          targetPosition.add(lookAheadDirection.multiplyScalar(lookAheadDistance));
-        }
-        targetPosition.y -= 1.5; // Lower target
-        this.controls.target.lerp(targetPosition, 0.1);
-
-        // Calculate ideal camera position (WORLD)
-        const cameraDistance = 8;
-        const cameraHeight = 6;
-        let idealCameraPosition;
-        if (speed > minSpeedForLookAhead) {
-          const cameraOffset = new THREE.Vector3(-velocity.x, cameraHeight, -velocity.z)
-            .normalize()
-            .multiplyScalar(cameraDistance);
-          idealCameraPosition = ballPosition.clone().add(cameraOffset);
-        } else {
-          const currentDir = new THREE.Vector3()
-            .subVectors(this.camera.position, ballPosition)
-            .normalize();
-          currentDir.y = 0;
-          currentDir.normalize().multiplyScalar(cameraDistance * 0.7);
-          currentDir.y = cameraHeight;
-          idealCameraPosition = ballPosition.clone().add(currentDir);
-        }
-        this.camera.position.lerp(idealCameraPosition, 0.05);
-        this.controls.update();
-      } else {
-        // Fallback if no controls (position relative to WORLD ball pos)
-        const cameraTargetPosition = ballPosition.clone().add(new THREE.Vector3(3, 15, 8));
-        this.camera.position.lerp(cameraTargetPosition, 0.1);
-        this.camera.lookAt(ballPosition);
-      }
+      this._followCameraBallInMotion(ball, ballPosition);
     } else {
-      // When ball is stopped, calculate target relative to WORLD hole position
-      if (!this._userAdjustedCamera && this.controls && this.course) {
-        const worldHolePosition = this.course.getHolePosition(); // Already returns WORLD
-        if (worldHolePosition) {
-          const directionToHole = new THREE.Vector3()
-            .subVectors(worldHolePosition, ballPosition)
-            .normalize();
-          const weightedMidpoint = new THREE.Vector3().lerpVectors(
-            ballPosition,
-            worldHolePosition,
-            0.4
-          );
-          weightedMidpoint.y -= 1.5;
-          this.controls.target.lerp(weightedMidpoint, 0.03);
-
-          // Calculate ideal stopped camera position (using WORLD coordinates)
-          if (this.camera && !this._isRepositioning) {
-            const distanceToHole = ballPosition.distanceTo(worldHolePosition);
-            const reversedDirection = directionToHole.clone().negate().normalize();
-            const idealOffset = new THREE.Vector3(
-              -directionToHole.z * 0.4,
-              Math.max(12, distanceToHole * 0.8),
-              directionToHole.x * 0.4
-            )
-              .normalize()
-              .multiplyScalar(distanceToHole * 1.2);
-            // Increase minimum distance behind ball from 4 to 6
-            const behindBallOffset = reversedDirection.multiplyScalar(
-              Math.max(6, distanceToHole * 0.3)
-            );
-            const desiredCameraPos = ballPosition.clone().add(behindBallOffset).add(idealOffset);
-            this.camera.position.lerp(desiredCameraPos, 0.02);
-          }
-        }
-      } else if (this.controls && !this._userAdjustedCamera) {
-        // Fallback: If course isn't available but user hasn't adjusted camera
-        this.controls.target.lerp(ballPosition, 0.1);
-      }
-      // If user has adjusted camera, do nothing - let them control it
+      this._followCameraBallStopped(ball, ballPosition);
     }
   }
 

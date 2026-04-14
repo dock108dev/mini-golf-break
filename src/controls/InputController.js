@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { EventTypes } from '../events/EventTypes';
-import { debug } from '../utils/debug';
 import { DeviceCapabilities } from './DeviceCapabilities';
 
 /** Handles all user input for aiming and hitting the ball. */

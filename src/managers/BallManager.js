@@ -123,6 +123,50 @@ export class BallManager {
   }
 
   /**
+   * @param {THREE.Vector3|object} meshPosition
+   * @returns {THREE.Vector3|{x:number,y:number,z:number}}
+   */
+  _cloneMeshPositionForEvent(meshPosition) {
+    const pos = meshPosition;
+    return typeof pos.clone === 'function' ? pos.clone() : { x: pos.x, y: pos.y, z: pos.z };
+  }
+
+  /**
+   * @param {THREE.Vector3|undefined} worldStartPosition
+   * @returns {THREE.Vector3}
+   */
+  _normalizeWorldStartPosition(worldStartPosition) {
+    if (worldStartPosition && worldStartPosition instanceof THREE.Vector3) {
+      return worldStartPosition;
+    }
+    console.error(
+      '[BallManager] Invalid worldStartPosition argument provided:',
+      worldStartPosition
+    );
+    let resolved = this.game.course?.getHoleStartPosition();
+    console.warn('[BallManager] Using course start position as fallback.');
+    if (!resolved) {
+      resolved = new THREE.Vector3(0, 0, 0);
+      console.error(
+        '[BallManager] Fallback start position also invalid! Using absolute default (0,0,0).'
+      );
+    }
+    return resolved;
+  }
+
+  _publishBallCreatedEvent() {
+    if (!this.game.eventManager) {
+      return;
+    }
+    const positionClone = this._cloneMeshPositionForEvent(this.ball.mesh.position);
+    this.game.eventManager.publish(
+      EventTypes.BALL_CREATED,
+      { ball: this.ball, position: positionClone },
+      this
+    );
+  }
+
+  /**
    * Create a new ball at the correct world start position
    * @param {THREE.Vector3} worldStartPosition - The WORLD position where the ball should be created
    * @private
@@ -137,23 +181,7 @@ export class BallManager {
 
     debug.log('[BallManager] Creating new ball (Course seems ready)');
 
-    // Validate start position (passed argument - should be world coords)
-    if (!worldStartPosition || !(worldStartPosition instanceof THREE.Vector3)) {
-      console.error(
-        '[BallManager] Invalid worldStartPosition argument provided:',
-        worldStartPosition
-      );
-      // Try getting from course config as fallback
-      worldStartPosition = this.game.course?.getHoleStartPosition();
-      console.warn('[BallManager] Using course start position as fallback.');
-      if (!worldStartPosition) {
-        // If fallback also fails
-        worldStartPosition = new THREE.Vector3(0, 0, 0); // Use 0,0,0 base, height added later
-        console.error(
-          '[BallManager] Fallback start position also invalid! Using absolute default (0,0,0).'
-        );
-      }
-    }
+    worldStartPosition = this._normalizeWorldStartPosition(worldStartPosition);
 
     // Clean up existing ball if any
     this.removeBall();
@@ -212,21 +240,7 @@ export class BallManager {
     // Store initial safe position
     this.lastBallPosition.copy(this.ball.mesh.position);
 
-    // Publish the ball created event
-    if (this.game.eventManager) {
-      const positionClone = this.ball.mesh.position.clone
-        ? this.ball.mesh.position.clone()
-        : {
-            x: this.ball.mesh.position.x,
-            y: this.ball.mesh.position.y,
-            z: this.ball.mesh.position.z
-          };
-      this.game.eventManager.publish(
-        EventTypes.BALL_CREATED,
-        { ball: this.ball, position: positionClone },
-        this
-      );
-    }
+    this._publishBallCreatedEvent();
 
     // Update camera to follow new ball
     if (this.game.cameraController) {

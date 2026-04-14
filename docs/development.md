@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Node.js 20+
+- Node.js 20+ locally; CI uses Node.js 24
 - npm
 
 ## Setup
