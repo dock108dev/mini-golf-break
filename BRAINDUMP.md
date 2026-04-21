@@ -1,768 +1,444 @@
-# mini-golf-break
+# Mini Golf — BRAINDUMP.md
 
-Space Mini Golf — 18-Hole Course Braindump
+## TL;DR
 
-What this is
+It works. It’s not a game yet.
 
-This is the product/design braindump for taking the current mini golf prototype from “8-hole basic space POC” into a full 18-hole, visually interesting, mechanically fair, actually playable course with a clean path for future course creation.
+Right now this is:
+- ball physics in a box
+- random objects placed in space
+- low readability
+- no real hole identity
+- no motion
+- weak theme usage
 
-This is not just “make more holes.” The goal is to:
-	•	replace placeholder-feeling geometry with intentional hole design
-	•	eliminate broken or immersion-breaking course behavior
-	•	make obstacles matter and sit in the actual line of play
-	•	create a full 18-hole themed course that feels like one coherent place
-	•	define reusable course-building rules so future holes/courses are much easier to author
-	•	keep the game readable and fun, not over-engineered nonsense
+What it needs:
+- **readable holes**
+- **reliable interactions**
+- **defined obstacle systems**
+- **actual hole design (not object placement)**
+- **motion + timing**
+- **theme-driven mechanics**
 
-⸻
+This is not a polish problem.  
+This is a **design language problem**.
 
-Current state, bluntly
+---
 
-The current prototype is good enough to prove the idea, but not good enough to trust as a real course.
+## Current State (Honest)
 
-Right now the course sounds like it has a few core problems:
-	•	only 8 holes
-	•	most holes are basically one shape with a few attached props
-	•	some obstacles are decorative more than gameplay-relevant
-	•	weird geometry / collision issues, including things like holes under the green
-	•	questionable routing / unclear intended shot path
-	•	likely inconsistent scale, collision, friction, slope, or cup placement rules
-	•	no strong authoring pattern for building more content cleanly
+### What works
+- Ball movement exists
+- Holes technically function
+- Basic UI/strokes tracking exists
+- Theme direction (space) is started
+- Some obstacles visually imply interaction
 
-That means the next step is not just making 10 more holes. The next step is:
-	1.	audit what is currently working and broken
-	2.	define a real hole design language
-	3.	rebuild or heavily revise the existing holes under that language
-	4.	expand to a full 18-hole course
-	5.	leave behind a course framework/template so this does not become painful every time we add content
+### What doesn’t
+- You can’t reliably read a hole
+- You don’t know what matters vs decoration
+- Objects feel inconsistent
+- Layouts feel the same
+- Nothing moves
+- Theme doesn’t affect gameplay
+- Lighting actively hurts clarity
+- Some cups are hidden or hard to see
 
-⸻
+---
 
-Product goal
+## Core Problem
 
-Create a space-themed 18-hole mini golf course that:
-	•	looks cool immediately
-	•	feels readable and fair on first play
-	•	has enough variety that players remember individual holes
-	•	includes trick shots, banks, timing, alternate routes, and risk/reward
-	•	avoids cheap randomness or broken physics traps
-	•	has strong visual identity without sacrificing gameplay clarity
-	•	supports future content packs / new courses without reinventing the pipeline
+This is not mini golf yet.
 
-The course should feel like a real shipped first course, not a tech demo.
+It is:
+> “A physics sandbox with golf controls”
 
-⸻
+Mini golf is:
+> “Readable geometry + intentional shots + consistent rules + small surprises”
 
-Experience goal
+Right now:
+- holes are not designed → they are assembled
+- objects are not systems → they are props
+- theme is not gameplay → it is background
 
-The player should feel:
-	•	“oh this is actually polished”
-	•	“this hole has an idea”
-	•	“I can see what the game wants from me”
-	•	“I messed that up” rather than “the game screwed me”
-	•	“I want to see the next hole”
+---
 
-Every hole should have a readable gimmick or identity, but still feel like mini golf.
+## What Mini Golf Needs (Non-Negotiables)
 
-Not every hole needs to be insane. Some should be clean setup holes, some should be trick holes, and a few should be standout signature holes.
+### 1. Immediate Readability
+Player must instantly understand:
+- where the ball starts
+- where the hole is
+- what blocks them
+- what might move
+- what the first shot likely is
 
-⸻
+If they have to search → you already lost them.
 
-High-level design principles
+---
 
-1. Gameplay first, theme second
+### 2. Trust in Physics
+If the player thinks:
+> “that should have worked”
 
-Space theme should enhance readability and novelty, not bury the path in visual clutter.
+…it must work.
 
-2. Every obstacle must matter
+No:
+- ghost collisions
+- fake objects
+- inconsistent bounce
+- getting stuck in seams
+- unclear hitboxes
 
-If an obstacle is not realistically influencing the player’s intended line, move it, resize it, or delete it.
+---
 
-3. One strong idea per hole
-
-A good mini golf hole usually has a clear main concept:
-	•	bank shot
-	•	timing gate
-	•	split route
-	•	elevation change
-	•	gravity funnel
-	•	ricochet lane
-	•	risky shortcut
-	•	precision threading
-
-Do not stack five weak ideas and call it creativity.
-
-4. Fair over flashy
-
-If something looks cool but creates unreadable bounces, broken collision, or random-feeling outcomes, it loses.
-
-5. Visual language should signal gameplay
-
-Players should be able to roughly infer:
-	•	what is playable surface
-	•	what is wall / bumper / hazard
-	•	what is decorative background
-	•	what moves
-	•	what is dangerous
-	•	what is targetable for bank shots
-
-6. Escalation matters
-
-Hole 1 should not feel like Hole 18. The course should ramp in complexity, spectacle, and execution demands.
-
-7. Reusability is mandatory
-
-This cannot be a one-off pile of bespoke hacks. Need a hole/system structure that supports easy authoring, testing, and extension.
-
-⸻
-
-Repo review goals
-
-Before hole redesign starts, review the repo for these areas:
-
-Gameplay / physics
-	•	ball movement tuning
-	•	collision reliability
-	•	wall bounce consistency
-	•	friction / damping
-	•	slopes / gravity behavior if present
-	•	cup detection reliability
-	•	reset / out-of-bounds logic
-	•	spawn positioning
-	•	stroke counting and completion state
-
-Hole construction
-	•	how hole geometry is authored
-	•	whether holes are hardcoded, scene-based, data-driven, or mixed
-	•	how obstacles are placed and configured
-	•	whether reusable prefabs/components exist
-	•	whether there is any clear separation between gameplay surfaces and art dressing
-
-Course flow
-	•	loading holes in sequence
-	•	par / metadata support
-	•	hole intro/outro logic
-	•	camera setup per hole
-	•	checkpoint / restart flow
-	•	score persistence across the course
-
-Debuggability
-	•	ability to visualize collision
-	•	ability to preview intended shot lines or test spawn points
-	•	easy reset / replay tools
-	•	authoring workflow for fast iteration
-
-Expansion readiness
-	•	whether new holes can be added by data/config only
-	•	whether there is a clean template for new obstacle types
-	•	whether current logic supports multiple courses/themes later
-
-⸻
-
-Core problems to likely fix in the current build
-
-These are the kinds of issues I would expect to find and want fixed before calling the course “real”:
-
-Broken cup placement / invalid sink geometry
-
-The cup cannot be under the green, embedded weirdly, or placed where collision looks wrong. Cup placement needs consistent rules:
-	•	flush with playable surface
-	•	clean lip / rim behavior
-	•	no hidden clipping
-	•	reachable by intended shot speed ranges
-
-Decorative obstacles not in the line of play
-
-If most obstacles are off to the side or easy to ignore, they are noise. They should either:
-	•	define the shot path
-	•	threaten a punishment
-	•	create routing decisions
-	•	support a trick shot
-	•	or be removed
-
-Single-shape hole design
-
-A hole that is just one flat shape with random props on top will feel amateur. Need stronger composition:
-	•	runway
-n- turn
-	•	lane split
-	•	elevation transition
-	•	guarded cup zone
-	•	recovery space
-
-Unclear boundaries / collision language
-
-Players should instantly know what the ball can ride, bounce off, fall through, or ignore.
-
-Inconsistent visual scale / proportions
-
-Walls, props, ramps, hazards, and cup sizes need consistency or deliberate variation.
-
-Overly empty playfields
-
-Space theme can tempt giant empty voids. Need enough structure and landmarks to make the hole feel authored.
-
-⸻
-
-Target structure for the first full course
-
-18 holes should be organized with pacing, not random idea order.
-
-Holes 1–3: onboarding / confidence
-
-Teach readability and core shot feel.
-	•	clean banks
-	•	one obvious route
-	•	low punishment
-	•	establish the visual language of the course
-
-Holes 4–6: introduce interaction
-
-Start adding moving obstacles, lane splits, and positional punishment.
-
-Holes 7–9: mid-course creativity spike
-
-More memorable holes. First real “wow” moments.
-
-Holes 10–12: control and planning
-
-Precision, route choice, maybe tighter geometry.
-
-Holes 13–15: spectacle + execution
-
-Larger set pieces, more timing and spatial demand.
-
-Holes 16–18: signature finish
-
-Harder but fair. Strong visuals. Strong identity. Final hole should feel like a finale, not just another obstacle arrangement.
-
-⸻
-
-Suggested space-course identity
-
-The course should feel like a single coherent place instead of “18 random space props.”
-
-Potential framing:
-
-Orbital Drift Mini Golf — a course built across floating stations, asteroid bridges, satellite platforms, reactor rings, lunar docks, and a final cosmic launch platform.
-
-That gives permission for:
-	•	sleek sci-fi surfaces
-	•	glowing rails
-	•	asteroid hazards
-	•	force-field gates
-	•	low-gravity-feeling visuals
-	•	turbines / rotating satellites
-	•	launch tubes / wormhole visuals
-	•	meteor impacts / crater bowls
-	•	black hole / gravity well-inspired funnels
-
-Important: keep the actual gameplay grounded and consistent even if the theme implies wild physics.
-
-⸻
-
-Hole design framework
-
-Each hole should be designed with a standard template.
-
-Required fields per hole
-	•	hole number
-	•	hole name
-	•	par
-	•	primary mechanic
-	•	intended first-shot line
-	•	alternate route(s)
-	•	punishments / failure cases
-	•	recovery pattern
-	•	visual set piece
-	•	required obstacle assets
-	•	gameplay validation notes
-
-Questions every hole must answer
-	•	What is the idea of this hole?
-	•	What does the player probably try first?
-	•	What happens on a decent shot?
-	•	What happens on an overhit / underhit?
-	•	Can the player recover without it feeling hopeless?
-	•	Is the obstacle actually in play?
-	•	Is the cup placement fair?
-	•	Is the route readable from camera/start?
-	•	Is it memorable compared to the previous hole?
-
-⸻
-
-Proposed 18-hole course concepts
-
-These are starting concepts, not sacred final blueprints.
-
-Hole 1 — Docking Lane
-
-Par 2
-A clean introductory hole on a space station runway with side bumpers and a guarded but straightforward cup.
-
-Purpose:
-	•	establish ball speed
-	•	establish bounce feel
-	•	teach the player that walls are useful
-
-Needs:
-	•	one central lane
-	•	slight angle option for a cleaner approach
-	•	clear cup visibility
-
-Hole 2 — Solar Bank
-
-Par 2
-A simple bank-shot hole where the direct line is blocked by a solar panel array, forcing a gentle wall use.
-
-Purpose:
-	•	introduce intentional banking
-	•	obstacle finally matters
-
-Hole 3 — Crater Lip
-
-Par 3
-The green has a shallow crater depression/funnel that helps a well-paced ball but punishes overhits with a rim-out or overshoot lane.
-
-Purpose:
-	•	introduce surface shaping
-	•	teach speed control
-
-Hole 4 — Satellite Split
-
-Par 3
-Two lanes around a rotating satellite obstruction: safer long route vs tighter direct route.
-
-Purpose:
-	•	introduce route choice
-	•	make timing visible but forgiving
-
-Hole 5 — Meteor Gate
-
-Par 3
-Timed gate using moving asteroid/meteor blockers crossing the intended line.
-
-Purpose:
-	•	introduce timing
-	•	first real dynamic obstacle in play
-
-Hole 6 — Thruster Ramp
-
-Par 2 or 3
-A boost ramp / launch pad sends the ball to an upper platform. Miss the angle and the ball falls into a recovery lane below.
-
-Purpose:
-	•	first vertical transition
-	•	high cool factor without chaos
-
-Hole 7 — Orbital Ring
-
-Par 3
-Circular outer wall/ring shot where the player can wrap the ball around the perimeter into a central finish zone.
-
-Purpose:
-	•	memorable geometry
-	•	rewarding rebound planning
-
-Hole 8 — Cargo Drift
-
-Par 3
-Slow-moving cargo crates shift the lane layout over time, changing safe windows and bank options.
-
-Purpose:
-	•	moving cover / dynamic lane control
-	•	mid-course variety
-
-Hole 9 — Moonbase Switchback
-
-Par 4
-A multi-turn hole with staggered walls and one optional shortcut shot over/through a narrow opening.
-
-Purpose:
-	•	first more complex routing hole
-	•	end front-nine with something substantial
-
-Hole 10 — Laser Grid
-
-Par 3
-Alternating laser barriers visually mark danger zones. Touching them does not need to be punishingly complex; can reset, deflect, or add stroke penalty depending system support.
-
-Purpose:
-	•	clean sci-fi identity
-	•	precise shot threading
-
-Hole 11 — Blackout Corridor
-
-Par 3
-Tighter lane, stronger contrast lighting, narrow bounce geometry, maybe disappearing/reappearing forcefield panels.
-
-Purpose:
-	•	more controlled technical shot
-	•	tonal change from broader holes
-
-Hole 12 — Gravity Well
-
-Par 4
-A large bowl/funnel-like middle section that can be used skillfully to curve into a cup zone, or avoided through a safer side route.
-
-Purpose:
-	•	signature terrain hole
-	•	memorable visual centerpiece
-
-Hole 13 — Debris Field
-
-Par 4
-Several asteroid chunks create ricochet opportunities and punish bad entry angles. Needs to feel authored, not random.
-
-Purpose:
-	•	controlled chaos
-	•	reward reading the geometry
-
-Hole 14 — Reactor Bypass
-
-Par 3
-Hazard zones near a glowing reactor core force a bank around the danger or a fast precision thread through the middle.
-
-Purpose:
-	•	strong visual drama
-	•	tight risk/reward
-
-Hole 15 — Wormhole Relay
-
-Par 4
-A teleport mechanic or faux-teleport lane system if supported. Ball enters one portal and exits another predictable point/orientation.
-
-Purpose:
-	•	standout gimmick hole
-	•	good late-course surprise
-
-If true teleportation is too messy technically, fake it with launch tubes, hidden transfer, or controlled one-way channels.
-
-Hole 16 — Eclipse Steps
-
-Par 4
-Tiered platforms with narrow ramps or drops, requiring deliberate progression instead of one giant lucky shot.
-
-Purpose:
-	•	late-course tension
-	•	elevation and pacing control
-
-Hole 17 — Comet Run
-
-Par 3
-A fast, longer hole with moving hazards and one very satisfying clean line if timed well.
-
-Purpose:
-	•	adrenaline / spectacle before finale
-
-Hole 18 — Starforge Finale
-
-Par 5
-Big final set piece combining a launch, a bank or split decision, and a guarded final sink area. Should feel epic but still fair.
-
-Purpose:
-	•	memorable course closer
-	•	culmination of everything learned
-
-⸻
-
-Obstacle/system wishlist
-
-Need a library of reusable obstacle/system types, not bespoke hacks for every hole.
-
-Static fundamentals
-	•	straight wall
-	•	curved wall
-	•	bumper / angled reflector
-	•	ramp
-	•	funnel/bowl surface
-	•	narrow gate
-	•	hazard zone
-	•	drop lane / return lane
-
-Dynamic elements
-	•	rotating blocker
-	•	sliding blocker
-	•	timed gate
-	•	oscillating bumper
-	•	moving platform if physics supports it cleanly
-
-Themed elements
-	•	solar panel blocker
-	•	asteroid bumper
-	•	satellite arm spinner
-	•	force-field gate
-	•	thruster pad / launch ramp
-	•	portal / warp tunnel
-	•	reactor hazard core
-
-Every obstacle type should define:
-	•	gameplay purpose
-	•	collision behavior
-	•	placement rules
-	•	readability rules
-	•	safe parameter ranges
-
-⸻
-
-Strong recommendation: define a course authoring system
-
-The project will be way easier if each hole is data-backed instead of being a fully handcrafted one-off mess.
-
-Ideal direction:
-
-Hole as a structured scene + data config
-
-Each hole should have:
-	•	a scene/prefab for unique geometry/art
-	•	a config/data file for metadata and tunable values
-
-Example metadata:
-	•	holeId
-	•	courseId
-	•	number
-	•	par
-	•	displayName
-	•	themeVariant
-	•	spawnPoint
-	•	cupPoint
-	•	bounds
-	•	cameraPreset
-	•	obstacle instances
-	•	validation flags
-
-Reusable obstacle prefabs/components
-
-Rather than custom logic per hole, obstacles should be instances of reusable pieces with exposed params.
-
-Clear separation between:
-	•	gameplay collision surfaces
-	•	visuals / dressing
-	•	hazard logic
-	•	dynamic obstacle logic
-	•	hole metadata / scoring
-
-This separation matters because right now the weird behavior likely comes from art/gameplay/collision all bleeding together.
-
-⸻
-
-Validation rules for every hole
-
-This is the kind of thing that should exist as a checklist, debug command, or editor validation pass.
-
-Geometry / collision validation
-	•	cup must be above/flush with playable surface
-	•	no invalid overlaps between cup and green mesh/collider
-	•	no unreachable spawn positions
-	•	no ball spawn clipping
-	•	no walls with visibly broken collision gaps
-	•	no decorative meshes accidentally colliding unless intended
-
-Playability validation
-	•	hole must be completable with normal physics
-	•	intended route must be viable with reasonable shot strength
-	•	underhit and overhit should produce understandable results
-	•	obstacle must affect intended route meaningfully
-	•	no soft-lock zones
-	•	no infinite bounce traps
-	•	recovery path must exist where intended
-
-UX validation
-	•	player can see the main shot idea from start or preview camera
-	•	hole boundaries are visually readable
-	•	hazard vs decoration is readable
-	•	moving obstacles telegraph timing clearly
-
-Performance / maintainability validation
-	•	no unnecessary high-complexity collision meshes
-	•	no hole-specific hacks when shared logic should exist
-	•	no magic-number-only tuning with no notes
-
-⸻
-
-Visual direction notes
-
-Need more than “space props on a plane.”
-
-Surfaces
-	•	glossy dark metals
-	•	lunar dust / crater textures where appropriate
-	•	neon trims or emissive edge lines for readability
-	•	contrast between main fairway, rough/hazard, and non-play space
-
-Background dressing
-	•	planets, stars, satellite silhouettes, nebula skybox, distant stations
-	•	keep background clearly non-interactive
-
-Hole identity props
-
-Each hole should have 1–2 landmark props max that define it. Not clutter.
+### 3. Hole Identity
+Every hole needs a sentence.
 
 Examples:
-	•	giant satellite dish
-	•	cracked asteroid arch
-	•	glowing reactor core
-	•	docking clamps
-	•	wormhole ring
-	•	comet trail emitter
+- “timing gate hole”
+- “bank shot hole”
+- “asteroid drift hole”
+- “split route risk/reward”
+- “launch pad jump hole”
 
-Readability over noise
+If you can’t describe it in one line, it’s not a real hole.
 
-Space can get visually busy fast. The ball path needs contrast.
+---
 
-⸻
+### 4. Meaningful Objects Only
+If it’s on the course, it must:
+- block
+- redirect
+- move
+- punish
+- reward
+- teach
 
-Difficulty philosophy
+Otherwise → remove it or move it off the playfield.
 
-This should be a course people enjoy, not streamer rage bait.
+---
 
-Need a fair difficulty ramp:
-	•	early holes: understandable, forgiving
-	•	middle holes: introduce route choice and timing
-	•	late holes: ask for combination execution
-	•	final holes: hard but readable
+### 5. Motion (Selective but Critical)
+Right now nothing moves → game feels dead.
 
-Avoid:
-	•	blind shots unless preview/camera supports it
-	•	random moving chaos
-	•	tight punishment with no recovery
-	•	giant empty travel distances that waste time
-	•	gimmicks that only work once the player already knows the trick
+Need:
+- rotating sweepers
+- sliding gates
+- orbiting blockers
+- pulsing barriers
 
-⸻
+Doesn’t need to be everywhere, but enough to create rhythm + timing.
 
-Expansion plan beyond the first course
+---
 
-This repo should not stop at one course if the system is built right.
+## Current Problems (Detailed)
 
-Future course packs could be:
-	•	Moonbase Classic
-	•	Alien Jungle
-	•	Retro Arcade Spaceport
-	•	Black Hole Lab
-	•	Mars Industrial Yard
+### 1. Cups / Holes Visibility
+- blend into surface
+- hidden by walls/angles
+- low contrast
+- sometimes feel “buried”
 
-But the first course should establish the reusable framework:
-	•	course manifest
-	•	hole metadata schema
-	•	obstacle library
-	•	validation rules
-	•	authoring template
-	•	naming conventions
+**Fix:**
+- emissive glow
+- brighter rim
+- contrast color
+- never hidden at spawn angle
 
-Once this exists, creating Course 2 becomes content work instead of architecture surgery.
+---
 
-⸻
+### 2. Layout Repetition
+Everything feels like:
+- rectangle
+- ball → forward
+- object in the way
+- hole at end
 
-Deliverables I’d want from the repo review + redesign effort
+No:
+- lateral movement
+- vertical play
+- branching decisions
+- layered routing
 
-1. Audit doc
+---
 
-A blunt summary of:
-	•	what is reusable
-	•	what is broken
-	•	what must be refactored before hole expansion
-	•	what can stay
+### 3. Object Confusion
+Player cannot tell:
+- what is solid
+- what moves
+- what matters
 
-2. Course design spec
+This kills trust instantly.
 
-Full 18-hole concept list with rough layouts, pars, mechanics, and progression logic.
+---
 
-3. Authoring framework proposal
+### 4. Static World
+No motion = no life.
 
-How holes should be structured in repo/code/scenes/data.
+Space theme is wasted without:
+- orbit
+- drift
+- rotation
+- timing
 
-4. Obstacle library spec
+---
 
-What reusable pieces exist and what new ones need to be built.
+### 5. Weak Theme Integration
+Currently:
+- space = stars + dark
 
-5. Validation checklist / tooling
+Needs:
+- space = mechanics
 
-How to prevent broken cup placement, irrelevant obstacles, and bad collision from sneaking in again.
+---
 
-6. Implementation plan
+### 6. Lighting / Contrast Issues
+Too dark + flat:
+- walls blend into floor
+- hole blends into surface
+- objects lack hierarchy
 
-Phased build order for turning the current POC into the actual first course.
+Mini golf needs clarity > realism.
 
-⸻
+---
 
-Suggested implementation phases
+### 7. Dead Space / Filler
+Some areas:
+- exist but don’t matter
+- have props that do nothing
+- create noise instead of gameplay
 
-Phase 1 — Repo audit and stabilization
-	•	inspect current hole architecture
-	•	inspect physics/collision/cup logic
-	•	identify broken geometry and invalid placements
-	•	identify current reusable pieces
-	•	fix foundational bugs that would poison future work
+---
 
-Phase 2 — Define SSOT for holes and obstacles
-	•	create hole metadata structure
-	•	create obstacle/component taxonomy
-	•	define naming and folder structure
-	•	define authoring workflow
+## What the Game Should Feel Like
 
-Phase 3 — Rebuild the first 8 holes properly
-	•	keep only what is actually good
-	•	revise weak layouts
-	•	make obstacles matter
-	•	establish the visual/gameplay quality bar
+- fast to read
+- satisfying to hit
+- consistent physics
+- occasionally clever
+- slightly chaotic (controlled)
+- replayable
+- arcade-clean (not sim-heavy)
+- every hole feels intentional
 
-Phase 4 — Build holes 9–18
-	•	complete pacing curve
-	•	add signature mechanics later, not all at once
-	•	keep testing after each hole, not only at the end
+---
 
-Phase 5 — Polish and validation pass
-	•	camera tuning
-	•	readability pass
-	•	collision pass
-	•	pacing/difficulty pass
-	•	par balancing
-	•	visual cohesion pass
+## Object System (Must Define This)
 
-Phase 6 — Expansion support
-	•	hole template
-	•	new course bootstrap flow
-	•	documentation for building future themed courses
+### Static Geometry
+- walls
+- rails
+- ramps
+- funnels
+- wedges
 
-⸻
+### Dynamic Objects
+- rotating bars
+- sliding gates
+- pendulums
+- orbiting bumpers
 
-Acceptance criteria for calling this successful
+### Hazards
+- void zones
+- reset areas
+- black holes (pull)
+- energy pits
 
-The 18-hole course is successful when:
-	•	all 18 holes are playable and complete reliably
-	•	cup placement and collision are clean everywhere
-	•	each hole has a distinct identity and intentional gameplay idea
-	•	obstacles are in play, not decorative filler
-	•	the course escalates in a clear and satisfying way
-	•	the space theme feels cohesive across the whole course
-	•	adding Hole 19 or a Course 2 would be straightforward under the new structure
-	•	there is a documented authoring/validation path so broken layouts are less likely to recur
+### Utility
+- launch pads
+- teleporters
+- boost strips
+- checkpoints
 
-⸻
+### Decoration (OFF PLAYFIELD)
+- asteroids (background)
+- ships
+- lights
+- environment
 
-What I would tell the agent/reviewer to focus on
+---
 
-Do not just make the current holes prettier.
+## Hole Taxonomy (Core Types)
 
-Review the repo like the goal is to ship a real first course and make future courses easy.
+Do NOT design holes randomly. Pick a type.
 
-Specifically:
-	•	identify every foundational issue making the current holes feel fake or broken
-	•	propose the cleanest architecture for hole authoring and obstacle reuse
-	•	redesign the course as a full 18-hole experience with progression and identity
-	•	fix the geometry/collision/cup-placement weirdness at the root
-	•	ensure every obstacle meaningfully affects gameplay
-	•	leave behind a system, not just content
+- timing gate
+- bank shot
+- narrow precision lane
+- split path (safe vs risky)
+- ramp / jump
+- funnel recovery
+- hazard carry
+- moving obstacle
+- multi-stage
+- ricochet puzzle
+- gravity gimmick
+- pinball chaos
+- finale/boss hole
 
-⸻
+Each hole = 1–2 types max.
 
-Final framing
+---
 
-This should end up as:
+## First Real Course (9-Hole Plan)
 
-“a polished 18-hole space mini golf course with real hole design, strong pacing, meaningful obstacles, and a reusable framework for future courses”
+### Hole 1 — Docking Lane
+- simple
+- teach timing (single sweeper)
 
-Not:
+### Hole 2 — Bank Right
+- forced wall bank
+- teach bounce reliability
 
-“the original 8-hole prototype but with 10 more random space holes glued on.”
+### Hole 3 — Debris Drift
+- slow moving asteroid blockers
+
+### Hole 4 — Split Route
+- safe long vs risky shortcut
+
+### Hole 5 — Launch Pad
+- ramp or boost to upper level
+
+### Hole 6 — Gravity Funnel
+- controlled pull zone mechanic
+
+### Hole 7 — Satellite Array
+- rotating arms / timing windows
+
+### Hole 8 — Reactor Core
+- hazards + tighter control
+
+### Hole 9 — Orbital Finale
+- combine mechanics into multi-stage hole
+
+---
+
+## Space Theme (Make It Matter)
+
+Use mechanics, not just visuals.
+
+### Mechanics to Add
+- low gravity pads
+- launch tubes
+- orbiting obstacles
+- laser timing gates
+- teleport gates
+- magnetic rails
+- black hole pulls
+- ringworld curves
+- docking targets
+
+---
+
+## Visual Direction
+
+### Goals
+- high contrast
+- readable surfaces
+- clear interaction signals
+
+### Rules
+- floor ≠ walls
+- hole always highlighted
+- hazards = bright/danger colors
+- interactives = glow/accent
+- decoration pushed away from play area
+
+---
+
+## Design Rules (Strict)
+
+### Course
+- every hole has a gimmick
+- cup visible within 1 second
+- intended shot readable within 3 seconds
+- no random clutter
+- avoid flat rectangles unless intentional
+
+### Physics
+- if it looks solid → it is
+- no weird collisions
+- no getting stuck
+- consistent bounce
+
+### Theme
+- every few holes introduce or remix a mechanic
+- visuals support gameplay, not override it
+
+---
+
+## Development Plan
+
+### Phase 1 — Readability
+- fix hole visibility
+- improve lighting/contrast
+- clean camera angles
+
+### Phase 2 — Systems
+- define obstacle behaviors
+- remove fake objects
+- standardize collisions
+
+### Phase 3 — Hole Design
+- rebuild holes with clear gimmicks
+- create 9-hole course
+- remove weak holes
+
+### Phase 4 — Motion + Theme
+- add moving objects
+- introduce space mechanics
+
+### Phase 5 — Polish
+- better feedback (hits, scoring)
+- intro flyovers
+- ambient motion
+- course progression feel
+
+---
+
+## Hard Truth
+
+This is not bad because it’s unfinished.
+
+It’s bad because:
+- there is no consistent design language yet
+- holes are not authored
+- systems are not defined
+
+The fix is NOT:
+> “add more stuff”
+
+The fix is:
+- fewer systems
+- clearer rules
+- better holes
+- real motion
+- consistent interactions
+
+---
+
+## Target Outcome
+
+After fixes, the game should feel like:
+
+- I see the hole → I understand it immediately  
+- I take a shot → result feels fair  
+- I retry → I learn something  
+- I succeed → it feels earned  
+- I move on → next hole feels different  
+
+---
+
+## Final Note
+
+Right now:
+> “space mini golf prototype”
+
+Target:
+> “tight, readable, satisfying mini golf game that happens to be in space”
+
+The difference is:
+**intent + clarity + trust**
+
+Everything should move toward that.
