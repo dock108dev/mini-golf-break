@@ -104,4 +104,4 @@ docs/.docusaurus/
 TASK_LIST.ignore.md
 
 # AIDLC working directory
-.aidlc
+.aidlc/*
