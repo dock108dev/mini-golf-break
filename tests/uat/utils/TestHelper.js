@@ -10,7 +10,8 @@ export class TestHelper {
   constructor(page) {
     this.page = page;
     this.retryCount = 0;
-    this.maxRetries = 3;
+    // CI: fewer full init retries — each attempt can exceed 2 minutes with waits + backoff.
+    this.maxRetries = process.env.CI ? 2 : 3;
     this.debugMode = process.env.DEBUG_UAT === 'true';
   }
 
@@ -135,55 +136,66 @@ export class TestHelper {
       await this.captureDebugInfo('initialization-start');
       
       try {
-        // Phase 1: Document loaded (avoid networkidle — webpack-dev-server/HMR rarely goes idle and can hit the full timeout)
         await this.page.waitForLoadState('load', { timeout: 30000 });
         console.log('[TestHelper] Page load event received');
-        
-        // Phase 2: Wait for loading screen/overlay to disappear (optional)
-        try {
-          await this.page.waitForSelector('#loading-screen', { state: 'hidden', timeout: 20000 });
-          console.log('[TestHelper] Loading screen hidden');
-        } catch (e) {
-          try {
-            await this.page.waitForSelector('#loading-overlay', { state: 'hidden', timeout: 5000 });
-            console.log('[TestHelper] Loading overlay hidden');
-          } catch (e2) {
-            console.log('[TestHelper] No loading screen/overlay hidden state, continuing...');
+
+        // Do NOT use #loading-overlay — it is not part of this app; Playwright treats a missing
+        // node as "hidden", which skipped the real wait and raced ahead before bundle + WebGL init.
+        const bootTimeout = process.env.CI ? 120000 : 60000;
+        console.log('[TestHelper] Waiting for WebGL canvas and dismissed loading screen...');
+        await this.page.waitForFunction(
+          () => {
+            const webglFallback = document.getElementById('webgl-fallback');
+            if (webglFallback) {
+              throw new Error(
+                'WebGL fallback UI is visible — no usable WebGL context (check CI GPU/swiftshader flags)'
+              );
+            }
+            const loading = document.getElementById('loading-screen');
+            const loadingHidden = !loading || loading.classList.contains('hidden');
+            const canvas = document.querySelector('canvas');
+            return !!(canvas && loadingHidden);
+          },
+          { timeout: bootTimeout, polling: 250 }
+        );
+        console.log('[TestHelper] Canvas present and loading screen dismissed');
+
+        await this.dismissWebpackDevServerOverlay();
+
+        const menuOpen = await this.page.evaluate(() => {
+          const menu = document.getElementById('menu-screen');
+          if (!menu) {
+            return false;
           }
+          return getComputedStyle(menu).display !== 'none';
+        });
+        if (menuOpen) {
+          console.log('[TestHelper] Start menu visible — clicking Play');
+          await this.page.locator('#play-course').click({ force: true });
+          await sleep(process.env.CI ? 1500 : 1000);
         }
-        
-        // Phase 3: Check if we need to click Play Course button first
-        console.log('[TestHelper] Checking for menu screen...');
-        const playButton = await this.page.locator('#play-course');
-        if (await playButton.isVisible()) {
-          console.log('[TestHelper] Menu screen detected, clicking Play Course button...');
-          await this.dismissWebpackDevServerOverlay();
-          // force: true — overlay can reappear before click; webpack may still inject iframe when reuseExistingServer
-          await playButton.click({ force: true });
-          await sleep(1000);
-        }
-        
-        // Phase 4: Wait for canvas to be created with extended timeout
-        console.log('[TestHelper] Waiting for canvas element...');
-        await this.page.waitForSelector('canvas', { timeout: 30000 });
+
+        console.log('[TestHelper] Waiting for canvas element (post-menu)...');
+        await this.page.waitForSelector('canvas', { state: 'visible', timeout: 60000 });
         console.log('[TestHelper] Canvas element found');
         
         // Phase 5: Wait for game object to exist
+        const phaseTimeout = process.env.CI ? 60000 : 30000;
         console.log('[TestHelper] Waiting for game object...');
         await this.page.waitForFunction(() => {
           return window.game !== undefined || window.App !== undefined;
-        }, { timeout: 30000 });
+        }, { timeout: phaseTimeout });
         console.log('[TestHelper] Game/App object exists');
-        
+
         // Phase 6: Wait for basic game components
         console.log('[TestHelper] Waiting for game components...');
         await this.page.waitForFunction(() => {
           // Check both window.game and window.App patterns
           return (window.game && window.game.renderer && window.game.scene) ||
                  (window.App && window.App.game && window.App.game.renderer);
-        }, { timeout: 30000 });
+        }, { timeout: phaseTimeout });
         console.log('[TestHelper] Game renderer and scene ready');
-        
+
         // Phase 7: Wait for game to be fully initialized
         console.log('[TestHelper] Waiting for full game initialization...');
         await this.page.waitForFunction(() => {
@@ -199,7 +211,7 @@ export class TestHelper {
             state === 'paused' ||
             state === 'hole_completed';
           return playable || !!(game.ballManager && game.ballManager.ball);
-        }, { timeout: 30000 });
+        }, { timeout: phaseTimeout });
         console.log('[TestHelper] Game fully initialized');
         
         // Phase 8: Brief settle after playable state (shorter in CI to keep UAT job wall time down)

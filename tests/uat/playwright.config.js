@@ -11,8 +11,8 @@ module.exports = {
   forbidOnly: !!process.env.CI,
   // CI: single retry — full game bootstrap is expensive; job is continue-on-error in GitHub Actions.
   retries: process.env.CI ? 1 : 2,
-  // Each worker runs one game bootstrap (tests/uat/fixtures/uat.js). Two workers roughly halves wall time on 2-core runners.
-  workers: process.env.CI ? 2 : undefined,
+  // One worker avoids webpack-dev-server + WebGL contention (parallel UAT pages stalled each other's init in CI).
+  workers: process.env.CI ? 1 : undefined,
   reporter: [
     ['html', { outputFolder: 'coverage/uat-results' }],
     ['junit', { outputFile: 'coverage/uat-results.xml' }],
