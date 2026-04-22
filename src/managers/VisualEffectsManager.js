@@ -16,16 +16,7 @@ export class VisualEffectsManager {
       return;
     }
     this._onBallInHole = data => {
-      const pos =
-        data?.cupPosition ||
-        this.game?.course?.currentHole?.holePosition ||
-        (data?.ballBody?.position
-          ? new THREE.Vector3(
-              data.ballBody.position.x,
-              data.ballBody.position.y,
-              data.ballBody.position.z
-            )
-          : null);
+      const pos = this._resolveCupSinkPosition(data);
       if (pos) {
         this.triggerCupSinkEffect(pos);
       }
@@ -45,6 +36,21 @@ export class VisualEffectsManager {
       });
     };
     this.game.eventManager.subscribe(EventTypes.BALL_HIT, this._onBallHit);
+  }
+
+  _resolveCupSinkPosition(data) {
+    if (data?.cupPosition) {
+      return data.cupPosition;
+    }
+    const holePos = this.game?.course?.currentHole?.holePosition;
+    if (holePos) {
+      return holePos;
+    }
+    const p = data?.ballBody?.position;
+    if (!p) {
+      return null;
+    }
+    return new THREE.Vector3(p.x, p.y, p.z);
   }
 
   /**

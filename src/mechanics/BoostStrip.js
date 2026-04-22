@@ -8,6 +8,22 @@ const BOOST_COOLDOWN = 0.8;
 const UV_SCROLL_SPEED = 0.3;
 const DEFAULT_BOOST_MAGNITUDE = 12;
 
+function parseBoostDirection(rawDir) {
+  const src = rawDir || { x: 0, y: 0, z: -1 };
+  const x = src.x || 0;
+  const y = src.y || 0;
+  const z = src.z || 0;
+  const len = Math.sqrt(x * x + y * y + z * z) || 1;
+  return { x: x / len, y: y / len, z: z / len };
+}
+
+function resolveBoostMagnitude(config) {
+  if (config.boost_magnitude !== undefined && config.boost_magnitude <= 0) {
+    console.warn('[BoostStrip] boost_magnitude must be > 0; using default');
+  }
+  return config.boost_magnitude > 0 ? config.boost_magnitude : DEFAULT_BOOST_MAGNITUDE;
+}
+
 /**
  * BoostStrip - Applies a one-shot velocity impulse when the ball contacts the strip.
  * A 0.8s cooldown prevents re-triggering while the ball slides across the surface.
@@ -25,21 +41,8 @@ class BoostStrip extends MechanicBase {
     this.isForceField = true;
 
     const pos = config.position || { x: 0, y: 0, z: 0 };
-
-    // Normalize boost direction from hydrated Vector3-like object
-    const rawDir = config.boost_direction || { x: 0, y: 0, z: -1 };
-    const len = Math.sqrt((rawDir.x || 0) ** 2 + (rawDir.y || 0) ** 2 + (rawDir.z || 0) ** 2) || 1;
-    this._boostDir = {
-      x: (rawDir.x || 0) / len,
-      y: (rawDir.y || 0) / len,
-      z: (rawDir.z || 0) / len
-    };
-
-    if (config.boost_magnitude !== undefined && config.boost_magnitude <= 0) {
-      console.warn('[BoostStrip] boost_magnitude must be > 0; using default');
-    }
-    this._boostMagnitude =
-      config.boost_magnitude > 0 ? config.boost_magnitude : DEFAULT_BOOST_MAGNITUDE;
+    this._boostDir = parseBoostDirection(config.boost_direction);
+    this._boostMagnitude = resolveBoostMagnitude(config);
 
     const width = config.size?.width || 2;
     const length = config.size?.length || 3;

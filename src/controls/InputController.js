@@ -10,6 +10,15 @@ export class InputController {
     this.renderer = game.renderer;
     this.stateManager = game.stateManager;
 
+    this.deviceCapabilities = new DeviceCapabilities();
+    this.isMobileDevice = this.deviceCapabilities.isMobile;
+    this.supportsHaptics = this.deviceCapabilities.supportsHaptics;
+    this.isHighPerformanceDevice = this.deviceCapabilities.isHighPerformance;
+
+    this._assignDefaultInputFields();
+  }
+
+  _assignDefaultInputFields() {
     this.isInputEnabled = true;
     this.isPointerDown = false;
     this.isDragging = false;
@@ -25,11 +34,6 @@ export class InputController {
     this.controlsWereEnabled = true;
     this.isInitialized = false;
 
-    this.deviceCapabilities = new DeviceCapabilities();
-    this.isMobileDevice = this.deviceCapabilities.isMobile;
-    this.supportsHaptics = this.deviceCapabilities.supportsHaptics;
-    this.isHighPerformanceDevice = this.deviceCapabilities.isHighPerformance;
-
     this.isMultiTouch = false;
     this.pinchDistance = 0;
     this.touchStartTime = 0;
@@ -37,32 +41,25 @@ export class InputController {
     this.lastTouchPosition = new THREE.Vector2();
     this._twoFingerStartTime = undefined;
 
-    // Pull-back drag tracking (screen-pixel based power)
     this._dragStartScreenX = 0;
     this._dragStartScreenY = 0;
     this._DRAG_SCALE_PX = 120;
 
-    // Trajectory preview dots
     this._trajectoryDots = [];
-
-    // Wall-reflection secondary line
     this._wallReflectionLine = null;
 
-    // Power-bar oscillation mode
     this.powerBarMode = false;
     this._powerBarPhase = 0;
     this.powerBarValue = 0;
 
-    // Exposed sleep speed limit (matches PhysicsConstants.ball.sleepSpeedLimit)
     this.sleepSpeedLimit = 0.1;
 
-    // Keyboard aiming state
     this.isKeyboardAiming = false;
-    this.keyboardAimAngle = 0; // radians, 0 = +Z direction
+    this.keyboardAimAngle = 0;
     this.isKeyboardCharging = false;
     this.keyboardPower = 0;
-    this.keyboardChargeRate = 0.8; // power per second (full charge in ~1.25s)
-    this.keyboardAimSpeed = 2.5; // radians per second
+    this.keyboardChargeRate = 0.8;
+    this.keyboardAimSpeed = 2.5;
     this.keysPressed = {};
     this.keyboardAnimationId = null;
     this.lastKeyboardUpdateTime = 0;
@@ -172,6 +169,57 @@ export class InputController {
     );
   }
 
+  _suspendOrbitControlsForDrag() {
+    if (this.game.cameraController?.controls) {
+      this.controlsWereEnabled = this.game.cameraController.controls.enabled;
+      this.game.cameraController.controls.enabled = false;
+    }
+  }
+
+  _restoreOrbitControlsAfterAbortedDrag() {
+    if (this.game.cameraController?.controls) {
+      this.game.cameraController.controls.enabled = this.controlsWereEnabled;
+    }
+  }
+
+  _capturePointerAndRayFromMouse(event) {
+    this.isPointerDown = true;
+    this.isDragging = false;
+    this._dragStartScreenX = event.clientX;
+    this._dragStartScreenY = event.clientY;
+    this.pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+    this.pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+  }
+
+  _raycastBallOrPlaneAim(ball) {
+    if (!ball?.mesh) {
+      return false;
+    }
+    if (this.raycaster.intersectObject(ball.mesh).length > 0) {
+      return true;
+    }
+    const ballPosition = ball.mesh.position.clone();
+    const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -ballPosition.y);
+    const intersection = new THREE.Vector3();
+    this.raycaster.ray.intersectPlane(dragPlane, intersection);
+    if (!intersection) {
+      return false;
+    }
+    const distanceToBall = intersection.distanceTo(ballPosition);
+    if (distanceToBall >= ball.radius * 3) {
+      return false;
+    }
+    this.intersectionPoint = intersection.clone();
+    this.hitDirection = new THREE.Vector3(0, 0, 0);
+    this.hitPower = 0;
+    if (this.powerIndicator) {
+      this.powerIndicator.style.display = 'block';
+      this.updatePowerIndicator(0);
+    }
+    return true;
+  }
+
   onMouseDown(event) {
     const ball = this.game.ballManager?.ball;
     if (!this.isInputEnabled || (ball && !ball.isStopped())) {
@@ -187,48 +235,14 @@ export class InputController {
       return;
     }
 
-    if (this.game.cameraController?.controls) {
-      this.controlsWereEnabled = this.game.cameraController.controls.enabled;
-      this.game.cameraController.controls.enabled = false;
-    }
+    this._suspendOrbitControlsForDrag();
+    this._capturePointerAndRayFromMouse(event);
 
-    this.isPointerDown = true;
-    this.isDragging = false;
-    this._dragStartScreenX = event.clientX;
-    this._dragStartScreenY = event.clientY;
-    this.pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
-    this.pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
-    this.raycaster.setFromCamera(this.pointer, this.camera);
-
-    let clickedOnBall = false;
-    if (ball?.mesh) {
-      clickedOnBall = this.raycaster.intersectObject(ball.mesh).length > 0;
-
-      if (!clickedOnBall) {
-        const ballPosition = ball.mesh.position.clone();
-        const dragPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -ballPosition.y);
-        const intersection = new THREE.Vector3();
-        this.raycaster.ray.intersectPlane(dragPlane, intersection);
-
-        if (intersection) {
-          const distanceToBall = intersection.distanceTo(ballPosition);
-          clickedOnBall = distanceToBall < ball.radius * 3;
-          this.intersectionPoint = intersection.clone();
-          this.hitDirection = new THREE.Vector3(0, 0, 0);
-          this.hitPower = 0;
-          if (this.powerIndicator) {
-            this.powerIndicator.style.display = 'block';
-            this.updatePowerIndicator(0);
-          }
-        }
-      }
-    }
+    const clickedOnBall = this._raycastBallOrPlaneAim(ball);
 
     if (!clickedOnBall) {
       this.isPointerDown = false;
-      if (this.game.cameraController?.controls) {
-        this.game.cameraController.controls.enabled = this.controlsWereEnabled;
-      }
+      this._restoreOrbitControlsAfterAbortedDrag();
     }
     event.preventDefault();
   }

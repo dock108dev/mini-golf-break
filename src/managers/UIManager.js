@@ -165,79 +165,93 @@ export class UIManager {
     title.textContent = 'Paused';
     content.appendChild(title);
 
-    this.resumeButton = document.createElement('button');
-    this.resumeButton.classList.add('pause-resume-button');
-    this.resumeButton.textContent = 'Resume';
-    this.resumeButton.addEventListener('click', () => {
-      if (this.game.resumeGame) {
-        this.game.resumeGame();
-      }
-    });
-    content.appendChild(this.resumeButton);
-
-    this.restartHoleButton = document.createElement('button');
-    this.restartHoleButton.classList.add('pause-restart-button');
-    this.restartHoleButton.textContent = 'Restart Hole';
-    this.restartHoleButton.setAttribute('aria-label', 'Restart current hole');
-    this.restartHoleButton.addEventListener('click', () => {
-      if (this.game.restartHole) {
-        this.game.restartHole();
-      }
-    });
-    content.appendChild(this.restartHoleButton);
-
-    this.restartCourseButton = document.createElement('button');
-    this.restartCourseButton.classList.add('pause-restart-button');
-    this.restartCourseButton.textContent = 'Restart Course';
-    this.restartCourseButton.setAttribute('aria-label', 'Restart the full course');
-    this.restartCourseButton.addEventListener('click', () => {
-      if (this.game.restartCourse) {
-        this.game.restartCourse();
-      }
-    });
-    content.appendChild(this.restartCourseButton);
-
-    this.quitButton = document.createElement('button');
-    this.quitButton.classList.add('pause-quit-button');
-    this.quitButton.textContent = 'Quit to Menu';
-    this.quitButton.setAttribute('aria-label', 'Quit to menu');
-    this.quitButton.addEventListener('click', () => {
-      if (this.game.quitToMenu) {
-        this.game.quitToMenu();
-      }
-    });
-    content.appendChild(this.quitButton);
-
-    const howToPlayButton = document.createElement('button');
-    howToPlayButton.classList.add('pause-how-to-play-button');
-    howToPlayButton.textContent = 'How to Play';
-    howToPlayButton.setAttribute('aria-label', 'How to Play');
-    howToPlayButton.addEventListener('click', () => {
-      if (window.App && typeof window.App.showControlsOverlay === 'function') {
-        window.App.showControlsOverlay();
-      }
-    });
-    content.appendChild(howToPlayButton);
-
-    this.pauseMuteButton = document.createElement('button');
-    this.pauseMuteButton.classList.add('pause-mute-toggle-button');
-    this.pauseMuteButton.setAttribute('aria-label', 'Toggle mute');
-    this._updatePauseMuteButtonLabel();
-    this.pauseMuteButton.addEventListener('click', () => {
-      this._handleMuteToggle();
-      this._updatePauseMuteButtonLabel();
-    });
-    content.appendChild(this.pauseMuteButton);
-
+    this._appendPauseOverlayActions(content);
     content.appendChild(this._createVolumeSlider());
 
-    // Trap focus within pause overlay
     this.pauseOverlay.addEventListener('keydown', e => {
       this._trapFocus(e, this.pauseOverlay);
     });
 
     this.pauseOverlay.appendChild(content);
     document.body.appendChild(this.pauseOverlay);
+  }
+
+  _pauseActionButton(className, text, ariaLabel, onClick) {
+    const btn = document.createElement('button');
+    btn.classList.add(className);
+    btn.textContent = text;
+    btn.setAttribute('aria-label', ariaLabel);
+    btn.addEventListener('click', onClick);
+    return btn;
+  }
+
+  _appendPauseOverlayActions(content) {
+    this.resumeButton = this._pauseActionButton('pause-resume-button', 'Resume', 'Resume', () => {
+      if (this.game.resumeGame) {
+        this.game.resumeGame();
+      }
+    });
+    content.appendChild(this.resumeButton);
+
+    this.restartHoleButton = this._pauseActionButton(
+      'pause-restart-button',
+      'Restart Hole',
+      'Restart current hole',
+      () => {
+        if (this.game.restartHole) {
+          this.game.restartHole();
+        }
+      }
+    );
+    content.appendChild(this.restartHoleButton);
+
+    this.restartCourseButton = this._pauseActionButton(
+      'pause-restart-button',
+      'Restart Course',
+      'Restart the full course',
+      () => {
+        if (this.game.restartCourse) {
+          this.game.restartCourse();
+        }
+      }
+    );
+    content.appendChild(this.restartCourseButton);
+
+    this.quitButton = this._pauseActionButton(
+      'pause-quit-button',
+      'Quit to Menu',
+      'Quit to menu',
+      () => {
+        if (this.game.quitToMenu) {
+          this.game.quitToMenu();
+        }
+      }
+    );
+    content.appendChild(this.quitButton);
+
+    const howToPlayButton = this._pauseActionButton(
+      'pause-how-to-play-button',
+      'How to Play',
+      'How to Play',
+      () => {
+        if (window.App && typeof window.App.showControlsOverlay === 'function') {
+          window.App.showControlsOverlay();
+        }
+      }
+    );
+    content.appendChild(howToPlayButton);
+
+    this.pauseMuteButton = this._pauseActionButton(
+      'pause-mute-toggle-button',
+      '',
+      'Toggle mute',
+      () => {
+        this._handleMuteToggle();
+        this._updatePauseMuteButtonLabel();
+      }
+    );
+    this._updatePauseMuteButtonLabel();
+    content.appendChild(this.pauseMuteButton);
   }
 
   /**

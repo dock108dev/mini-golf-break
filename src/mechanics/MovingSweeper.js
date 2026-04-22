@@ -33,8 +33,13 @@ class MovingSweeper extends MechanicBase {
     const armHeight = config.size?.height || 0.4;
     const armDepth = config.size?.depth || 0.3;
     const color = config.color || theme?.mechanics?.movingSweeper?.color || HAZARD_COLORS.blocker;
+    const armY = surfaceHeight + armHeight / 2;
 
-    // Visual mesh
+    this._installArmMeshAndKinematicBody(world, armWidth, armHeight, armDepth, color, armY);
+    this._installPivotPost(armHeight, armY, theme);
+  }
+
+  _installArmMeshAndKinematicBody(world, armWidth, armHeight, armDepth, color, armY) {
     const geometry = new THREE.BoxGeometry(armWidth, armHeight, armDepth);
     const material = new THREE.MeshStandardMaterial({
       color,
@@ -45,12 +50,9 @@ class MovingSweeper extends MechanicBase {
     });
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.castShadow = true;
-
-    const armY = surfaceHeight + armHeight / 2;
-    group.add(this.mesh);
+    this.group.add(this.mesh);
     this.meshes.push(this.mesh);
 
-    // Physics body (KINEMATIC — positioned at arm center, updated each frame)
     this.body = new CANNON.Body({
       mass: 0,
       type: CANNON.Body.KINEMATIC,
@@ -59,11 +61,9 @@ class MovingSweeper extends MechanicBase {
     const halfExtents = new CANNON.Vec3(armWidth / 2, armHeight / 2, armDepth / 2);
     const halfLength = this.armLength / 2;
     this.body.addShape(new CANNON.Box(halfExtents));
-    // Place body at initial arm center (pivot + rotated halfLength offset)
     const initCx = this.pivot.x + Math.cos(this.initialAngle) * halfLength;
     const initCz = this.pivot.z + Math.sin(this.initialAngle) * halfLength;
     this.body.position.set(initCx, armY, initCz);
-    // Rotate body to match initial phase angle
     const initQuat = new CANNON.Quaternion();
     initQuat.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -this.initialAngle);
     this.body.quaternion.copy(initQuat);
@@ -75,17 +75,17 @@ class MovingSweeper extends MechanicBase {
     });
     world.addBody(this.body);
     this.bodies.push(this.body);
-    // Initialise mesh at arm center to match body
     this.mesh.position.set(initCx, armY, initCz);
     this.mesh.rotation.y = -this.initialAngle;
+  }
 
-    // Pivot post visual (cylinder at pivot point)
+  _installPivotPost(armHeight, armY, theme) {
     const postGeometry = new THREE.CylinderGeometry(0.15, 0.15, armHeight + 0.2, 8);
     const postColor = theme?.mechanics?.movingSweeper?.postColor || 0x888888;
     const postMaterial = new THREE.MeshStandardMaterial({ color: postColor, metalness: 0.7 });
     const post = new THREE.Mesh(postGeometry, postMaterial);
     post.position.set(this.pivot.x, armY, this.pivot.z);
-    group.add(post);
+    this.group.add(post);
     this.meshes.push(post);
   }
 

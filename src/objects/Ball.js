@@ -181,22 +181,20 @@ export class Ball {
     }
   }
 
-  update(dt) {
-    if (!this.body || !this.mesh) {
+  _tickEmissiveFlashDecay(dt) {
+    if (this._emissiveFlashAge === null || !this.defaultMaterial) {
       return;
     }
-
-    // Decay emissive flash over 0.1 s back to baseline
-    if (this._emissiveFlashAge !== null && this.defaultMaterial) {
-      this._emissiveFlashAge += dt;
-      const progress = Math.min(1, this._emissiveFlashAge / 0.1);
-      this.defaultMaterial.emissiveIntensity = 1.0 - progress * (1.0 - this._emissiveBaseline);
-      if (this._emissiveFlashAge >= 0.1) {
-        this.defaultMaterial.emissiveIntensity = this._emissiveBaseline;
-        this._emissiveFlashAge = null;
-      }
+    this._emissiveFlashAge += dt;
+    const progress = Math.min(1, this._emissiveFlashAge / 0.1);
+    this.defaultMaterial.emissiveIntensity = 1.0 - progress * (1.0 - this._emissiveBaseline);
+    if (this._emissiveFlashAge >= 0.1) {
+      this.defaultMaterial.emissiveIntensity = this._emissiveBaseline;
+      this._emissiveFlashAge = null;
     }
+  }
 
+  _syncMeshAndLightFromBody() {
     this.mesh.position.copy(this.body.position);
     if (this.mesh.quaternion && this.body.quaternion) {
       this.mesh.quaternion.copy(this.body.quaternion);
@@ -204,8 +202,9 @@ export class Ball {
     if (this.ballLight) {
       this.ballLight.position.copy(this.mesh.position);
     }
+  }
 
-    // Velocity clamping for clean stopping
+  _applyNearStopVelocityDamping() {
     const speed = this.body.velocity.length();
     if (speed < 0.08 && speed > 0) {
       this.body.velocity.scale(0.85, this.body.velocity);
@@ -215,37 +214,55 @@ export class Ball {
       this.body.velocity.setZero();
       this.body.angularVelocity.setZero();
     }
+  }
 
-    if (this.currentHolePosition && !this.isHoleCompleted) {
-      const allowedOffset = this.radius * (1.0 - HOLE_ENTRY_OVERLAP_REQUIRED);
-      const checkRadius = HOLE_EDGE_RADIUS - allowedOffset;
-      const dx = this.body.position.x - this.currentHolePosition.x;
-      const dz = this.body.position.z - this.currentHolePosition.z;
-      const dist = Math.sqrt(dx * dx + dz * dz);
-
-      if (dist <= checkRadius) {
-        const ballSpeed = this.body.velocity.length();
-        debug.log(
-          `[Ball.update] Near hole: Dist=${dist.toFixed(3)}, Speed=${ballSpeed.toFixed(3)}, MaxSpeed=${HOLE_ENTRY_MAX_SPEED}`
-        );
-
-        if (ballSpeed <= HOLE_ENTRY_MAX_SPEED) {
-          this.isHoleCompleted = true;
-          this.handleHoleSuccess();
-        } else if (!this.justAppliedHop) {
-          this.justAppliedHop = true;
-          this.body.wakeUp();
-          this.body.applyImpulse(new CANNON.Vec3(0, 2.5, 0));
-          if (this.game?.visualEffectsManager) {
-            this.game.visualEffectsManager.triggerRejectionEffect(
-              new THREE.Vector3(this.body.position.x, this.body.position.y, this.body.position.z)
-            );
-          }
-        }
-      } else {
-        this.justAppliedHop = false;
-      }
+  _updateHoleEntryProximity() {
+    if (!this.currentHolePosition || this.isHoleCompleted) {
+      return;
     }
+    const allowedOffset = this.radius * (1.0 - HOLE_ENTRY_OVERLAP_REQUIRED);
+    const checkRadius = HOLE_EDGE_RADIUS - allowedOffset;
+    const dx = this.body.position.x - this.currentHolePosition.x;
+    const dz = this.body.position.z - this.currentHolePosition.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+
+    if (dist > checkRadius) {
+      this.justAppliedHop = false;
+      return;
+    }
+
+    const ballSpeed = this.body.velocity.length();
+    debug.log(
+      `[Ball.update] Near hole: Dist=${dist.toFixed(3)}, Speed=${ballSpeed.toFixed(3)}, MaxSpeed=${HOLE_ENTRY_MAX_SPEED}`
+    );
+
+    if (ballSpeed <= HOLE_ENTRY_MAX_SPEED) {
+      this.isHoleCompleted = true;
+      this.handleHoleSuccess();
+      return;
+    }
+    if (this.justAppliedHop) {
+      return;
+    }
+    this.justAppliedHop = true;
+    this.body.wakeUp();
+    this.body.applyImpulse(new CANNON.Vec3(0, 2.5, 0));
+    if (this.game?.visualEffectsManager) {
+      this.game.visualEffectsManager.triggerRejectionEffect(
+        new THREE.Vector3(this.body.position.x, this.body.position.y, this.body.position.z)
+      );
+    }
+  }
+
+  update(dt) {
+    if (!this.body || !this.mesh) {
+      return;
+    }
+
+    this._tickEmissiveFlashDecay(dt);
+    this._syncMeshAndLightFromBody();
+    this._applyNearStopVelocityDamping();
+    this._updateHoleEntryProximity();
 
     this._updateIdleGlow(dt);
     this.checkAndUpdateBunkerState();
