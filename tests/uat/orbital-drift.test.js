@@ -107,8 +107,8 @@ test.describe('Orbital Drift Course', () => {
       expect(holeInfo.hasEntity).toBe(true);
       expect(holeInfo.hasMeshes).toBe(true);
 
-      // Brief pause to let rendering settle
-      await sleep(500);
+      // Brief pause to let rendering settle (keep small — 18 holes × this adds up in CI)
+      await sleep(200);
     }
 
     // No WebGL errors should have occurred
@@ -171,8 +171,13 @@ test.describe('Orbital Drift Course', () => {
       window.game?.holeCompletionManager?.handleBallInHole();
     });
 
-    // Wait for async hole transition (setTimeout inside completion manager)
-    await sleep(5000);
+    await page.waitForFunction(
+      () => {
+        const n = window.game?.course?.getCurrentHoleNumber?.();
+        return typeof n === 'number' && n > 1;
+      },
+      { timeout: 20000 }
+    );
 
     // Verify hole advanced
     const newHole = await testHelper.getCurrentHole();

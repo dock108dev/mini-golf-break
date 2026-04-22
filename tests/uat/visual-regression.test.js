@@ -45,7 +45,7 @@ class VisualRegressionHelper {
    */
   async waitForStableVisuals() {
     // Wait for any animations or transitions to complete
-    await this.page.waitForLoadState('networkidle');
+    await this.page.waitForLoadState('load');
     await sleep(1000); // Additional stability wait
     
     // Wait for any CSS animations to complete
@@ -213,7 +213,7 @@ test.describe('Visual Regression Testing', () => {
       threshold: 0.3 // Higher threshold for contrast changes
     });
     
-    await page.reload({ waitUntil: 'networkidle' });
+    await page.reload({ waitUntil: 'load' });
     await testHelper.waitForGameInitialization({ forceFullInit: true });
   });
 

@@ -9,9 +9,10 @@ module.exports = {
   timeout: 120000, // Increased to 2 minutes for game initialization
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 3 : 1, // Increased retries for flaky game loading
-  // Each worker runs one UAT bootstrap (see tests/uat/fixtures/uat.js). Use workers=1 if the dev server flakes under load.
-  workers: process.env.CI ? 1 : undefined,
+  // CI: single retry — full game bootstrap is expensive; job is continue-on-error in GitHub Actions.
+  retries: process.env.CI ? 1 : 2,
+  // Each worker runs one game bootstrap (tests/uat/fixtures/uat.js). Two workers roughly halves wall time on 2-core runners.
+  workers: process.env.CI ? 2 : undefined,
   reporter: [
     ['html', { outputFolder: 'coverage/uat-results' }],
     ['junit', { outputFile: 'coverage/uat-results.xml' }],

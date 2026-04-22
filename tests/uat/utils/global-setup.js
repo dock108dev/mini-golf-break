@@ -22,9 +22,9 @@ async function globalSetup() {
     
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
-        await page.goto(resolveUatBaseUrl(), { 
-          waitUntil: 'networkidle',
-          timeout: 10000 
+        await page.goto(resolveUatBaseUrl(), {
+          waitUntil: 'load',
+          timeout: 30000
         });
         
         // Check if basic page elements are present

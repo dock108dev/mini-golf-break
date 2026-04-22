@@ -96,7 +96,7 @@ class PerformanceBenchmark {
   async measureLoadingPerformance() {
     const startTime = Date.now();
 
-    await this.page.reload({ waitUntil: 'networkidle' });
+    await this.page.reload({ waitUntil: 'load' });
     await this.testHelper.waitForGameInitialization({ forceFullInit: true });
     
     const endTime = Date.now();
@@ -368,7 +368,7 @@ test.describe('Performance Regression Detection', () => {
     
     // Run multiple sessions
     for (let session = 0; session < 3; session++) {
-      await page.reload({ waitUntil: 'networkidle' });
+      await page.reload({ waitUntil: 'load' });
       await testHelper.waitForGameInitialization({ forceFullInit: true });
       await performanceBenchmark.startMonitoring();
       
@@ -415,7 +415,7 @@ test.describe('Performance Regression Detection', () => {
       }, 100);
     });
     
-    await page.reload({ waitUntil: 'networkidle' });
+    await page.reload({ waitUntil: 'load' });
     await testHelper.waitForGameInitialization({ forceFullInit: true });
     await performanceBenchmark.startMonitoring();
     await testHelper.hitBall(0.5);

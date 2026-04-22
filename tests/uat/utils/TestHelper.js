@@ -135,9 +135,9 @@ export class TestHelper {
       await this.captureDebugInfo('initialization-start');
       
       try {
-        // Phase 1: Wait for page to load completely
-        await this.page.waitForLoadState('networkidle', { timeout: 30000 });
-        console.log('[TestHelper] Page network idle achieved');
+        // Phase 1: Document loaded (avoid networkidle — webpack-dev-server/HMR rarely goes idle and can hit the full timeout)
+        await this.page.waitForLoadState('load', { timeout: 30000 });
+        console.log('[TestHelper] Page load event received');
         
         // Phase 2: Wait for loading screen/overlay to disappear (optional)
         try {
@@ -202,8 +202,8 @@ export class TestHelper {
         }, { timeout: 30000 });
         console.log('[TestHelper] Game fully initialized');
         
-        // Phase 8: Small delay for final setup
-        await sleep(2000);
+        // Phase 8: Brief settle after playable state (shorter in CI to keep UAT job wall time down)
+        await sleep(process.env.CI ? 400 : 2000);
         console.log('[TestHelper] Game initialization complete');
         
         // Final validation
