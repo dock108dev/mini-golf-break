@@ -92,8 +92,8 @@ const MECHANIC_HYDRATORS = {
     if (m.position) {
       m.position = toVector3(m.position);
     }
-    if (m.direction) {
-      m.direction = toVector3(m.direction);
+    if (m.boost_direction) {
+      m.boost_direction = toVector3(m.boost_direction);
     }
   },
   multi_level_ramp(m) {
@@ -175,6 +175,15 @@ export function hydrateHoleConfig(config) {
       position: toVector3(p.position),
       ...(p.rotation ? { rotation: toEuler(p.rotation) } : {})
     }));
+  }
+
+  // Camera hint
+  if (config.cameraHint) {
+    hydrated.cameraHint = {
+      ...config.cameraHint,
+      position: toVector3(config.cameraHint.position),
+      target: toVector3(config.cameraHint.target)
+    };
   }
 
   return hydrated;

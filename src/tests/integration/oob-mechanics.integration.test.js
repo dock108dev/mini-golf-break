@@ -429,8 +429,8 @@ describe('BoostStrip pushing ball past boundary triggers OOB', () => {
       group,
       {
         position: new THREE.Vector3(48, 0, 0),
-        direction: new THREE.Vector3(1, 0, 0),
-        force: 20,
+        boost_direction: new THREE.Vector3(1, 0, 0),
+        boost_magnitude: 20,
         size: { width: 4, length: 4 }
       },
       SURFACE_HEIGHT
@@ -446,12 +446,12 @@ describe('BoostStrip pushing ball past boundary triggers OOB', () => {
     hazardManager.lastSafePosition.y = SURFACE_HEIGHT;
     hazardManager.lastSafePosition.z = 0;
 
-    // Boost strip applies force (doesn't move position directly)
+    // Boost strip applies velocity impulse (doesn't move position directly)
     strip.update(DT, ball);
-    expect(ball.applyForce).toHaveBeenCalled();
+    expect(ball.velocity.x).toBeCloseTo(20);
 
-    // Simulate physics stepping: the applied force moved the ball past boundary
-    // In real game, physics world would integrate the force into velocity then position.
+    // Simulate physics stepping: the applied impulse moved the ball past boundary
+    // In real game, physics world would integrate the velocity into position.
     // We simulate the result: ball ends up past maxX=50
     ball.position.x = 52;
 
@@ -476,14 +476,14 @@ describe('BoostStrip pushing ball past boundary triggers OOB', () => {
     expect(oobCall[1].lastSafePosition.x).toBe(45);
   });
 
-  it('boost strip force is applied before OOB detection in same frame', () => {
+  it('boost strip impulse is applied before OOB detection in same frame', () => {
     const strip = new BoostStrip(
       world,
       group,
       {
         position: new THREE.Vector3(49, 0, 0),
-        direction: new THREE.Vector3(1, 0, 0),
-        force: 15,
+        boost_direction: new THREE.Vector3(1, 0, 0),
+        boost_magnitude: 15,
         size: { width: 3, length: 3 }
       },
       SURFACE_HEIGHT
@@ -492,9 +492,9 @@ describe('BoostStrip pushing ball past boundary triggers OOB', () => {
     const ball = makeMockBall(strip.triggerBody.position.x, strip.triggerBody.position.z);
     const { hazardManager } = makeHazardManager(ball);
 
-    // Step 1: Boost strip applies force
+    // Step 1: Boost strip applies velocity impulse
     strip.update(DT, ball);
-    expect(ball.applyForce).toHaveBeenCalledTimes(1);
+    expect(ball.velocity.x).toBeCloseTo(15);
 
     // Step 2: Before physics steps, ball is still in bounds
     expect(hazardManager.isPositionOutOfBounds(ball.position)).toBe(false);
@@ -512,8 +512,8 @@ describe('BoostStrip pushing ball past boundary triggers OOB', () => {
       group,
       {
         position: new THREE.Vector3(0, 0, 48),
-        direction: new THREE.Vector3(0, 0, 1),
-        force: 25,
+        boost_direction: new THREE.Vector3(0, 0, 1),
+        boost_magnitude: 25,
         size: { width: 4, length: 4 }
       },
       SURFACE_HEIGHT
@@ -526,7 +526,7 @@ describe('BoostStrip pushing ball past boundary triggers OOB', () => {
     hazardManager.lastSafePosition.y = SURFACE_HEIGHT;
     hazardManager.lastSafePosition.z = 45;
 
-    // Boost applies force
+    // Boost applies velocity impulse
     strip.update(DT, ball);
 
     // Simulate physics: ball pushed past maxZ=50

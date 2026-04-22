@@ -60,25 +60,25 @@ describe('ScoringSystem', () => {
     });
 
     test('publishes STROKE_LIMIT_WARNING one stroke before max', () => {
-      scoring.setMaxStrokes(2); // maxStrokes = 5
-      for (let i = 0; i < 4; i++) {
+      scoring.setMaxStrokes(2); // maxStrokes = 6 (par + 4)
+      for (let i = 0; i < 5; i++) {
         scoring.addStroke();
       }
       expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
         'scoring:stroke_limit_warning',
-        { currentStrokes: 4, maxStrokes: 5 },
+        { currentStrokes: 5, maxStrokes: 6 },
         scoring
       );
     });
 
     test('publishes STROKE_LIMIT_REACHED at max strokes', () => {
-      scoring.setMaxStrokes(2); // maxStrokes = 5
-      for (let i = 0; i < 5; i++) {
+      scoring.setMaxStrokes(2); // maxStrokes = 6 (par + 4)
+      for (let i = 0; i < 6; i++) {
         scoring.addStroke();
       }
       expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
         'scoring:stroke_limit_reached',
-        { currentStrokes: 5, maxStrokes: 5 },
+        { currentStrokes: 6, maxStrokes: 6 },
         scoring
       );
     });
@@ -165,6 +165,43 @@ describe('ScoringSystem', () => {
 
     test('is safe to call when strokes are already zero', () => {
       scoring.resetCurrentStrokes();
+      expect(scoring.getCurrentStrokes()).toBe(0);
+    });
+  });
+
+  describe('cancelCurrentHoleStrokes', () => {
+    test('resets current hole strokes to zero', () => {
+      scoring.addStroke().addStroke().addStroke();
+      scoring.cancelCurrentHoleStrokes();
+      expect(scoring.getCurrentStrokes()).toBe(0);
+    });
+
+    test('subtracts current hole strokes from total', () => {
+      scoring.addStroke().addStroke(); // total=2, current=2
+      scoring.cancelCurrentHoleStrokes();
+      expect(scoring.getTotalStrokes()).toBe(0);
+    });
+
+    test('total never goes below zero', () => {
+      // Edge case: if continuousStrokeCount was manually reset
+      scoring.continuousStrokeCount = 1;
+      scoring.currentHoleStrokes = 3;
+      scoring.cancelCurrentHoleStrokes();
+      expect(scoring.getTotalStrokes()).toBe(0);
+    });
+
+    test('returns instance for chaining', () => {
+      expect(scoring.cancelCurrentHoleStrokes()).toBe(scoring);
+    });
+
+    test('preserves strokes from previous holes in total', () => {
+      scoring.addStroke().addStroke(); // hole 1: 2 strokes
+      scoring.completeHole();
+      scoring.resetCurrentStrokes();
+      scoring.addStroke(); // hole 2: 1 stroke so far
+      // total = 3, current = 1
+      scoring.cancelCurrentHoleStrokes();
+      expect(scoring.getTotalStrokes()).toBe(2); // only hole 1 strokes remain
       expect(scoring.getCurrentStrokes()).toBe(0);
     });
   });
@@ -282,24 +319,27 @@ describe('ScoringSystem', () => {
   });
 
   describe('deriveMaxStrokes (static)', () => {
-    test('defaults to par * 2 + 1', () => {
-      expect(ScoringSystem.deriveMaxStrokes(2)).toBe(5);
+    test('defaults to par + 4', () => {
+      expect(ScoringSystem.deriveMaxStrokes(2)).toBe(6);
       expect(ScoringSystem.deriveMaxStrokes(3)).toBe(7);
-      expect(ScoringSystem.deriveMaxStrokes(4)).toBe(9);
+      expect(ScoringSystem.deriveMaxStrokes(4)).toBe(8);
     });
 
     test('uses configMaxStrokes when provided', () => {
       expect(ScoringSystem.deriveMaxStrokes(2, 6)).toBe(6);
     });
 
-    test('clamps to minimum of 3', () => {
+    test('clamps configMaxStrokes to minimum of 3', () => {
       expect(ScoringSystem.deriveMaxStrokes(2, 1)).toBe(3);
-      expect(ScoringSystem.deriveMaxStrokes(1)).toBe(3);
+    });
+
+    test('par + 4 for small pars is at least 5', () => {
+      expect(ScoringSystem.deriveMaxStrokes(1)).toBe(5); // 1+4=5
     });
 
     test('clamps to maximum of 10', () => {
       expect(ScoringSystem.deriveMaxStrokes(2, 15)).toBe(10);
-      expect(ScoringSystem.deriveMaxStrokes(5)).toBe(10);
+      expect(ScoringSystem.deriveMaxStrokes(7)).toBe(10); // 7+4=11
     });
 
     test('treats null configMaxStrokes as absent', () => {
@@ -334,14 +374,14 @@ describe('ScoringSystem', () => {
     });
 
     test('returns false when below limit', () => {
-      scoring.setMaxStrokes(2); // maxStrokes = 5
+      scoring.setMaxStrokes(2); // maxStrokes = 6 (par + 4)
       scoring.addStroke().addStroke();
       expect(scoring.isAtLimit()).toBe(false);
     });
 
     test('returns true when at limit', () => {
-      scoring.setMaxStrokes(2); // maxStrokes = 5
-      for (let i = 0; i < 5; i++) {
+      scoring.setMaxStrokes(2); // maxStrokes = 6 (par + 4)
+      for (let i = 0; i < 6; i++) {
         scoring.addStroke();
       }
       expect(scoring.isAtLimit()).toBe(true);
@@ -412,12 +452,12 @@ describe('ScoringSystem', () => {
     });
 
     test('records capped score when stroke limit is reached', () => {
-      scoring.setMaxStrokes(2); // maxStrokes = 5
-      for (let i = 0; i < 5; i++) {
+      scoring.setMaxStrokes(2); // maxStrokes = 6 (par + 4)
+      for (let i = 0; i < 6; i++) {
         scoring.addStroke();
       }
       scoring.completeHole();
-      expect(scoring.getScoreForHole(0)).toBe(5);
+      expect(scoring.getScoreForHole(0)).toBe(6);
       expect(scoring.isAtLimit()).toBe(true);
     });
   });

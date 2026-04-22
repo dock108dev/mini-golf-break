@@ -1,6 +1,7 @@
 import { HighScoreManager } from '../../game/HighScoreManager';
 import { debug } from '../../utils/debug';
 import { reloadPage } from '../../utils/navigation';
+import { trapFocus } from '../../utils/domHelpers';
 
 export class UIScoreOverlay {
   constructor(game, parentContainer) {
@@ -15,6 +16,8 @@ export class UIScoreOverlay {
     this.nameEntryElement = null;
 
     this.lastDisplayedStrokes = null;
+    this.holeScoreCardElement = null;
+    this._holeScoreCardTimeout = null;
 
     this.INFO_BOX_CLASS = 'info-box';
     this.TOP_RIGHT_CONTAINER_CLASS = 'top-right-container';
@@ -79,9 +82,17 @@ export class UIScoreOverlay {
     if (!this.scoreElement || !this.game.scoringSystem) {
       return;
     }
-    const totalStrokes = this.game.scoringSystem.getTotalStrokes();
-    this.scoreElement.textContent = `Total Strokes: ${totalStrokes}`;
-    debug.log(`[UIScoreOverlay.updateScore] Updated to: ${totalStrokes}`);
+    const holeScores = this.game.scoringSystem.getHoleScores?.() ?? [];
+    const holePars = this.game.course?.getAllHolePars?.() ?? [];
+    const completedPar = holePars.slice(0, holeScores.length).reduce((s, p) => s + p, 0);
+    const completedStrokes = holeScores.reduce((s, n) => s + n, 0);
+    if (holeScores.length === 0) {
+      this.scoreElement.textContent = 'Score: E';
+    } else {
+      const diff = completedStrokes - completedPar;
+      this.scoreElement.textContent = `Score: ${this._formatDiff(diff)}`;
+    }
+    debug.log('[UIScoreOverlay.updateScore] Updated score display');
   }
 
   updateStrokes() {
@@ -200,45 +211,70 @@ export class UIScoreOverlay {
     content.appendChild(bestScoreInfo);
 
     const buttonContainer = document.createElement('div');
-    buttonContainer.style.marginTop = '20px';
+    buttonContainer.classList.add('scorecard-button-row');
 
     const playAgainButton = document.createElement('button');
     playAgainButton.textContent = 'Play Again';
     playAgainButton.classList.add(this.SCORECARD_BUTTON_CLASS);
     playAgainButton.addEventListener('click', () => {
-      debug.log('[UIScoreOverlay] Play Again clicked. Returning to start screen.');
+      debug.log('[UIScoreOverlay] Play Again clicked. Restarting game.');
       if (window.gtag) {
         window.gtag('event', 'click_play_again', {
           event_category: 'game_actions',
           event_label: 'Play Again from Scorecard'
         });
       }
-      if (window.App && typeof window.App.returnToMenu === 'function') {
-        window.App.returnToMenu();
+      if (window.App && typeof window.App.restartGame === 'function') {
+        window.App.restartGame();
       } else {
         reloadPage();
       }
     });
     buttonContainer.appendChild(playAgainButton);
 
+    const quitButton = document.createElement('button');
+    quitButton.textContent = 'Quit';
+    quitButton.classList.add(this.SCORECARD_BUTTON_CLASS, 'scorecard-quit-button');
+    quitButton.setAttribute('aria-label', 'Quit to title screen');
+    quitButton.addEventListener('click', () => {
+      debug.log('[UIScoreOverlay] Quit clicked. Returning to title screen.');
+      if (window.App && typeof window.App.returnToMenu === 'function') {
+        window.App.returnToMenu();
+      } else {
+        reloadPage();
+      }
+    });
+    buttonContainer.appendChild(quitButton);
+
     content.appendChild(buttonContainer);
     this.scorecardElement.appendChild(content);
 
     this.scorecardElement.addEventListener('keydown', e => {
-      this._trapFocus(e, this.scorecardElement);
+      trapFocus(e, this.scorecardElement);
     });
 
     document.body.appendChild(this.scorecardElement);
 
-    // Check if score qualifies for top-10 leaderboard
-    const qualifies = HighScoreManager.isTopTen(totalStrokesValue, courseName);
+    const isTopThree = HighScoreManager.isTopThree(totalStrokesValue, courseName);
 
     requestAnimationFrame(() => {
       this.scorecardElement.classList.add(this.SCORECARD_VISIBLE_CLASS);
 
-      if (qualifies) {
+      // Particle burst for top-3 scores
+      if (isTopThree) {
+        this.game?.visualEffectsManager?.triggerHighScoreCelebration?.();
+      }
+
+      if (isNewBest) {
         playAgainButton.style.display = 'none';
-        this._showNameEntryModal(content, totalStrokesValue, courseName, playAgainButton);
+        quitButton.style.display = 'none';
+        this._showNameEntryModal(
+          content,
+          totalStrokesValue,
+          courseName,
+          playAgainButton,
+          quitButton
+        );
       } else {
         playAgainButton.focus();
       }
@@ -247,11 +283,11 @@ export class UIScoreOverlay {
     debug.log('[UIScoreOverlay] Final scorecard shown.');
   }
 
-  _showNameEntryModal(contentParent, score, courseName, playAgainButton) {
+  _showNameEntryModal(contentParent, score, courseName, playAgainButton, quitButton) {
     this.nameEntryElement = document.createElement('div');
     this.nameEntryElement.classList.add('name-entry-modal');
     this.nameEntryElement.setAttribute('role', 'dialog');
-    this.nameEntryElement.setAttribute('aria-label', 'Enter your initials');
+    this.nameEntryElement.setAttribute('aria-label', 'Enter your name for the leaderboard');
 
     const prompt = document.createElement('div');
     prompt.classList.add('name-entry-prompt');
@@ -260,17 +296,12 @@ export class UIScoreOverlay {
 
     const input = document.createElement('input');
     input.type = 'text';
-    input.maxLength = 3;
+    input.maxLength = 12;
     input.classList.add('name-entry-input');
     input.setAttribute('autocomplete', 'off');
-    input.setAttribute('autocapitalize', 'characters');
-    input.setAttribute('aria-label', 'Enter 3-letter initials');
-    input.placeholder = 'AAA';
+    input.setAttribute('aria-label', 'Enter your name (max 12 characters)');
+    input.placeholder = 'Your name';
     this.nameEntryElement.appendChild(input);
-
-    input.addEventListener('input', () => {
-      input.value = input.value.toUpperCase().replace(/[^A-Z]/g, '');
-    });
 
     const buttonRow = document.createElement('div');
     buttonRow.classList.add('name-entry-buttons');
@@ -279,8 +310,8 @@ export class UIScoreOverlay {
     submitBtn.textContent = 'Save';
     submitBtn.classList.add(this.SCORECARD_BUTTON_CLASS);
     submitBtn.addEventListener('click', () => {
-      const initials = input.value || '---';
-      this._saveAndDismissNameEntry(initials, score, courseName, playAgainButton);
+      const name = input.value.trim() || 'Anonymous';
+      this._saveAndDismissNameEntry(name, score, courseName, playAgainButton, quitButton);
     });
     buttonRow.appendChild(submitBtn);
 
@@ -288,7 +319,7 @@ export class UIScoreOverlay {
     skipBtn.textContent = 'Skip';
     skipBtn.classList.add(this.SCORECARD_BUTTON_CLASS, 'name-entry-skip');
     skipBtn.addEventListener('click', () => {
-      this._saveAndDismissNameEntry('---', score, courseName, playAgainButton);
+      this._saveAndDismissNameEntry('Anonymous', score, courseName, playAgainButton, quitButton);
     });
     buttonRow.appendChild(skipBtn);
 
@@ -297,8 +328,8 @@ export class UIScoreOverlay {
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        const initials = input.value || '---';
-        this._saveAndDismissNameEntry(initials, score, courseName, playAgainButton);
+        const name = input.value.trim() || 'Anonymous';
+        this._saveAndDismissNameEntry(name, score, courseName, playAgainButton, quitButton);
       }
     });
 
@@ -310,8 +341,8 @@ export class UIScoreOverlay {
     debug.log('[UIScoreOverlay] Name entry modal shown.');
   }
 
-  _saveAndDismissNameEntry(initials, score, courseName, playAgainButton) {
-    HighScoreManager.saveNamedScore(initials, score, courseName);
+  _saveAndDismissNameEntry(name, score, courseName, playAgainButton, quitButton) {
+    HighScoreManager.saveNamedScore(name, score, courseName);
 
     if (this.nameEntryElement) {
       this.nameEntryElement.remove();
@@ -321,9 +352,12 @@ export class UIScoreOverlay {
     this._teardownViewportAdjustment();
 
     playAgainButton.style.display = '';
+    if (quitButton) {
+      quitButton.style.display = '';
+    }
     playAgainButton.focus();
 
-    debug.log(`[UIScoreOverlay] Name entry saved: ${initials}`);
+    debug.log(`[UIScoreOverlay] Name entry saved: ${name}`);
   }
 
   _setupViewportAdjustment() {
@@ -393,29 +427,63 @@ export class UIScoreOverlay {
     }
   }
 
-  _trapFocus(e, container) {
-    if (e.key !== 'Tab') {
-      return;
+  _getScoreLabel(diff) {
+    if (diff <= -2) {
+      return 'Eagle';
     }
-    const focusableElements = container.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    if (focusableElements.length === 0) {
-      return;
+    if (diff === -1) {
+      return 'Birdie';
     }
-    const firstFocusable = focusableElements[0];
-    const lastFocusable = focusableElements[focusableElements.length - 1];
+    if (diff === 0) {
+      return 'Par';
+    }
+    if (diff === 1) {
+      return 'Bogey';
+    }
+    if (diff === 2) {
+      return 'Double';
+    }
+    return 'Hole-Out';
+  }
 
-    if (e.shiftKey) {
-      if (document.activeElement === firstFocusable) {
-        e.preventDefault();
-        lastFocusable.focus();
-      }
-    } else {
-      if (document.activeElement === lastFocusable) {
-        e.preventDefault();
-        firstFocusable.focus();
-      }
+  showHoleScoreCard(holeNumber, par, strokes) {
+    this._dismissHoleScoreCard();
+
+    const diff = strokes - par;
+    const label = this._getScoreLabel(diff);
+
+    const card = document.createElement('div');
+    card.classList.add('hole-score-card');
+    card.setAttribute('aria-live', 'polite');
+    card.setAttribute('role', 'status');
+
+    const title = document.createElement('div');
+    title.classList.add('hole-score-card-title');
+    title.textContent = label;
+    card.appendChild(title);
+
+    const detail = document.createElement('div');
+    detail.classList.add('hole-score-card-detail');
+    detail.textContent = `Hole ${holeNumber} — ${strokes} stroke${strokes !== 1 ? 's' : ''} (Par ${par})`;
+    card.appendChild(detail);
+
+    card.addEventListener('click', () => this._dismissHoleScoreCard());
+
+    this.holeScoreCardElement = card;
+    document.body.appendChild(card);
+
+    this._holeScoreCardTimeout = setTimeout(() => this._dismissHoleScoreCard(), 2000);
+    debug.log(`[UIScoreOverlay] Hole score card shown: ${label} (Hole ${holeNumber})`);
+  }
+
+  _dismissHoleScoreCard() {
+    if (this._holeScoreCardTimeout) {
+      clearTimeout(this._holeScoreCardTimeout);
+      this._holeScoreCardTimeout = null;
+    }
+    if (this.holeScoreCardElement) {
+      this.holeScoreCardElement.remove();
+      this.holeScoreCardElement = null;
     }
   }
 
@@ -441,6 +509,7 @@ export class UIScoreOverlay {
       this.parentContainer.removeChild(this.scoreContainer);
     }
     this.hideFinalScorecard();
+    this._dismissHoleScoreCard();
     this._teardownViewportAdjustment();
 
     this.scoreContainer = null;

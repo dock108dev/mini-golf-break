@@ -76,6 +76,19 @@ jest.mock('three', () => ({
     },
     material: { dispose: jest.fn() }
   })),
+  SphereGeometry: jest.fn(() => ({ dispose: jest.fn() })),
+  MeshBasicMaterial: jest.fn(opts => ({
+    color: opts?.color || 0xffffff,
+    opacity: opts?.opacity !== undefined ? opts.opacity : 1,
+    transparent: opts?.transparent || false,
+    dispose: jest.fn()
+  })),
+  Mesh: jest.fn((geo, mat) => ({
+    geometry: geo,
+    material: mat,
+    position: { x: 0, y: 0, z: 0, set: jest.fn() },
+    scale: { setScalar: jest.fn(), x: 1, y: 1, z: 1 }
+  })),
   BufferAttribute: jest.fn(),
   Float32Array: jest.fn(),
   Color: jest.fn()
@@ -814,6 +827,104 @@ describe('InputController', () => {
       // Further keyboard input should be blocked since pointer is now down
       inputController.onKeyDown({ key: 'ArrowRight', preventDefault: jest.fn() });
       expect(inputController.keysPressed['ArrowRight']).toBeUndefined();
+    });
+
+    // --- ISSUE-010 acceptance criteria tests ---
+
+    test('pull-back drag computes power from screen pixel distance (60px → 0.5)', () => {
+      inputController.isInputEnabled = true;
+
+      inputController.onMouseDown({
+        button: 0,
+        clientX: 400,
+        clientY: 300,
+        preventDefault: jest.fn()
+      });
+
+      expect(inputController.isPointerDown).toBe(true);
+      expect(inputController._dragStartScreenX).toBe(400);
+      expect(inputController._dragStartScreenY).toBe(300);
+
+      inputController.onMouseMove({
+        clientX: 460,
+        clientY: 300,
+        preventDefault: jest.fn()
+      });
+
+      expect(inputController.hitPower).toBeCloseTo(0.5, 2);
+      expect(inputController.hitDirection).toBeDefined();
+      expect(inputController.hitDirection).not.toBeNull();
+    });
+
+    test('trajectory dots: 12 Mesh objects with monotonically decreasing opacity', () => {
+      const ballPos = { x: 0, y: 0, z: 0 };
+      const dir = { x: 1, y: 0, z: 0 };
+
+      inputController.updateAimLine(ballPos, dir, 0.6);
+
+      expect(inputController._trajectoryDots.length).toBe(12);
+
+      const opacities = inputController._trajectoryDots.map(dot => dot.material.opacity);
+      for (let i = 0; i < opacities.length - 1; i++) {
+        expect(opacities[i]).toBeGreaterThan(opacities[i + 1]);
+      }
+    });
+
+    test('power bar returns to start after one full period (dt = 1/0.7 s)', () => {
+      inputController.powerBarMode = true;
+      const initial = inputController.powerBarValue;
+
+      inputController.update(1 / 0.7);
+
+      expect(inputController.powerBarValue).toBeCloseTo(initial, 2);
+    });
+
+    test('power bar reaches max at half period', () => {
+      inputController.powerBarMode = true;
+
+      inputController.update(1 / (2 * 0.7));
+
+      expect(inputController.powerBarValue).toBeCloseTo(1, 1);
+    });
+
+    test('power bar does not advance when powerBarMode is false', () => {
+      inputController.powerBarMode = false;
+      inputController._powerBarPhase = 0;
+
+      inputController.update(1.0);
+
+      expect(inputController._powerBarPhase).toBe(0);
+      expect(inputController.powerBarValue).toBe(0);
+    });
+
+    test('sleepSpeedLimit is exposed on controller and blocks aim input when ball is moving', () => {
+      expect(inputController.sleepSpeedLimit).toBeDefined();
+      expect(typeof inputController.sleepSpeedLimit).toBe('number');
+
+      mockGame.ballManager.ball.isStopped.mockReturnValue(false);
+
+      inputController.onMouseDown({
+        button: 0,
+        clientX: 400,
+        clientY: 300,
+        preventDefault: jest.fn()
+      });
+
+      expect(inputController.isPointerDown).toBe(false);
+
+      mockGame.stateManager.isBallInMotion.mockReturnValue(true);
+      inputController.onKeyDown({ key: 'ArrowLeft', preventDefault: jest.fn() });
+
+      expect(inputController.isKeyboardAiming).toBe(false);
+    });
+
+    test('trajectory dots are cleared when removeDirectionLine is called', () => {
+      inputController.updateAimLine({ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }, 0.5);
+      expect(inputController._trajectoryDots.length).toBe(12);
+
+      inputController.removeDirectionLine();
+
+      expect(inputController._trajectoryDots.length).toBe(0);
     });
 
     test('space key does not interfere with mouse aim direction', () => {

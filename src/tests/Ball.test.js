@@ -229,6 +229,8 @@ describe('Ball', () => {
       },
       eventManager: {
         publish: jest.fn(),
+        subscribe: jest.fn(),
+        unsubscribe: jest.fn(),
         getEventTypes: jest.fn(() => EventTypes)
       }
     };
@@ -246,7 +248,7 @@ describe('Ball', () => {
     expect(ball.mesh).toBeDefined();
     expect(ball.body).toBeDefined();
     expect(ball.radius).toBe(0.2);
-    expect(ball.mass).toBe(1);
+    expect(ball.mass).toBe(0.045);
     expect(ball.isBallActive).toBe(true);
   });
 
@@ -423,7 +425,7 @@ describe('Ball', () => {
 
   test('should handle collision events', () => {
     mockGame.audioManager = {
-      playSound: jest.fn()
+      playWallImpact: jest.fn()
     };
 
     const mockEvent = {
@@ -438,14 +440,14 @@ describe('Ball', () => {
 
     ball.onCollide(mockEvent);
 
-    // Should play sound for bumper collision
-    expect(mockGame.audioManager.playSound).toHaveBeenCalledWith('bump', expect.any(Number));
+    // Should call playWallImpact with the absolute impact speed
+    expect(mockGame.audioManager.playWallImpact).toHaveBeenCalledWith(5);
     expect(ball.body.wakeUp).toHaveBeenCalled();
   });
 
   test('should handle wall collisions', () => {
     mockGame.audioManager = {
-      playSound: jest.fn()
+      playWallImpact: jest.fn()
     };
 
     const mockEvent = {
@@ -460,8 +462,8 @@ describe('Ball', () => {
 
     ball.onCollide(mockEvent);
 
-    // Should play sound for wall collision
-    expect(mockGame.audioManager.playSound).toHaveBeenCalledWith('bump', expect.any(Number));
+    // Should call playWallImpact for wall collision
+    expect(mockGame.audioManager.playWallImpact).toHaveBeenCalledWith(3);
   });
 
   test('should handle success effect', () => {
@@ -639,5 +641,149 @@ describe('Ball', () => {
 
     expect(ball.body.velocity.scale).not.toHaveBeenCalled();
     expect(ball.body.velocity.setZero).not.toHaveBeenCalled();
+  });
+
+  describe('emissive flash on BALL_HIT', () => {
+    test('sets emissiveIntensity to 1.0 and starts flash on BALL_HIT', () => {
+      // Simulate the event handler directly
+      ball._onBallHit();
+      expect(ball.defaultMaterial.emissiveIntensity).toBe(1.0);
+      expect(ball._emissiveFlashAge).toBe(0);
+    });
+
+    test('decays emissiveIntensity back to baseline (0.3) after 0.1 s', () => {
+      // Ball is moving — idle glow must not interfere with flash decay assertion
+      ball.body.velocity.length.mockReturnValue(1.0);
+      ball._emissiveFlashAge = 0;
+      ball.defaultMaterial.emissiveIntensity = 1.0;
+
+      ball.update(0.1); // exactly at decay boundary
+
+      expect(ball.defaultMaterial.emissiveIntensity).toBeCloseTo(0.3, 5);
+      expect(ball._emissiveFlashAge).toBeNull();
+    });
+
+    test('emissiveIntensity is above baseline during decay', () => {
+      ball._emissiveFlashAge = 0;
+      ball.defaultMaterial.emissiveIntensity = 1.0;
+
+      ball.update(0.05); // halfway through decay
+
+      expect(ball.defaultMaterial.emissiveIntensity).toBeGreaterThan(0.3);
+      expect(ball.defaultMaterial.emissiveIntensity).toBeLessThan(1.0);
+    });
+
+    test('does nothing when flash is inactive and ball is moving', () => {
+      // When ball is moving, neither flash nor idle glow changes emissive intensity
+      ball.body.velocity.length.mockReturnValue(1.0);
+      ball._emissiveFlashAge = null;
+      ball.defaultMaterial.emissiveIntensity = 0.3;
+
+      ball.update(0.1);
+
+      expect(ball.defaultMaterial.emissiveIntensity).toBe(0.3);
+    });
+  });
+
+  describe('wall impact audio', () => {
+    test('calls playWallImpact with impact speed above threshold', () => {
+      mockGame.audioManager = { playWallImpact: jest.fn() };
+
+      ball.onCollide({
+        body: { material: { name: 'bumper' }, userData: {} },
+        contact: { getImpactVelocityAlongNormal: jest.fn(() => 0.5) }
+      });
+
+      expect(mockGame.audioManager.playWallImpact).toHaveBeenCalledWith(0.5);
+    });
+
+    test('passes absolute speed (positive) even for negative normal velocity', () => {
+      mockGame.audioManager = { playWallImpact: jest.fn() };
+
+      ball.onCollide({
+        body: { material: { name: 'bumper' }, userData: {} },
+        contact: { getImpactVelocityAlongNormal: jest.fn(() => -2.0) }
+      });
+
+      expect(mockGame.audioManager.playWallImpact).toHaveBeenCalledWith(2.0);
+    });
+
+    test('does not call playWallImpact for non-wall bodies', () => {
+      mockGame.audioManager = { playWallImpact: jest.fn() };
+
+      ball.onCollide({
+        body: { material: { name: 'ground' }, userData: {} },
+        contact: { getImpactVelocityAlongNormal: jest.fn(() => 5) }
+      });
+
+      expect(mockGame.audioManager.playWallImpact).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('_updateIdleGlow', () => {
+    test('activates idle glow when speed is below sleepSpeedLimit', () => {
+      // velocity.length() returns 0 by default — below 0.1 threshold
+      ball._emissiveFlashAge = null;
+      ball._updateIdleGlow(0.016);
+      expect(ball._isIdleGlowing).toBe(true);
+    });
+
+    test('accumulates idle glow age while ball is at rest', () => {
+      ball._emissiveFlashAge = null;
+      ball._updateIdleGlow(0.1);
+      ball._updateIdleGlow(0.1);
+      expect(ball._idleGlowAge).toBeCloseTo(0.2);
+    });
+
+    test('emissive intensity stays within 0.3–0.6 range during idle', () => {
+      ball._emissiveFlashAge = null;
+      for (let t = 0; t < 2.0; t += 0.05) {
+        ball._updateIdleGlow(0.05);
+        const intensity = ball.defaultMaterial.emissiveIntensity;
+        expect(intensity).toBeGreaterThanOrEqual(0.29);
+        expect(intensity).toBeLessThanOrEqual(0.61);
+      }
+    });
+
+    test('does not run when emissive flash is active', () => {
+      ball._emissiveFlashAge = 0.05; // flash in progress
+      ball._idleGlowAge = 0;
+      ball._updateIdleGlow(0.016);
+      expect(ball._isIdleGlowing).toBe(false);
+      expect(ball._idleGlowAge).toBe(0);
+    });
+
+    test('deactivates and resets to baseline when ball starts moving', () => {
+      // Activate idle glow first
+      ball._emissiveFlashAge = null;
+      ball._updateIdleGlow(0.1);
+      expect(ball._isIdleGlowing).toBe(true);
+
+      // Simulate ball moving (speed above threshold)
+      ball.body.velocity.length.mockReturnValue(1.5);
+      ball._updateIdleGlow(0.016);
+
+      expect(ball._isIdleGlowing).toBe(false);
+      expect(ball._idleGlowAge).toBe(0);
+      expect(ball.defaultMaterial.emissiveIntensity).toBe(0.3);
+    });
+
+    test('BALL_HIT resets idle glow state', () => {
+      // Start idle glow
+      ball._emissiveFlashAge = null;
+      ball._updateIdleGlow(0.5);
+      expect(ball._isIdleGlowing).toBe(true);
+
+      // Fire shot (triggers _onBallHit handler)
+      ball._onBallHit();
+
+      expect(ball._isIdleGlowing).toBe(false);
+      expect(ball._idleGlowAge).toBe(0);
+    });
+
+    test('does nothing when body is missing', () => {
+      ball.body = null;
+      expect(() => ball._updateIdleGlow(0.016)).not.toThrow();
+    });
   });
 });

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { MechanicBase } from './MechanicBase';
 import { registerMechanic } from './MechanicRegistry';
+import { HAZARD_COLORS } from '../themes/palette';
 
 /**
  * TimedHazard - A hazard that toggles on/off on a timer (e.g., solar flares).
@@ -39,12 +40,13 @@ class TimedHazard extends MechanicBase {
         ? themeHazardColors?.waterColor || 0xff4400
         : themeHazardColors?.sandColor || 0xffaa00;
     const activeColor = config.color || defaultColor;
+    this._dangerEmissive = HAZARD_COLORS.danger;
 
     // Visual mesh (shown/hidden based on timer)
     const geometry = new THREE.PlaneGeometry(width, length);
     const material = new THREE.MeshStandardMaterial({
       color: activeColor,
-      emissive: activeColor,
+      emissive: this._dangerEmissive,
       emissiveIntensity: 0.5,
       transparent: true,
       opacity: 0.7,
@@ -76,6 +78,11 @@ class TimedHazard extends MechanicBase {
     // Toggle visibility
     if (this.isActive !== wasActive) {
       this.mesh.visible = this.isActive;
+    }
+
+    // Danger-tier: pulse emissive at 1.5 Hz when active
+    if (this.isActive && this.mesh.material) {
+      this.mesh.material.emissiveIntensity = 0.5 + 0.3 * Math.sin(this.timer * Math.PI * 3);
     }
 
     // Check ball overlap when active

@@ -1,6 +1,6 @@
 # Mini Golf Break
 
-A 3D mini-golf game built with [Three.js](https://threejs.org/) and [Cannon-es](https://pmndrs.github.io/cannon-es/). Features the **Orbital Drift** course — 9 space-themed holes with moving obstacles, force fields, portals, timed hazards, and elevation changes. Click-and-drag to aim, release to shoot, get the ball in the hole.
+A 3D mini-golf game built with [Three.js](https://threejs.org/) and [Cannon-es](https://pmndrs.github.io/cannon-es/). Features the **Orbital Drift** course — 18 space-themed holes with moving obstacles, force fields, portals, timed hazards, and elevation changes. Click-and-drag to aim, release to shoot, get the ball in the hole.
 
 ## Quick Start
 
@@ -17,7 +17,7 @@ Open `http://localhost:8080`.
 2. Drag backward to set direction and power (aim line shows trajectory)
 3. Release to shoot
 4. Get the ball in the hole in the fewest strokes
-5. Complete all 9 holes for your final score
+5. Complete all 18 holes for your final score
 
 Press `d` during gameplay to toggle debug mode (physics wireframes, axes helpers).
 
@@ -34,7 +34,7 @@ Press `d` during gameplay to toggle debug mode (physics wireframes, axes helpers
 
 ## Courses
 
-The game currently ships with the **Orbital Drift** course (9 holes, par 24). The course is displayed on the start screen and begins when you click **Play**.
+The game currently ships with the **Orbital Drift** course (18 holes, par 57: front nine par 24, back nine par 33). The course is displayed on the start screen and begins when you click **Play**.
 
 ## Project Structure
 
@@ -45,7 +45,7 @@ src/
   events/         # EventManager, EventTypes
   game/           # ScoringSystem, HighScoreManager
   managers/       # BallManager, UIManager, StateManager, GameLoopManager, StuckBallManager, etc.
-  mechanics/      # MechanicBase, MechanicRegistry, 12 mechanic types
+  mechanics/      # MechanicBase, MechanicRegistry, 16 mechanic types
   objects/        # Ball, HoleEntity, OrbitalDriftCourse, hazards, GreenSurfaceBuilder
   physics/        # PhysicsWorld
   scenes/         # Game (main coordinator)
@@ -79,6 +79,7 @@ Deploy the `dist/` folder to any static host. Vercel configuration is included (
 - [Architecture](docs/architecture.md) -- system design, game loop, managers, mechanics
 - [Development Guide](docs/development.md) -- setup, testing, debugging, build, deployment
 - [Obstacle Taxonomy](docs/obstacle-taxonomy.md) -- all mechanic types, config shapes, parameter ranges
+- [Design Reference](DESIGN.md) -- design principles, patterns, anti-patterns, hole taxonomy
 
 ## License
 

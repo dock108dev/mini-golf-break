@@ -68,6 +68,7 @@ beforeAll(() => {
       setFromAxisAngle: jest.fn(),
       copy: jest.fn()
     },
+    angularVelocity: { x: 0, y: 0, z: 0, set: jest.fn() },
     addShape: jest.fn(),
     addEventListener: jest.fn(),
     userData: {}
@@ -181,7 +182,7 @@ describe('Ball-in-hole detection with LowGravityZone active', () => {
     const config = {
       position: new THREE.Vector3(holePos.x, 0, holePos.z),
       radius: 3,
-      gravityMultiplier: 0.3
+      gravity_fraction: 0.3
     };
     const zone = new LowGravityZone(world, group, config, SURFACE_HEIGHT);
 
@@ -208,7 +209,7 @@ describe('Ball-in-hole detection with LowGravityZone active', () => {
     const config = {
       position: new THREE.Vector3(holePos.x, 0, holePos.z),
       radius: 5,
-      gravityMultiplier: 0.1
+      gravity_fraction: 0.1
     };
     const zone = new LowGravityZone(world, group, config, SURFACE_HEIGHT);
 
@@ -314,22 +315,18 @@ describe('Ball-in-hole detection with BoostStrip active', () => {
     // BoostStrip at hole position pushing in +X direction
     const config = {
       position: new THREE.Vector3(holePos.x, 0, holePos.z),
-      direction: new THREE.Vector3(1, 0, 0),
-      force: 20,
+      boost_direction: new THREE.Vector3(1, 0, 0),
+      boost_magnitude: 20,
       size: { width: 2, length: 2 }
     };
     const strip = new BoostStrip(world, group, config, SURFACE_HEIGHT);
 
-    // Ball at hole position but with speed already near threshold
+    // Ball at hole position
     const ball = makeMockBall(strip.triggerBody.position.x, strip.triggerBody.position.z, 3.5, 0);
 
-    // BoostStrip applies force each frame
+    // BoostStrip applies velocity impulse (initial vx=3.5 + magnitude 20 = 23.5)
     strip.update(1 / 60, ball);
-    expect(ball.applyForce).toHaveBeenCalled();
-
-    // Simulate that the boost increased speed above threshold
-    // (In real physics, applyForce would increase velocity over time)
-    ball.velocity.x = 5.0; // Above HOLE_ENTRY_MAX_SPEED (4.06)
+    expect(ball.velocity.x).toBeGreaterThan(4.06); // well above HOLE_ENTRY_MAX_SPEED
 
     // Ball is at hole position but too fast
     const isInHole = checkBallInHole(ball, holePos);
@@ -339,8 +336,8 @@ describe('Ball-in-hole detection with BoostStrip active', () => {
   it('ball at hole position with boost but speed still under threshold enters hole', () => {
     const config = {
       position: new THREE.Vector3(holePos.x, 0, holePos.z),
-      direction: new THREE.Vector3(1, 0, 0),
-      force: 2,
+      boost_direction: new THREE.Vector3(1, 0, 0),
+      boost_magnitude: 2,
       size: { width: 2, length: 2 }
     };
     const strip = new BoostStrip(world, group, config, SURFACE_HEIGHT);
@@ -349,9 +346,10 @@ describe('Ball-in-hole detection with BoostStrip active', () => {
     const ball = makeMockBall(strip.triggerBody.position.x, strip.triggerBody.position.z, 1.0, 0);
 
     strip.update(1 / 60, ball);
-    expect(ball.applyForce).toHaveBeenCalled();
+    // initial vx=1 + magnitude 2 = 3; below threshold (4.06)
+    expect(ball.velocity.x).toBeCloseTo(3);
 
-    // Even with gentle boost, speed stays under threshold
+    // Confirm still under threshold
     ball.velocity.x = 2.0; // Still under 4.06
 
     // Set ball position to hole position for detection
@@ -365,8 +363,8 @@ describe('Ball-in-hole detection with BoostStrip active', () => {
   it('boost strip respects speed threshold boundary precisely', () => {
     const config = {
       position: new THREE.Vector3(holePos.x, 0, holePos.z),
-      direction: new THREE.Vector3(0, 0, 1),
-      force: 10,
+      boost_direction: new THREE.Vector3(0, 0, 1),
+      boost_magnitude: 10,
       size: { width: 2, length: 2 }
     };
     const strip = new BoostStrip(world, group, config, SURFACE_HEIGHT);

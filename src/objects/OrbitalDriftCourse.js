@@ -78,6 +78,7 @@ export class OrbitalDriftCourse extends CoursesManager {
     const physicsWorld = this.game.physicsManager.getWorld();
     this.currentHoleEntity = new HoleEntity(physicsWorld, holeConfig, holeGroup);
     this.currentHoleEntity.audioManager = this.game.audioManager || null;
+    this.currentHoleEntity.eventManager = this.game.eventManager || null;
     await this.currentHoleEntity.init();
 
     holeGroup.visible = true;

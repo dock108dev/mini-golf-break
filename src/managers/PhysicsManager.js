@@ -170,8 +170,7 @@ export class PhysicsManager {
 
     this.debugEnabled = false;
 
-    // NOTE: The actual debug renderer is managed elsewhere (e.g., GameLoopManager)
-    // This method might just signal the state change now.
+    // The CannonDebugRenderer in GameLoopManager reads this.debugEnabled each frame.
 
     return this;
   }
@@ -306,7 +305,6 @@ export class PhysicsManager {
     this.ballBody.addEventListener('endContact', this.handleEndContact);
   }
 
-  // Handler for when contact begins
   handleBeginContact(event) {
     const otherBody = event.body;
     if (otherBody.userData?.isBunkerZone && !this.isInBunker) {
@@ -318,13 +316,10 @@ export class PhysicsManager {
           `%c[PhysicsManager] Ball entered bunker zone. Damping increased to ${this.ballBody.linearDamping}`,
           'color: orange;'
         );
-        // Optional: Add sound effect
-        // this.game.audioManager?.playSound('sand_enter');
       }
     }
   }
 
-  // Handler for when contact ends
   handleEndContact(event) {
     const otherBody = event.body;
     // Check if we are ending contact with a bunker *while* we thought we were in one
@@ -337,8 +332,6 @@ export class PhysicsManager {
           `%c[PhysicsManager] Ball exited bunker zone. Damping restored to ${this.ballBody.linearDamping}`,
           'color: green;'
         );
-        // Optional: Add sound effect
-        // this.game.audioManager?.playSound('sand_exit');
       }
     }
   }

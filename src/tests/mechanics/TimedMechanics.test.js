@@ -28,8 +28,9 @@ beforeAll(() => {
         this.z = z;
       })
     },
-    velocity: { x: 0, y: 0, z: 0 },
+    velocity: { x: 0, y: 0, z: 0, set: jest.fn() },
     quaternion: { x: 0, y: 0, z: 0, w: 1, set: jest.fn() },
+    angularVelocity: { x: 0, y: 0, z: 0, set: jest.fn() },
     addShape: jest.fn(),
     applyImpulse: jest.fn(),
     sleepState: 0,

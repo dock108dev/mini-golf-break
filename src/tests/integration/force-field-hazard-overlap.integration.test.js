@@ -192,12 +192,12 @@ describe('BoostStrip and water hazard overlap', () => {
     group = makeMockGroup();
   });
 
-  it('boost force is applied to ball before water hazard resets position (hazard takes priority)', () => {
+  it('boost impulse is applied to ball before water hazard resets position (hazard takes priority)', () => {
     // Set up a boost strip that pushes in the +x direction
     const boostConfig = {
       position: new THREE.Vector3(0, 0, 0),
-      direction: new THREE.Vector3(1, 0, 0),
-      force: 15,
+      boost_direction: new THREE.Vector3(1, 0, 0),
+      boost_magnitude: 15,
       size: { width: 4, length: 4 }
     };
     const boost = new BoostStrip(world, group, boostConfig, SURFACE_HEIGHT);
@@ -205,9 +205,9 @@ describe('BoostStrip and water hazard overlap', () => {
     // Ball starts in the boost strip zone
     const ball = makeMockBall(boost.triggerBody.position.x, boost.triggerBody.position.z);
 
-    // Frame 1: Boost applies force to the ball
+    // Frame 1: Boost applies velocity impulse to the ball
     boost.update(DT, ball);
-    expect(ball.applyForce).toHaveBeenCalledTimes(1);
+    expect(ball.velocity.x).toBeCloseTo(15);
 
     // In the real game, water hazard detection happens in Ball.update(),
     // which runs BEFORE CoursesManager.update() (mechanics).
@@ -222,19 +222,19 @@ describe('BoostStrip and water hazard overlap', () => {
     ball.velocity.y = 0;
     ball.velocity.z = 0;
 
-    // Frame 2: After water reset, ball is no longer in boost zone
-    ball.applyForce.mockClear();
+    // Frame 2: After water reset, ball is no longer in boost zone — cooldown still active
+    const velocityBeforeFrame2 = ball.velocity.x;
     boost.update(DT, ball);
 
-    // Ball should NOT receive boost force because it's been reset outside the zone
-    expect(ball.applyForce).not.toHaveBeenCalled();
+    // Ball should NOT receive another boost impulse (outside zone AND cooldown active)
+    expect(ball.velocity.x).toBe(velocityBeforeFrame2);
   });
 
-  it('boost strip still applies force while ball is in the overlap zone (before water triggers)', () => {
+  it('boost strip still applies impulse while ball is in the overlap zone (before water triggers)', () => {
     const boostConfig = {
       position: new THREE.Vector3(0, 0, 0),
-      direction: new THREE.Vector3(0, 0, -1),
-      force: 12,
+      boost_direction: new THREE.Vector3(0, 0, -1),
+      boost_magnitude: 12,
       size: { width: 6, length: 6 }
     };
     const boost = new BoostStrip(world, group, boostConfig, SURFACE_HEIGHT);
@@ -245,10 +245,8 @@ describe('BoostStrip and water hazard overlap', () => {
     // The boost strip mechanic doesn't check for water — it only checks zone overlap
     boost.update(DT, ball);
 
-    // Force is applied regardless — the water hazard system handles its own logic
-    expect(ball.applyForce).toHaveBeenCalledTimes(1);
-    const force = ball.applyForce.mock.calls[0][0];
-    expect(force.z).toBeCloseTo(-12); // force in -z direction
+    // Velocity impulse is applied regardless — the water hazard system handles its own logic
+    expect(ball.velocity.z).toBeCloseTo(-12); // impulse in -z direction
   });
 });
 
@@ -268,7 +266,7 @@ describe('LowGravityZone and sand trap overlap', () => {
     const lowGravConfig = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      gravityMultiplier: 0.3
+      gravity_fraction: 0.3
     };
     const lowGrav = new LowGravityZone(world, group, lowGravConfig, SURFACE_HEIGHT);
 
@@ -294,7 +292,7 @@ describe('LowGravityZone and sand trap overlap', () => {
     const lowGravConfig = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      gravityMultiplier: 0.5
+      gravity_fraction: 0.5
     };
 
     const lowGrav = new LowGravityZone(world, group, lowGravConfig, SURFACE_HEIGHT);
@@ -319,7 +317,7 @@ describe('LowGravityZone and sand trap overlap', () => {
     const lowGravConfig = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      gravityMultiplier: 0.3
+      gravity_fraction: 0.3
     };
     const lowGrav = new LowGravityZone(world, group, lowGravConfig, SURFACE_HEIGHT);
 
@@ -357,9 +355,10 @@ describe('Force field and hazard update order', () => {
     group = makeMockGroup();
   });
 
-  it('force field force is applied independently of hazard detection (both systems operate on ball body)', () => {
+  it('force field effects are applied independently of hazard detection (both systems operate on ball body)', () => {
     // This test documents that force fields and hazards are independent systems:
-    // - Force fields: read ball position → apply force (via applyForce)
+    // - BoostStrip: reads ball position → adds velocity impulse
+    // - SuctionZone/LowGrav: read ball position → apply force (via applyForce)
     // - Sand traps: read ball position → modify linearDamping
     // - Water hazards: read ball position → reset position + add stroke
     //
@@ -367,8 +366,8 @@ describe('Force field and hazard update order', () => {
 
     const boostConfig = {
       position: new THREE.Vector3(0, 0, 0),
-      direction: new THREE.Vector3(1, 0, 0),
-      force: 10,
+      boost_direction: new THREE.Vector3(1, 0, 0),
+      boost_magnitude: 10,
       size: { width: 6, length: 6 }
     };
     const suctionConfig = {
@@ -379,7 +378,7 @@ describe('Force field and hazard update order', () => {
     const lowGravConfig = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      gravityMultiplier: 0.3
+      gravity_fraction: 0.3
     };
 
     const boost = new BoostStrip(world, group, boostConfig, SURFACE_HEIGHT);
@@ -398,17 +397,17 @@ describe('Force field and hazard update order', () => {
     suction.update(DT, ball);
     lowGrav.update(DT, ball);
 
-    // All three force fields should have applied their forces
-    expect(ball.applyForce).toHaveBeenCalledTimes(3);
+    // Boost: velocity impulse in +x direction
+    expect(ball.velocity.x).toBeCloseTo(10);
 
-    // Boost: directional force in +x
-    expect(ball.applyForce.mock.calls[0][0].x).toBeCloseTo(10);
+    // Suction + LowGrav both use applyForce
+    expect(ball.applyForce).toHaveBeenCalledTimes(2);
 
     // Suction: pull toward center (ball at x=1, center at x=0 → negative x)
-    expect(ball.applyForce.mock.calls[1][0].x).toBeLessThan(0);
+    expect(ball.applyForce.mock.calls[0][0].x).toBeLessThan(0);
 
     // LowGrav: upward counter-gravity
-    expect(ball.applyForce.mock.calls[2][0].y).toBeGreaterThan(0);
+    expect(ball.applyForce.mock.calls[1][0].y).toBeGreaterThan(0);
 
     // Sand damping was not modified by any force field
     expect(ball.linearDamping).toBe(0.98);
@@ -416,40 +415,39 @@ describe('Force field and hazard update order', () => {
 
   it('multiple force fields can coexist with hazard zones without mutual interference', () => {
     // Simulates a scenario where the ball passes through overlapping zones
-    // over multiple frames with hazard state changes
+    // over multiple frames with hazard state changes. BoostStrip fires once
+    // then enters cooldown — subsequent frames only affect SuctionZone/LowGrav.
 
     const boostConfig = {
       position: new THREE.Vector3(0, 0, 0),
-      direction: new THREE.Vector3(1, 0, 0),
-      force: 10,
+      boost_direction: new THREE.Vector3(1, 0, 0),
+      boost_magnitude: 10,
       size: { width: 8, length: 8 }
     };
     const boost = new BoostStrip(world, group, boostConfig, SURFACE_HEIGHT);
 
     const ball = makeMockBall(boost.triggerBody.position.x, boost.triggerBody.position.z);
 
-    // Frame 1: Ball on normal ground in boost zone
+    // Frame 1: Ball on normal ground in boost zone — impulse fires
     ball.linearDamping = 0.85;
     boost.update(DT, ball);
-    expect(ball.applyForce).toHaveBeenCalledTimes(1);
+    expect(ball.velocity.x).toBeCloseTo(10);
 
-    // Frame 2: Ball enters sand trap (damping increases) but still in boost zone
-    ball.linearDamping = 0.98;
+    const velocityAfterFrame1 = ball.velocity.x;
+
+    // Frames 2-4: Cooldown active — no additional impulse regardless of damping
+    ball.linearDamping = 0.98; // sand trap
     boost.update(DT, ball);
-    expect(ball.applyForce).toHaveBeenCalledTimes(2);
+    expect(ball.velocity.x).toBeCloseTo(velocityAfterFrame1);
 
-    // Frame 3: Ball still in sand trap + boost zone
     boost.update(DT, ball);
-    expect(ball.applyForce).toHaveBeenCalledTimes(3);
+    expect(ball.velocity.x).toBeCloseTo(velocityAfterFrame1);
 
-    // Frame 4: Ball exits sand trap but remains in boost zone
     ball.linearDamping = 0.85;
     boost.update(DT, ball);
-    expect(ball.applyForce).toHaveBeenCalledTimes(4);
+    expect(ball.velocity.x).toBeCloseTo(velocityAfterFrame1);
 
-    // All four frames applied identical boost force regardless of damping state
-    for (let i = 0; i < 4; i++) {
-      expect(ball.applyForce.mock.calls[i][0].x).toBeCloseTo(10);
-    }
+    // Sand damping was not modified by the boost field
+    expect(ball.linearDamping).toBe(0.85);
   });
 });

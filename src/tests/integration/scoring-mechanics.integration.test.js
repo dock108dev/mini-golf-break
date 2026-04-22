@@ -59,6 +59,7 @@ beforeAll(() => {
       setFromAxisAngle: jest.fn(),
       copy: jest.fn()
     },
+    angularVelocity: { x: 0, y: 0, z: 0, set: jest.fn() },
     addShape: jest.fn(),
     addEventListener: jest.fn(),
     userData: {}

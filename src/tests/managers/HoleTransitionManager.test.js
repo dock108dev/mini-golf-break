@@ -102,6 +102,9 @@ describe('HoleTransitionManager', () => {
         showTransitionOverlay: jest.fn(),
         hideTransitionOverlay: jest.fn()
       },
+      holeFlyoverManager: {
+        startFlyover: jest.fn()
+      },
       holeCompletionManager: {
         resetGracePeriod: jest.fn()
       },
@@ -234,7 +237,7 @@ describe('HoleTransitionManager', () => {
         expect(loadSpy).toHaveBeenCalledWith(3);
         expect(mockGame.stateManager.resetForNextHole).toHaveBeenCalled();
         expect(mockGame.ballManager.createBall).toHaveBeenCalled();
-        expect(mockGame.inputController.enableInput).toHaveBeenCalled();
+        expect(mockGame.holeFlyoverManager.startFlyover).toHaveBeenCalled();
       });
 
       test('should handle physics world reset failure', async () => {
@@ -268,19 +271,6 @@ describe('HoleTransitionManager', () => {
         expect(result).toBe(true);
         expect(console.error).toHaveBeenCalledWith(
           '[HoleTransitionManager] BallManager not available to create ball for new hole.'
-        );
-      });
-
-      test('should handle missing input controller gracefully', async () => {
-        mockGame.inputController = null;
-        jest.spyOn(holeTransitionManager, 'unloadCurrentHole').mockResolvedValue();
-        jest.spyOn(holeTransitionManager, 'loadNewHole').mockResolvedValue(true);
-
-        const result = await holeTransitionManager.transitionToNextHole();
-
-        expect(result).toBe(true);
-        expect(console.warn).toHaveBeenCalledWith(
-          '[HoleTransitionManager] InputController not available to enable for new hole.'
         );
       });
 
@@ -772,8 +762,8 @@ describe('HoleTransitionManager', () => {
         callOrder.push('createBall');
         return true;
       });
-      mockGame.inputController.enableInput.mockImplementation(() => {
-        callOrder.push('enableInput');
+      mockGame.holeFlyoverManager.startFlyover.mockImplementation(() => {
+        callOrder.push('startFlyover');
       });
 
       await holeTransitionManager.transitionToNextHole();
@@ -784,7 +774,7 @@ describe('HoleTransitionManager', () => {
         'loadNewHole',
         'resetForNextHole',
         'createBall',
-        'enableInput'
+        'startFlyover'
       ]);
     });
 
@@ -971,7 +961,7 @@ describe('HoleTransitionManager', () => {
       expect(mockGame.course.createCourse).toHaveBeenCalledWith(3);
       expect(mockGame.stateManager.resetForNextHole).toHaveBeenCalled();
       expect(mockGame.ballManager.createBall).toHaveBeenCalled();
-      expect(mockGame.inputController.enableInput).toHaveBeenCalled();
+      expect(mockGame.holeFlyoverManager.startFlyover).toHaveBeenCalled();
     });
 
     test('should handle transition with visual effects', () => {

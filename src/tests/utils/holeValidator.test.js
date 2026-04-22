@@ -461,10 +461,10 @@ describe('validateHoleConfig', () => {
       expect.objectContaining({ message: expect.stringContaining('missing position') })
     );
     expect(issues).toContainEqual(
-      expect.objectContaining({ message: expect.stringContaining('missing direction') })
+      expect.objectContaining({ message: expect.stringContaining('missing boost_direction') })
     );
     expect(issues).toContainEqual(
-      expect.objectContaining({ message: expect.stringContaining('missing force') })
+      expect.objectContaining({ message: expect.stringContaining('missing boost_magnitude') })
     );
     expect(issues).toContainEqual(
       expect.objectContaining({ message: expect.stringContaining('missing size') })
@@ -500,9 +500,7 @@ describe('validateHoleConfig', () => {
     expect(issues).toContainEqual(
       expect.objectContaining({ message: expect.stringContaining('missing radius') })
     );
-    expect(issues).toContainEqual(
-      expect.objectContaining({ message: expect.stringContaining('missing gravityMultiplier') })
-    );
+    // gravity_fraction is optional — no error expected for its absence
   });
 
   test('bowl_contour missing required fields produces errors', () => {

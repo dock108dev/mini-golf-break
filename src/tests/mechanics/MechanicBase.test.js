@@ -111,6 +111,55 @@ describe('MechanicBase', () => {
     });
   });
 
+  // --- Speed cap validation (ISSUE-009) ---
+
+  describe('speed cap validation', () => {
+    it('emits console.warn when speed exceeds thickness / fixedDt', () => {
+      const overSpecConfig = {
+        type: 'test_mechanic',
+        speed: 100, // way above 0.3 * 60 = 18
+        size: { depth: 0.3 }
+      };
+
+      new MechanicBase(world, group, overSpecConfig, 0.2);
+
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('anti-tunneling limit'));
+    });
+
+    it('does not warn when speed is within safe limit', () => {
+      console.warn.mockClear();
+      const safeConfig = {
+        type: 'test_mechanic',
+        speed: 10, // below 0.3 * 60 = 18
+        size: { depth: 0.3 }
+      };
+
+      new MechanicBase(world, group, safeConfig, 0.2);
+
+      expect(console.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining('anti-tunneling limit')
+      );
+    });
+
+    it('does not warn when speed is undefined', () => {
+      console.warn.mockClear();
+      new MechanicBase(world, group, { size: { depth: 0.3 } }, 0.2);
+
+      expect(console.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining('anti-tunneling limit')
+      );
+    });
+
+    it('does not warn when size.depth is undefined', () => {
+      console.warn.mockClear();
+      new MechanicBase(world, group, { speed: 100 }, 0.2);
+
+      expect(console.warn).not.toHaveBeenCalledWith(
+        expect.stringContaining('anti-tunneling limit')
+      );
+    });
+  });
+
   // --- destroy ---
 
   describe('destroy', () => {

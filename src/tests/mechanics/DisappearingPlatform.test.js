@@ -400,6 +400,31 @@ describe('DisappearingPlatform', () => {
     });
   });
 
+  // --- Emissive pulse (danger tier) ---
+
+  describe('danger-tier emissive pulse', () => {
+    it('sets emissiveIntensity on platform mesh when visible', () => {
+      const dp = new DisappearingPlatform(world, group, makeConfig(), SURFACE_HEIGHT);
+
+      dp.update(0.1, null);
+
+      expect(dp.platformData[0].mesh.material.emissiveIntensity).toBeDefined();
+      expect(dp.platformData[0].mesh.material.emissiveIntensity).toBeGreaterThan(0);
+    });
+
+    it('emissiveIntensity changes between two update calls (1.5 Hz pulse)', () => {
+      const dp = new DisappearingPlatform(world, group, makeConfig(), SURFACE_HEIGHT);
+
+      dp.update(0.1, null);
+      const intensity1 = dp.platformData[0].mesh.material.emissiveIntensity;
+
+      dp.update(0.1, null);
+      const intensity2 = dp.platformData[0].mesh.material.emissiveIntensity;
+
+      expect(intensity1).not.toBeCloseTo(intensity2, 5);
+    });
+  });
+
   // --- onDtSpike ---
 
   describe('onDtSpike', () => {
@@ -434,6 +459,122 @@ describe('DisappearingPlatform', () => {
       const plat = dp.platformData[0];
       expect(plat.mesh.visible).toBe(true);
       expect(plat.body.collisionResponse).toBe(true);
+    });
+  });
+
+  // --- collisionResponse boundary ---
+
+  describe('collisionResponse boundary', () => {
+    it('is false at fadeProgress 0.99 and true at exactly fadeProgress 1.0', () => {
+      const dp = new DisappearingPlatform(world, group, makeConfig(), SURFACE_HEIGHT);
+      const plat = dp.platformData[0];
+
+      plat.fadeProgress = 0.99;
+      dp._applyState(plat);
+      expect(plat.body.collisionResponse).toBe(false);
+
+      plat.fadeProgress = 1;
+      dp._applyState(plat);
+      expect(plat.body.collisionResponse).toBe(true);
+    });
+  });
+
+  // --- onDtSpike two-platform ---
+
+  describe('onDtSpike two-platform', () => {
+    it('resets both platforms to timer=0, isOn=true, fadeProgress=1', () => {
+      const config = makeConfig({
+        platforms: [
+          { position: [0, 0, 0], size: [1, 0.1, 1], onDuration: 1, offDuration: 1, offset: 0 },
+          { position: [5, 0, 0], size: [1, 0.1, 1], onDuration: 1, offDuration: 1, offset: 0.5 }
+        ]
+      });
+      const dp = new DisappearingPlatform(world, group, config, SURFACE_HEIGHT);
+
+      dp.update(1.5, null);
+
+      dp.onDtSpike();
+
+      for (const plat of dp.platformData) {
+        expect(plat.timer).toBe(0);
+        expect(plat.isOn).toBe(true);
+        expect(plat.fadeProgress).toBe(1);
+      }
+    });
+  });
+
+  // --- Tick-by-tick cycle ---
+
+  describe('tick-by-tick cycle', () => {
+    it('isOn flips to false after onDuration*60 ticks at dt=1/60 then back after offDuration*60 more', () => {
+      const onDuration = 2;
+      const offDuration = 1;
+      const config = makeConfig({
+        platforms: [{ position: [0, 0, 0], size: [1, 0.1, 1], onDuration, offDuration, offset: 0 }]
+      });
+      const dp = new DisappearingPlatform(world, group, config, SURFACE_HEIGHT);
+      const dt = 1 / 60;
+
+      // fp accumulation of 1/60 over 120 ticks lands just under 2.0; one extra tick crosses the boundary
+      for (let i = 0; i < onDuration * 60 + 1; i++) {
+        dp.update(dt, null);
+      }
+      expect(dp.platformData[0].isOn).toBe(false);
+
+      for (let i = 0; i < offDuration * 60 + 1; i++) {
+        dp.update(dt, null);
+      }
+      expect(dp.platformData[0].isOn).toBe(true);
+    });
+  });
+
+  // --- Warning amber color hex ---
+
+  describe('warning amber color hex', () => {
+    it('stripMesh.material.color hex is 0xffaa00 within WARN_DURATION of off transition', () => {
+      const config = makeConfig({
+        platforms: [
+          { position: [0, 0, 0], size: [1, 0.1, 1], onDuration: 2, offDuration: 2, offset: 0 }
+        ]
+      });
+      const dp = new DisappearingPlatform(world, group, config, SURFACE_HEIGHT);
+
+      // Advance to 1.8s — timeUntilOff = 2.0 - 1.8 = 0.2 which is <= WARN_DURATION (0.3)
+      dp.update(1.8, null);
+
+      const plat = dp.platformData[0];
+      expect(plat.stripMesh.material.color.getHex()).toBe(0xffaa00);
+    });
+  });
+
+  // --- Impulse guard ---
+
+  describe('impulse guard', () => {
+    it('applies impulse only once per below-floor crossing', () => {
+      const dp = new DisappearingPlatform(
+        world,
+        group,
+        makeConfig({ hazardBelowY: -1 }),
+        SURFACE_HEIGHT
+      );
+
+      const ball = makeBallBody(0, -2, 0);
+
+      dp.update(0.1, ball);
+      dp.update(0.1, ball);
+      dp.update(0.1, ball);
+
+      expect(ball.applyImpulse).toHaveBeenCalledTimes(1);
+
+      // Ball rises above floor — guard resets
+      ball.position.y = 1;
+      dp.update(0.1, ball);
+
+      // Ball falls below again — another impulse fires
+      ball.position.y = -2;
+      dp.update(0.1, ball);
+
+      expect(ball.applyImpulse).toHaveBeenCalledTimes(2);
     });
   });
 
@@ -477,6 +618,22 @@ describe('DisappearingPlatform', () => {
       addDisposeMocks(dp);
       dp.destroy();
       expect(() => dp.destroy()).not.toThrow();
+    });
+
+    it('removes each mesh from its group parent', () => {
+      const dp = new DisappearingPlatform(world, group, makeConfig(), SURFACE_HEIGHT);
+      const meshCount = dp.meshes.length;
+
+      for (const mesh of dp.meshes) {
+        mesh.parent = group;
+        mesh.geometry = { dispose: jest.fn() };
+        mesh.material = { dispose: jest.fn() };
+      }
+
+      dp.destroy();
+
+      expect(group.remove).toHaveBeenCalledTimes(meshCount);
+      expect(dp.meshes).toEqual([]);
     });
   });
 });

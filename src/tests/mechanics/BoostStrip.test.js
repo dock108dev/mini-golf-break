@@ -1,6 +1,6 @@
 /**
  * Unit tests for BoostStrip mechanic
- * ISSUE-043
+ * ISSUE-028
  */
 
 import * as CANNON from 'cannon-es';
@@ -20,8 +20,7 @@ beforeAll(() => {
   CANNON.Vec3.mockImplementation((x = 0, y = 0, z = 0) => ({
     x,
     y,
-    z,
-    scale: s => ({ x: x * s, y: y * s, z: z * s })
+    z
   }));
 
   CANNON.Body.mockImplementation(() => ({
@@ -57,7 +56,7 @@ beforeAll(() => {
       castShadow: false,
       visible: true,
       geometry: { dispose: jest.fn() },
-      material: { dispose: jest.fn(), transparent: true, opacity: 0.6 }
+      material: { dispose: jest.fn(), transparent: true, opacity: 0.85 }
     };
     mesh.parent = null;
     return mesh;
@@ -94,13 +93,11 @@ function makeMockGroup() {
   };
 }
 
-function makeBallBody(x = 0, z = 0, mass = 0.45) {
+function makeBallBody(x = 0, z = 0) {
   return {
     position: { x, y: 0.2, z },
     velocity: { x: 0, y: 0, z: 0 },
-    mass,
     sleepState: 0,
-    applyForce: jest.fn(),
     wakeUp: jest.fn()
   };
 }
@@ -121,8 +118,8 @@ describe('BoostStrip', () => {
 
   const defaultConfig = {
     position: { x: 0, y: 0, z: 0 },
-    direction: { x: 0, y: 0, z: -1 },
-    force: 10,
+    boost_direction: { x: 0, y: 0, z: -1 },
+    boost_magnitude: 10,
     size: { width: 2, length: 4 }
   };
 
@@ -158,11 +155,37 @@ describe('BoostStrip', () => {
       expect(strip.isForceField).toBe(true);
     });
 
-    it('computes direction force vector from config', () => {
+    it('normalizes boost_direction from config', () => {
       const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
 
-      expect(strip.direction.z).toBeCloseTo(-10);
-      expect(strip.direction.x).toBeCloseTo(0);
+      expect(strip._boostDir.z).toBeCloseTo(-1);
+      expect(strip._boostDir.x).toBeCloseTo(0);
+      expect(strip._boostDir.y).toBeCloseTo(0);
+    });
+
+    it('stores boost_magnitude from config', () => {
+      const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
+
+      expect(strip._boostMagnitude).toBe(10);
+    });
+
+    it('normalizes a diagonal boost_direction to unit length', () => {
+      const config = {
+        ...defaultConfig,
+        boost_direction: { x: 1, y: 0, z: -1 }
+      };
+      const strip = new BoostStrip(world, group, config, SURFACE_HEIGHT);
+      const len = Math.sqrt(
+        strip._boostDir.x ** 2 + strip._boostDir.y ** 2 + strip._boostDir.z ** 2
+      );
+
+      expect(len).toBeCloseTo(1);
+    });
+
+    it('uses default boost_magnitude (12) when not provided', () => {
+      const strip = new BoostStrip(world, group, {}, SURFACE_HEIGHT);
+
+      expect(strip._boostMagnitude).toBe(12);
     });
 
     it('uses defaults when config fields are missing', () => {
@@ -172,10 +195,10 @@ describe('BoostStrip', () => {
       expect(strip.bodies).toHaveLength(1);
     });
 
-    it('initializes boost sound cooldown to zero', () => {
+    it('initializes _boostCooldown to zero', () => {
       const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
 
-      expect(strip.boostSoundCooldown).toBe(0);
+      expect(strip._boostCooldown).toBe(0);
     });
 
     it('sets trigger body userData type to boost_strip', () => {
@@ -192,30 +215,40 @@ describe('BoostStrip', () => {
         expect.objectContaining({ color: 0x123456 })
       );
     });
+
+    it('warns and uses default when boost_magnitude is <= 0', () => {
+      new BoostStrip(world, group, { ...defaultConfig, boost_magnitude: -5 }, SURFACE_HEIGHT);
+
+      expect(console.warn).toHaveBeenCalledWith(
+        expect.stringContaining('boost_magnitude must be > 0')
+      );
+    });
   });
 
-  // --- Update ---
+  // --- Update / impulse ---
 
-  describe('update', () => {
-    it('applies directional force when ball is in zone', () => {
+  describe('update — velocity impulse', () => {
+    it('adds boost_direction * boost_magnitude to ball velocity when in zone', () => {
       const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
       const ball = makeBallBody(strip.triggerBody.position.x, strip.triggerBody.position.z);
 
       strip.update(0.016, ball);
 
-      expect(ball.applyForce).toHaveBeenCalledWith(strip.direction);
+      // boost_direction is [0,0,-1], magnitude 10 → velocity.z -= 10
+      expect(ball.velocity.z).toBeCloseTo(-10);
+      expect(ball.velocity.x).toBeCloseTo(0);
     });
 
-    it('does not apply force when ball is outside zone', () => {
+    it('does not modify velocity when ball is outside zone', () => {
       const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
       const ball = makeBallBody(100, 100);
 
       strip.update(0.016, ball);
 
-      expect(ball.applyForce).not.toHaveBeenCalled();
+      expect(ball.velocity.z).toBe(0);
     });
 
-    it('wakes sleeping ball in zone', () => {
+    it('wakes sleeping ball before applying impulse', () => {
       const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
       const ball = makeBallBody(strip.triggerBody.position.x, strip.triggerBody.position.z);
       ball.sleepState = SLEEPING;
@@ -223,7 +256,7 @@ describe('BoostStrip', () => {
       strip.update(0.016, ball);
 
       expect(ball.wakeUp).toHaveBeenCalled();
-      expect(ball.applyForce).toHaveBeenCalledWith(strip.direction);
+      expect(ball.velocity.z).toBeCloseTo(-10);
     });
 
     it('does not throw when ballBody is null', () => {
@@ -232,13 +265,106 @@ describe('BoostStrip', () => {
       expect(() => strip.update(0.016, null)).not.toThrow();
     });
 
-    it('decrements boost sound cooldown over time', () => {
+    it('does not re-trigger within 0.8s cooldown window', () => {
       const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
-      strip.boostSoundCooldown = 0.3;
+      const ball = makeBallBody(strip.triggerBody.position.x, strip.triggerBody.position.z);
+
+      strip.update(0.016, ball); // first contact — boost fires
+      const velocityAfterFirst = ball.velocity.z;
+
+      strip.update(0.016, ball); // still in zone, cooldown active — should not fire
+      expect(ball.velocity.z).toBeCloseTo(velocityAfterFirst);
+    });
+
+    it('re-triggers after cooldown expires (> 0.8s elapsed)', () => {
+      const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
+      const ball = makeBallBody(strip.triggerBody.position.x, strip.triggerBody.position.z);
+
+      strip.update(0.016, ball);
+      const velocityAfterFirst = ball.velocity.z;
+
+      strip.update(0.9, ball); // advance past 0.8s cooldown
+      expect(ball.velocity.z).toBeCloseTo(velocityAfterFirst - 10);
+    });
+
+    it('decrements _boostCooldown each frame', () => {
+      const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
+      strip._boostCooldown = 0.8;
 
       strip.update(0.1, null);
 
-      expect(strip.boostSoundCooldown).toBeCloseTo(0.2);
+      expect(strip._boostCooldown).toBeCloseTo(0.7);
+    });
+  });
+
+  // --- UV scroll ---
+
+  describe('UV scrolling', () => {
+    it('advances _uvOffset by UV_SCROLL_SPEED * dt each frame', () => {
+      const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
+
+      strip.update(0.1, null);
+
+      expect(strip._uvOffset).toBeCloseTo(0.1 * 0.3);
+    });
+
+    it('_uvOffset accumulates across multiple frames', () => {
+      const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
+
+      strip.update(0.1, null);
+      strip.update(0.2, null);
+
+      expect(strip._uvOffset).toBeCloseTo(0.3 * 0.3);
+    });
+  });
+
+  // --- Reward-tier emissive pulse ---
+
+  describe('reward-tier emissive pulse', () => {
+    it('sets emissiveIntensity on mesh material during update', () => {
+      const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
+
+      strip.update(0.1, null);
+
+      expect(strip.mesh.material.emissiveIntensity).toBeDefined();
+      expect(strip.mesh.material.emissiveIntensity).toBeGreaterThan(0);
+    });
+
+    it('emissiveIntensity changes between two update calls (0.5 Hz pulse)', () => {
+      const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
+
+      strip.update(0.1, null);
+      const intensity1 = strip.mesh.material.emissiveIntensity;
+
+      strip.update(0.5, null);
+      const intensity2 = strip.mesh.material.emissiveIntensity;
+
+      expect(intensity1).not.toBeCloseTo(intensity2, 5);
+    });
+
+    it('emissiveIntensity does not change when dt is zero', () => {
+      const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
+
+      strip.update(0.1, null);
+      const intensity1 = strip.mesh.material.emissiveIntensity;
+
+      strip.update(0, null);
+      const intensity2 = strip.mesh.material.emissiveIntensity;
+
+      expect(intensity1).toBeCloseTo(intensity2, 5);
+    });
+  });
+
+  // --- onDtSpike ---
+
+  describe('onDtSpike', () => {
+    it('resets _boostCooldown to zero', () => {
+      const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
+      strip._boostCooldown = 0.5;
+
+      strip.onDtSpike();
+
+      expect(strip._boostCooldown).toBe(0);
     });
   });
 

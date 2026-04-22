@@ -4,10 +4,11 @@ import { Game } from './scenes/Game';
 import { HighScoreManager } from './game/HighScoreManager';
 import { isWebGLAvailable, showWebGLFallback } from './utils/webglDetect';
 import { parseDevParams, getInitialHoleNumber, setupConfigHotReload } from './utils/devHoleHarness';
+import { trapFocus } from './utils/domHelpers';
 import '../public/style.css';
 
-// Expose THREE for UAT (Playwright page.evaluate needs Vector3.clone in BallManager.hitBall)
-if (typeof window !== 'undefined') {
+// Expose THREE for UAT only — not needed in production bundles
+if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
   window.THREE = THREE;
 }
 
@@ -84,37 +85,13 @@ class App {
           this.hideScoresOverlay();
           return;
         }
-        this._trapFocus(e, scoresOverlay);
+        trapFocus(e, scoresOverlay);
       });
     }
 
     // Trap focus within menu screen when visible
     if (this.menuScreen) {
-      this.menuScreen.addEventListener('keydown', e => {
-        if (e.key !== 'Tab') {
-          return;
-        }
-        const focusableElements = this.menuScreen.querySelectorAll(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-        );
-        if (focusableElements.length === 0) {
-          return;
-        }
-        const firstFocusable = focusableElements[0];
-        const lastFocusable = focusableElements[focusableElements.length - 1];
-
-        if (e.shiftKey) {
-          if (document.activeElement === firstFocusable) {
-            e.preventDefault();
-            lastFocusable.focus();
-          }
-        } else {
-          if (document.activeElement === lastFocusable) {
-            e.preventDefault();
-            firstFocusable.focus();
-          }
-        }
-      });
+      this.menuScreen.addEventListener('keydown', e => trapFocus(e, this.menuScreen));
     }
   }
 
@@ -155,21 +132,88 @@ class App {
   }
 
   /**
-   * Update the best score display on the menu screen.
+   * Update the best score display and top-3 leaderboard on the menu screen.
    */
   updateBestScoreDisplay() {
     const bestScoreEl = document.getElementById('menu-best-score');
-    if (!bestScoreEl) {
+    if (bestScoreEl) {
+      const bestScore = HighScoreManager.getBestScore(COURSE_NAME);
+      if (bestScore !== null) {
+        bestScoreEl.textContent = `Personal Best: ${bestScore} strokes`;
+        bestScoreEl.style.display = '';
+      } else {
+        bestScoreEl.style.display = 'none';
+      }
+    }
+
+    this._renderMenuLeaderboard();
+  }
+
+  /** Render top-3 named leaderboard entries on the menu screen. */
+  _renderMenuLeaderboard() {
+    const leaderboardEl = document.getElementById('menu-leaderboard');
+    if (!leaderboardEl) {
       return;
     }
 
-    const bestScore = HighScoreManager.getBestScore(COURSE_NAME);
-    if (bestScore !== null) {
-      bestScoreEl.textContent = `Personal Best: ${bestScore} strokes`;
-      bestScoreEl.style.display = '';
-    } else {
-      bestScoreEl.style.display = 'none';
+    const topScores = HighScoreManager.loadScores(COURSE_NAME).slice(0, 3);
+
+    if (topScores.length === 0) {
+      leaderboardEl.style.display = 'none';
+      return;
     }
+
+    leaderboardEl.style.display = '';
+
+    const rows = topScores
+      .map(
+        (entry, i) =>
+          '<tr>' +
+          `<td class="lb-rank">${i + 1}</td>` +
+          `<td class="lb-name">${this._escapeHtml(entry.name)}</td>` +
+          `<td class="lb-score">${entry.score}</td>` +
+          '</tr>'
+      )
+      .join('');
+
+    leaderboardEl.innerHTML =
+      '<h3 class="lb-title">Top Scores</h3>' +
+      '<table class="lb-table" aria-label="Top 3 leaderboard">' +
+      `<tbody>${rows}</tbody>` +
+      '</table>';
+  }
+
+  /** Escape HTML special chars for safe innerHTML insertion. */
+  _escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /**
+   * Restart the game immediately from hole 1, bypassing the menu.
+   * Used by the "Play Again" button on the final scorecard.
+   */
+  async restartGame() {
+    debug.log('[App] restartGame called.');
+
+    const scorecard = document.getElementById('scorecard-overlay');
+    if (scorecard) {
+      scorecard.remove();
+    }
+
+    if (this.game) {
+      this.game.cleanup();
+    }
+
+    this.game = new Game();
+    window.game = this.game;
+    this.isGameRunning = false;
+
+    await this.game.initVisuals();
+    await this.startCourse();
   }
 
   /**
@@ -288,7 +332,8 @@ class App {
 
     const rows = scores
       .map((score, i) => {
-        const diff = score.totalStrokes - COURSE_PAR;
+        const strokes = parseInt(score.totalStrokes, 10) || 0;
+        const diff = strokes - COURSE_PAR;
         let parText;
         let parClass;
         if (diff < 0) {
@@ -305,7 +350,7 @@ class App {
         return (
           '<tr>' +
           `<td>${i + 1}</td>` +
-          `<td>${score.totalStrokes}</td>` +
+          `<td>${strokes}</td>` +
           `<td class="${parClass}">${parText}</td>` +
           `<td>${date}</td>` +
           '</tr>'
@@ -337,32 +382,6 @@ class App {
     clearButton.textContent = 'Clear Scores';
     this._renderScoresBody();
     this.updateBestScoreDisplay();
-  }
-
-  _trapFocus(e, container) {
-    if (e.key !== 'Tab') {
-      return;
-    }
-    const focusableElements = container.querySelectorAll(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-    );
-    if (focusableElements.length === 0) {
-      return;
-    }
-    const firstFocusable = focusableElements[0];
-    const lastFocusable = focusableElements[focusableElements.length - 1];
-
-    if (e.shiftKey) {
-      if (document.activeElement === firstFocusable) {
-        e.preventDefault();
-        lastFocusable.focus();
-      }
-    } else {
-      if (document.activeElement === lastFocusable) {
-        e.preventDefault();
-        firstFocusable.focus();
-      }
-    }
   }
 
   async startCourse() {

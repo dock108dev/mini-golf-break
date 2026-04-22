@@ -172,6 +172,7 @@ jest.mock('three', () => {
     CylinderGeometry: jest.fn(mockGeometry),
     PlaneGeometry: jest.fn(mockGeometry),
     CircleGeometry: jest.fn(mockGeometry),
+    TorusGeometry: jest.fn(mockGeometry),
     BoxGeometry: jest.fn(mockGeometry),
     RingGeometry: jest.fn(mockGeometry),
     SphereGeometry: jest.fn(mockGeometry),
@@ -182,6 +183,26 @@ jest.mock('three', () => {
       this.r = 0;
       this.g = 0;
       this.b = 0;
+    }),
+    SpriteMaterial: jest.fn(function (opts) {
+      this.opacity = opts?.opacity !== undefined ? opts.opacity : 1;
+      this.dispose = jest.fn();
+    }),
+    Sprite: jest.fn(function (material) {
+      this.material = material || { opacity: 1, dispose: jest.fn() };
+      this.position = { x: 0, y: 0, z: 0, set: jest.fn(), copy: jest.fn() };
+      this.scale = { set: jest.fn() };
+      this.parent = null;
+    }),
+    PointLight: jest.fn(function () {
+      this.position = { x: 0, y: 0, z: 0, set: jest.fn() };
+      this.parent = null;
+    }),
+    AdditiveBlending: 2,
+    GridHelper: jest.fn(function () {
+      this.geometry = { dispose: jest.fn() };
+      this.material = { dispose: jest.fn() };
+      this.position = { set: jest.fn() };
     })
   };
 });
@@ -207,7 +228,15 @@ jest.mock('cannon-es', () => {
 
   const mockBody = jest.fn(function () {
     this.position = new mockVec3();
-    this.position.set = jest.fn();
+    this.position.set = jest.fn(function (x, y, z) {
+      this.x = x;
+      this.y = y;
+      this.z = z;
+    });
+    this.velocity = new mockVec3();
+    this.velocity.set = jest.fn();
+    this.angularVelocity = new mockVec3();
+    this.angularVelocity.set = jest.fn();
     this.quaternion = new mockQuaternion();
     this.material = null;
     this.type = 'STATIC';
@@ -217,6 +246,7 @@ jest.mock('cannon-es', () => {
     this.isTrigger = false;
   });
   mockBody.STATIC = 'STATIC';
+  mockBody.KINEMATIC = 'KINEMATIC';
   mockBody.SLEEPING = 'SLEEPING';
 
   return {

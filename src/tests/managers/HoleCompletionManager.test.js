@@ -456,9 +456,117 @@ describe('HoleCompletionManager', () => {
     });
   });
 
-  describe('update', () => {
-    test('should accept delta time without errors', () => {
+  describe('update — no errors without currentHole', () => {
+    test('should accept delta time without errors when no currentHole', () => {
       expect(() => manager.update(0.016)).not.toThrow();
+    });
+  });
+
+  describe('update — cup sink detection', () => {
+    const holePos = { x: 0, y: 0, z: 0 };
+
+    function makeBallBody(posX, posZ, speed) {
+      return {
+        position: { x: posX, y: 0.2, z: posZ },
+        velocity: { x: speed, y: 0, z: 0, length: () => Math.abs(speed) }
+      };
+    }
+
+    beforeEach(() => {
+      mockGame = createMockGame({
+        course: {
+          getTotalHoles: jest.fn(() => 9),
+          getCurrentHoleMesh: jest.fn(),
+          getHolePar: jest.fn(() => 3),
+          currentHole: { worldHolePosition: holePos, cupRadius: 0.3 }
+        }
+      });
+      mockGame.ballManager = {
+        ball: { handleHoleSuccess: jest.fn(), body: makeBallBody(0, 0, 0) }
+      };
+      manager = new HoleCompletionManager(mockGame);
+      manager.init();
+      manager.holeCreationTime = Date.now() - 3000; // Past grace period
+    });
+
+    test('fires BALL_IN_HOLE when ball within cupRadius and speed 0.3 (< 0.5)', () => {
+      mockGame.ballManager.ball.body = makeBallBody(0, 0, 0.3);
+
+      manager.update(0.016);
+
+      expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
+        EventTypes.BALL_IN_HOLE,
+        {},
+        manager
+      );
+    });
+
+    test('does not fire when speed 0.6 (>= 0.5 threshold)', () => {
+      mockGame.ballManager.ball.body = makeBallBody(0, 0, 0.6);
+
+      manager.update(0.016);
+
+      expect(mockGame.eventManager.publish).not.toHaveBeenCalled();
+    });
+
+    test('does not fire when ball is outside cupRadius', () => {
+      mockGame.ballManager.ball.body = makeBallBody(0.35, 0, 0.1);
+
+      manager.update(0.016);
+
+      expect(mockGame.eventManager.publish).not.toHaveBeenCalled();
+    });
+
+    test('min-speed guard prevents false trigger after fast rim entry (speed 1.5)', () => {
+      // Tick 1: inside trigger at high speed — no detection (speed > 0.5)
+      mockGame.ballManager.ball.body = makeBallBody(0, 0, 1.5);
+      manager.update(0.016);
+      expect(mockGame.eventManager.publish).not.toHaveBeenCalled();
+
+      // Tick 2: ball slows to 0.3 inside trigger — guard blocks (prevSpeed 1.5 > 0.2)
+      mockGame.ballManager.ball.body = makeBallBody(0, 0, 0.3);
+      manager.update(0.016);
+      expect(mockGame.eventManager.publish).not.toHaveBeenCalled();
+    });
+
+    test('does not fire during grace period', () => {
+      manager.holeCreationTime = Date.now(); // Reset to within grace period
+      mockGame.ballManager.ball.body = makeBallBody(0, 0, 0.3);
+
+      manager.update(0.016);
+
+      expect(mockGame.eventManager.publish).not.toHaveBeenCalled();
+    });
+
+    test('does not fire when isTransitioning is true', () => {
+      manager.isTransitioning = true;
+      mockGame.ballManager.ball.body = makeBallBody(0, 0, 0.3);
+
+      manager.update(0.016);
+
+      expect(mockGame.eventManager.publish).not.toHaveBeenCalled();
+    });
+
+    test('does not fire when hole already completed', () => {
+      mockGame.stateManager.isHoleCompleted.mockReturnValue(true);
+      mockGame.ballManager.ball.body = makeBallBody(0, 0, 0.3);
+
+      manager.update(0.016);
+
+      expect(mockGame.eventManager.publish).not.toHaveBeenCalled();
+    });
+
+    test('cupRadius defaults to 0.3 when not in config', () => {
+      mockGame.course.currentHole = { worldHolePosition: holePos };
+      mockGame.ballManager.ball.body = makeBallBody(0, 0, 0.3);
+
+      manager.update(0.016);
+
+      expect(mockGame.eventManager.publish).toHaveBeenCalledWith(
+        EventTypes.BALL_IN_HOLE,
+        {},
+        manager
+      );
     });
   });
 

@@ -1,6 +1,7 @@
 // Mock Three.js before importing anything
 jest.mock('three', () => ({
   SphereGeometry: jest.fn(),
+  IcosahedronGeometry: jest.fn(),
   MeshPhongMaterial: jest.fn(() => ({
     dispose: jest.fn()
   })),
@@ -8,7 +9,7 @@ jest.mock('three', () => ({
     dispose: jest.fn()
   })),
   Mesh: jest.fn(() => ({
-    position: { set: jest.fn() },
+    position: { set: jest.fn(), x: 0, y: 0, z: 0 },
     rotation: { x: 0, y: 0, z: 0, set: jest.fn() },
     add: jest.fn(),
     userData: {},
@@ -24,6 +25,7 @@ jest.mock('three', () => ({
     userData: {},
     children: []
   })),
+  Vector3: jest.fn(() => ({ x: 0, y: 0, z: 0 })),
   Color: jest.fn(),
   MathUtils: {
     randFloat: jest.fn((min, max) => (min + max) / 2),

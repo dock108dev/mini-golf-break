@@ -153,6 +153,26 @@ jest.mock('three', () => {
       this.geometry = geometry || { dispose: jest.fn() };
       this.material = material || { dispose: jest.fn() };
       this.position = { x: 0, y: 0, z: 0, set: jest.fn(), copy: jest.fn() };
+    }),
+    SpriteMaterial: jest.fn(function (opts) {
+      this.opacity = opts?.opacity !== undefined ? opts.opacity : 1;
+      this.dispose = jest.fn();
+    }),
+    Sprite: jest.fn(function (material) {
+      this.material = material || { opacity: 1, dispose: jest.fn() };
+      this.position = { x: 0, y: 0, z: 0, set: jest.fn(), copy: jest.fn() };
+      this.scale = { set: jest.fn() };
+      this.parent = null;
+    }),
+    PointLight: jest.fn(function () {
+      this.position = { x: 0, y: 0, z: 0, set: jest.fn() };
+      this.parent = null;
+    }),
+    AdditiveBlending: 2,
+    GridHelper: jest.fn(function () {
+      this.geometry = { dispose: jest.fn() };
+      this.material = { dispose: jest.fn() };
+      this.position = { set: jest.fn() };
     })
   };
 });
@@ -549,6 +569,61 @@ describe('HoleEntity', () => {
         expect.stringContaining('Created for hole index 1')
       );
       expect(console.log).toHaveBeenCalledWith('[DEBUG]', expect.stringContaining('World Start:'));
+    });
+  });
+
+  describe('createFloorGrid', () => {
+    test('adds one entry to meshes', () => {
+      const holeEntity = new HoleEntity(mockWorld, mockConfig, mockScene);
+      const before = holeEntity.meshes.length;
+      holeEntity.createFloorGrid();
+      expect(holeEntity.meshes.length).toBe(before + 1);
+    });
+
+    test('does not throw when boundaryShape is empty', () => {
+      const configEmpty = { ...mockConfig, boundaryShape: [] };
+      const holeEntity = new HoleEntity(mockWorld, configEmpty, mockScene);
+      expect(() => holeEntity.createFloorGrid()).not.toThrow();
+    });
+  });
+
+  describe('createLaneMarkers', () => {
+    test('creates a lane marker mesh for hole index 0', async () => {
+      const holeEntity = new HoleEntity(mockWorld, mockConfig, mockScene);
+      const prevMeshCount = holeEntity.meshes.length;
+      await holeEntity.init();
+
+      const markerAdded = holeEntity.meshes.length > prevMeshCount;
+      expect(markerAdded).toBe(true);
+    });
+
+    test('lane markers created for holes 0-3 but not hole 4', async () => {
+      const makeEntity = index => {
+        const cfg = { ...mockConfig, index };
+        const e = new HoleEntity(mockWorld, cfg, mockScene);
+        e.createLaneMarkers = jest.fn();
+        return e;
+      };
+
+      for (let i = 0; i <= 3; i++) {
+        const e = makeEntity(i);
+        await e.init();
+        expect(e.createLaneMarkers).toHaveBeenCalledTimes(1);
+      }
+
+      const e4 = makeEntity(4);
+      await e4.init();
+      expect(e4.createLaneMarkers).not.toHaveBeenCalled();
+    });
+
+    test('skips lane marker when tee and cup are at same XZ', () => {
+      const configSamePos = {
+        ...mockConfig,
+        startPosition: { x: 0, y: 0, z: 0 },
+        holePosition: { x: 0, y: 0, z: 0 }
+      };
+      const holeEntity = new HoleEntity(mockWorld, configSamePos, mockScene);
+      expect(() => holeEntity.createLaneMarkers()).not.toThrow();
     });
   });
 
@@ -1263,6 +1338,49 @@ describe('HoleEntity', () => {
       holeEntity.update(0.016, { position: { x: 0, y: 0, z: 0 } });
 
       expect(mechanic.onDtSpike).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('cup halo sprite and point light', () => {
+    test('update(dt) changes sprite.material.opacity over two consecutive calls', async () => {
+      const holeEntity = new HoleEntity(mockWorld, mockConfig, mockScene);
+      await holeEntity.init();
+
+      holeEntity.update(0.016, null);
+      const opacity1 = holeEntity._haloSprite.material.opacity;
+
+      holeEntity.update(0.5, null);
+      const opacity2 = holeEntity._haloSprite.material.opacity;
+
+      expect(opacity1).not.toEqual(opacity2);
+    });
+
+    test('destroy() disposes sprite material and nullifies sprite and light references', async () => {
+      const holeEntity = new HoleEntity(mockWorld, mockConfig, mockScene);
+      await holeEntity.init();
+
+      const sprite = holeEntity._haloSprite;
+      expect(sprite).toBeDefined();
+      expect(holeEntity._cupPointLight).toBeDefined();
+
+      holeEntity.destroy();
+
+      expect(sprite.material.dispose).toHaveBeenCalled();
+      expect(holeEntity._haloSprite).toBeNull();
+      expect(holeEntity._cupPointLight).toBeNull();
+    });
+
+    test('sprite and point light are added to the hole group on init', async () => {
+      const holeEntity = new HoleEntity(mockWorld, mockConfig, mockScene);
+      await holeEntity.init();
+
+      expect(holeEntity.group.add).toHaveBeenCalledWith(holeEntity._haloSprite);
+      expect(holeEntity.group.add).toHaveBeenCalledWith(holeEntity._cupPointLight);
+    });
+
+    test('halo sprite is not present before init', () => {
+      const holeEntity = new HoleEntity(mockWorld, mockConfig, mockScene);
+      expect(holeEntity._haloSprite).toBeUndefined();
     });
   });
 

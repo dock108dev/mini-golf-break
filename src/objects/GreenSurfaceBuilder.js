@@ -123,30 +123,25 @@ function addPhysicsGroundPlane(world, config, boundaryShape, surfaceHeight, bodi
   const physicsPlaneWidth = shapeBounds.size.x > 0 ? shapeBounds.size.x + 10 : 20;
   const physicsPlaneLength = shapeBounds.size.y > 0 ? shapeBounds.size.y + 10 : 40;
 
-  const physicsPlaneGeom = new THREE.PlaneGeometry(physicsPlaneWidth, physicsPlaneLength, 1, 1);
-  const physicsGroundMaterial = world.groundMaterial;
-  const vertices = physicsPlaneGeom.attributes.position.array;
-  const indices = physicsPlaneGeom.index.array;
-  const groundShape = new CANNON.Trimesh(vertices, indices);
+  // Box primitive avoids Trimesh seam-catching artifacts
+  const halfX = physicsPlaneWidth / 2;
+  const halfY = 0.1;
+  const halfZ = physicsPlaneLength / 2;
+  const groundShape = new CANNON.Box(new CANNON.Vec3(halfX, halfY, halfZ));
   const groundBody = new CANNON.Body({
     mass: 0,
     type: CANNON.Body.STATIC,
-    material: physicsGroundMaterial
+    material: world.groundMaterial
   });
 
-  const planeLocalRotation = new CANNON.Quaternion().setFromAxisAngle(
-    new CANNON.Vec3(1, 0, 0),
-    -Math.PI / 2
-  );
-  groundBody.addShape(groundShape, new CANNON.Vec3(0, 0, 0), planeLocalRotation);
-
-  groundBody.position.set(0, surfaceHeight, 0);
+  groundBody.addShape(groundShape);
+  // Position center so the top face sits at surfaceHeight
+  groundBody.position.set(0, surfaceHeight - halfY, 0);
   groundBody.quaternion.set(0, 0, 0, 1);
 
   groundBody.userData = { type: 'green', holeIndex: config.index };
   world.addBody(groundBody);
   bodies.push(groundBody);
-  physicsPlaneGeom.dispose();
 }
 
 /**

@@ -1,8 +1,7 @@
 import { debug } from '../utils/debug';
 import { EventTypes } from '../events/EventTypes';
 
-const DEFAULT_MAX_STROKES_MULTIPLIER = 2;
-const DEFAULT_MAX_STROKES_OFFSET = 1;
+const DEFAULT_MAX_STROKES_ADDEND = 4;
 const MIN_MAX_STROKES = 3;
 const MAX_MAX_STROKES = 10;
 
@@ -25,7 +24,7 @@ export class ScoringSystem {
     if (configMaxStrokes !== undefined && configMaxStrokes !== null) {
       return Math.max(MIN_MAX_STROKES, Math.min(MAX_MAX_STROKES, configMaxStrokes));
     }
-    const derived = par * DEFAULT_MAX_STROKES_MULTIPLIER + DEFAULT_MAX_STROKES_OFFSET;
+    const derived = par + DEFAULT_MAX_STROKES_ADDEND;
     return Math.max(MIN_MAX_STROKES, Math.min(MAX_MAX_STROKES, derived));
   }
 
@@ -50,6 +49,21 @@ export class ScoringSystem {
    */
   getMaxStrokes() {
     return this.maxStrokes;
+  }
+
+  /**
+   * Add one or more penalty strokes to both the continuous counter and current hole counter.
+   * Used by hazard detection (out of bounds, water) and stuck-ball reset.
+   * @param {number} [count=1] - Number of penalty strokes to add (must be >= 1)
+   */
+  addPenaltyStrokes(count = 1) {
+    const n = Math.max(1, Math.round(count));
+    this.continuousStrokeCount += n;
+    this.currentHoleStrokes += n;
+    debug.log(
+      `[ScoringSystem] Penalty +${n} stroke(s). Current Hole: ${this.currentHoleStrokes}, Total: ${this.continuousStrokeCount}`
+    );
+    return this;
   }
 
   /**
@@ -103,6 +117,17 @@ export class ScoringSystem {
       `[ScoringSystem] Resetting current hole strokes from ${this.currentHoleStrokes} to 0.`
     );
     this.currentHoleStrokes = 0;
+    return this;
+  }
+
+  /**
+   * Cancel strokes for the current hole (used when restarting a hole).
+   * Subtracts current hole strokes from the running total and resets the per-hole counter.
+   */
+  cancelCurrentHoleStrokes() {
+    this.continuousStrokeCount = Math.max(0, this.continuousStrokeCount - this.currentHoleStrokes);
+    this.currentHoleStrokes = 0;
+    debug.log('[ScoringSystem] Current hole strokes cancelled.');
     return this;
   }
 

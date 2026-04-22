@@ -4,18 +4,30 @@
  * and HazardFactory all draw from the same source of truth.
  */
 
+/**
+ * Three-tier hazard color system.
+ * - danger: punishes ball (timed_hazard, laser_grid, disappearing_platform) — red, pulsing 1.5 Hz
+ * - blocker: redirects ball (bank_wall, ricochet_bumpers, moving_sweeper) — gray-blue, static
+ * - reward: helps ball toward cup (boost_strip, suction_zone) — green-gold, pulsing 0.5 Hz
+ */
+export const HAZARD_COLORS = {
+  danger: 0xff2200,
+  blocker: 0x4466aa,
+  reward: 0xaaff44
+};
+
 export const MATERIAL_PALETTE = {
   floor: {
-    color: 0x1a3a2a,
-    roughness: 0.7,
-    metalness: 0.2,
-    emissive: 0x0a1a0a,
-    emissiveIntensity: 0.1
+    color: 0x0d1117,
+    roughness: 0.9,
+    metalness: 0.1,
+    emissive: 0x0a0a14,
+    emissiveIntensity: 0.05
   },
   wall: {
-    color: 0x3a3a5a,
-    roughness: 0.3,
-    metalness: 0.7,
+    color: 0x3a4050,
+    roughness: 0.6,
+    metalness: 0.4,
     emissive: 0x111133,
     emissiveIntensity: 0.05
   },
@@ -43,9 +55,11 @@ export const MATERIAL_PALETTE = {
     emissiveIntensity: 0
   },
   rim: {
-    color: 0xaaaacc,
+    color: 0x00ffcc,
     roughness: 0.3,
-    metalness: 0.8
+    metalness: 0.8,
+    emissive: 0x00ffcc,
+    emissiveIntensity: 1.2
   },
   tee: {
     color: 0x00aaff,

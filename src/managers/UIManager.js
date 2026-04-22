@@ -1,6 +1,7 @@
 import { EventTypes } from '../events/EventTypes';
 import { UIScoreOverlay } from './ui/UIScoreOverlay';
 import { UIDebugOverlay } from './ui/UIDebugOverlay';
+import { KeyboardHintOverlay } from './ui/KeyboardHintOverlay';
 import { debug } from '../utils/debug';
 import { reloadPage } from '../utils/navigation';
 
@@ -11,47 +12,35 @@ import { reloadPage } from '../utils/navigation';
  */
 export class UIManager {
   constructor(game) {
-    // Reference to the main game
     this.game = game;
-
-    // Main UI container
     this.uiContainer = null;
-
-    // Renderer reference
     this.renderer = null;
 
-    // UI Submodules
     this.scoreOverlay = null;
     this.debugOverlay = null;
 
-    // Message Display (still managed here for simplicity)
+    // Message display is still managed here rather than delegated to a submodule for simplicity.
     this.isShowingMessage = false;
     this.messageTimeoutId = null;
     this.messageTimeout = null;
     this.messageElement = null;
 
-    // Power Indicator (still managed here)
+    // Power indicator is still managed here rather than delegated.
     this.powerIndicator = null;
 
-    // Transition overlay
     this.transitionOverlay = null;
-
-    // Pause overlay
     this.pauseOverlay = null;
-
-    // Resume button (within pause overlay)
     this.resumeButton = null;
-
-    // Quit to menu button (within pause overlay)
     this.quitButton = null;
-
-    // Mobile pause button
     this.pauseButton = null;
-
-    // Mute toggle button
     this.muteButton = null;
+    this.restartHoleButton = null;
+    this.restartCourseButton = null;
+    this.pauseMuteButton = null;
 
-    // Event subscriptions list
+    // Only shown on holes 1–2 to introduce keyboard controls.
+    this.hintOverlay = null;
+
     this.eventSubscriptions = [];
   }
 
@@ -81,6 +70,9 @@ export class UIManager {
       this.createPauseOverlay();
       this.createPauseButton();
       this.createMuteButton();
+
+      this.hintOverlay = new KeyboardHintOverlay(this.game, this.uiContainer);
+      this.hintOverlay.init();
       debug.log('[UIManager.init] Remaining UI elements created.');
 
       debug.log('[UIManager.init] Setting up event listeners...');
@@ -98,10 +90,9 @@ export class UIManager {
    * Create the main UI container if it doesn't exist.
    */
   createMainContainer() {
-    // Clean up any existing UI elements first (including old container)
     this.cleanup();
 
-    // First check for an existing UI container with either ID
+    // Support either ID used across game lifecycle restarts.
     this.uiContainer =
       document.getElementById('ui-container') || document.getElementById('ui-overlay');
 
@@ -116,7 +107,6 @@ export class UIManager {
       debug.log(
         `[UIManager.createMainContainer] Found existing UI container: #${this.uiContainer.id}`
       );
-      // Ensure it's empty to avoid duplication
       while (this.uiContainer.firstChild) {
         this.uiContainer.removeChild(this.uiContainer.firstChild);
       }
@@ -127,7 +117,6 @@ export class UIManager {
    * Create message display elements.
    */
   createMessageUI() {
-    // Create message container (center)
     this.messageElement = document.createElement('div');
     this.messageElement.id = 'message-container';
     this.messageElement.classList.add('message-container');
@@ -186,6 +175,28 @@ export class UIManager {
     });
     content.appendChild(this.resumeButton);
 
+    this.restartHoleButton = document.createElement('button');
+    this.restartHoleButton.classList.add('pause-restart-button');
+    this.restartHoleButton.textContent = 'Restart Hole';
+    this.restartHoleButton.setAttribute('aria-label', 'Restart current hole');
+    this.restartHoleButton.addEventListener('click', () => {
+      if (this.game.restartHole) {
+        this.game.restartHole();
+      }
+    });
+    content.appendChild(this.restartHoleButton);
+
+    this.restartCourseButton = document.createElement('button');
+    this.restartCourseButton.classList.add('pause-restart-button');
+    this.restartCourseButton.textContent = 'Restart Course';
+    this.restartCourseButton.setAttribute('aria-label', 'Restart the full course');
+    this.restartCourseButton.addEventListener('click', () => {
+      if (this.game.restartCourse) {
+        this.game.restartCourse();
+      }
+    });
+    content.appendChild(this.restartCourseButton);
+
     this.quitButton = document.createElement('button');
     this.quitButton.classList.add('pause-quit-button');
     this.quitButton.textContent = 'Quit to Menu';
@@ -207,6 +218,16 @@ export class UIManager {
       }
     });
     content.appendChild(howToPlayButton);
+
+    this.pauseMuteButton = document.createElement('button');
+    this.pauseMuteButton.classList.add('pause-mute-toggle-button');
+    this.pauseMuteButton.setAttribute('aria-label', 'Toggle mute');
+    this._updatePauseMuteButtonLabel();
+    this.pauseMuteButton.addEventListener('click', () => {
+      this._handleMuteToggle();
+      this._updatePauseMuteButtonLabel();
+    });
+    content.appendChild(this.pauseMuteButton);
 
     content.appendChild(this._createVolumeSlider());
 
@@ -279,6 +300,19 @@ export class UIManager {
     const isMuted = this.game.audioManager.isMuted;
     this.muteButton.textContent = isMuted ? '🔇' : '🔊';
     this.muteButton.setAttribute('aria-label', isMuted ? 'Unmute audio' : 'Toggle audio');
+    this._updatePauseMuteButtonLabel();
+  }
+
+  /**
+   * Sync the pause overlay mute toggle button label.
+   */
+  _updatePauseMuteButtonLabel() {
+    if (!this.pauseMuteButton) {
+      return;
+    }
+    const isMuted = this.game.audioManager?.isMuted ?? false;
+    this.pauseMuteButton.textContent = isMuted ? 'Unmute' : 'Mute';
+    this.pauseMuteButton.setAttribute('aria-label', isMuted ? 'Unmute audio' : 'Mute audio');
   }
 
   /**
@@ -521,11 +555,14 @@ export class UIManager {
   }
 
   /**
-   * Handle ball in hole event
-   * @param {GameEvent} event - Ball in hole event
+   * Handle ball in hole event — show per-hole score card.
+   * @param {GameEvent} _event - Ball in hole event
    */
   handleBallInHole(_event) {
-    // Currently no specific UI action needed here besides what HoleCompleted handles.
+    const holeNumber = this.game.stateManager?.getCurrentHoleNumber?.() ?? 0;
+    const par = this.game.course?.getHolePar?.(holeNumber) ?? 0;
+    const strokes = this.game.scoringSystem?.getCurrentStrokes?.() ?? 0;
+    this.scoreOverlay?.showHoleScoreCard(holeNumber, par, strokes);
   }
 
   /**
@@ -681,8 +718,6 @@ export class UIManager {
     this.messageTimeout = null; // Clear timeout reference
   }
 
-  // --- Delegated Methods ---
-
   updateScore() {
     this.scoreOverlay?.updateScore();
   }
@@ -749,6 +784,7 @@ export class UIManager {
     this.debugOverlay?.cleanup();
 
     // Cleanup elements managed directly by UIManager
+    this.hintOverlay?.cleanup();
     this.messageElement?.remove();
     this.powerIndicator?.remove();
     this.transitionOverlay?.remove();
@@ -764,7 +800,11 @@ export class UIManager {
     this.pauseButton = null;
     this.resumeButton = null;
     this.quitButton = null;
+    this.restartHoleButton = null;
+    this.restartCourseButton = null;
+    this.pauseMuteButton = null;
     this.muteButton = null;
+    this.hintOverlay = null;
     this.scoreOverlay = null;
     this.debugOverlay = null;
     this.uiContainer = null;

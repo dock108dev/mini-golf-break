@@ -3,14 +3,18 @@ import * as CANNON from 'cannon-es';
 import { MechanicBase } from './MechanicBase';
 import { registerMechanic } from './MechanicRegistry';
 
+const GRAVITY_CONSTANT = 9.82;
+
 /**
- * LowGravityZone - Reduces effective gravity within a circular area.
- * Ball floats more and bounces farther when inside the zone.
+ * LowGravityZone - Reduces effective gravity within a spherical region.
+ * Each tick while the ball is within `radius` of `position`, applies an
+ * upward force of `(1 - gravity_fraction) * mass * 9.82` N so the ball
+ * experiences only `gravity_fraction * 9.82 m/s²` downward acceleration.
  *
  * Config:
- *   position: Vector3 - Center of the zone
- *   radius: number - Radius of influence
- *   gravityMultiplier: number - How much gravity remains (0.3 = 30% gravity)
+ *   position: Vector3 - Center of the sphere
+ *   radius: number - Radius of influence (> 0)
+ *   gravity_fraction: number - Fraction of normal gravity inside zone (0, 1]; default 0.25
  *   color: number (optional) - Visual color (default 0x44aaff)
  */
 class LowGravityZone extends MechanicBase {
@@ -20,12 +24,12 @@ class LowGravityZone extends MechanicBase {
 
     const pos = config.position || new THREE.Vector3(0, 0, 0);
     this.centerX = pos.x;
+    this.centerY = pos.y !== undefined ? pos.y : surfaceHeight;
     this.centerZ = pos.z;
     this.radius = config.radius || 2;
-    // Counter-gravity force: apply upward force to cancel some gravity
-    // Gravity is -9.81, so to keep 30% gravity we apply 70% upward counter
-    const gravMult = config.gravityMultiplier ?? 0.3;
-    this.counterForce = 9.81 * (1 - gravMult); // upward force per unit mass
+    // Upward counter-acceleration per unit mass to leave only gravity_fraction of gravity
+    const gravFraction = config.gravity_fraction ?? 0.25;
+    this.counterForce = GRAVITY_CONSTANT * (1 - gravFraction);
     const color = config.color || theme?.mechanics?.lowGravityZone?.color || 0x44aaff;
 
     // Visual: semi-transparent disc with emissive glow
@@ -50,14 +54,16 @@ class LowGravityZone extends MechanicBase {
       return;
     }
 
+    // Spherical distance check — zone is a 3D sphere, not a flat disc
     const dx = ballBody.position.x - this.centerX;
+    const dy = ballBody.position.y - this.centerY;
     const dz = ballBody.position.z - this.centerZ;
 
-    if (dx * dx + dz * dz > this.radius * this.radius) {
+    if (dx * dx + dy * dy + dz * dz > this.radius * this.radius) {
       return;
     }
 
-    // Apply upward counter-gravity force (F = m * counterAcceleration)
+    // Apply upward counter-gravity force: F = m * (1 - gravity_fraction) * 9.82
     const upForce = ballBody.mass * this.counterForce;
     ballBody.applyForce(new CANNON.Vec3(0, upForce, 0));
   }

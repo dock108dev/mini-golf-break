@@ -43,6 +43,16 @@ export class CameraController {
     // Menu orbit state — gentle camera rotation before game starts
     this._menuOrbitActive = true;
     this._menuOrbitAngle = 0;
+
+    // Camera hint tween state
+    this._hintTween = null;
+    this._floorY = 0;
+
+    // Camera shake state
+    this._shakeAmplitude = 0;
+    this._shakeAge = 0;
+    this._shakeDuration = 0.3;
+    this._onWallImpact = null;
   }
 
   /**
@@ -144,6 +154,12 @@ export class CameraController {
       debug.log('[CameraController.setupEventListeners] Subscribing to BALL_HIT...');
       this.eventSubscriptions.push(
         this.game.eventManager.subscribe(EventTypes.BALL_HIT, this.handleBallHit, this)
+      );
+
+      debug.log('[CameraController.setupEventListeners] Subscribing to BALL_WALL_IMPACT...');
+      this._onWallImpact = data => this.triggerShake(data?.impactSpeed ?? 2);
+      this.eventSubscriptions.push(
+        this.game.eventManager.subscribe(EventTypes.BALL_WALL_IMPACT, this._onWallImpact, this)
       );
 
       debug.log('[CameraController.setupEventListeners] Finished.');
@@ -280,6 +296,19 @@ export class CameraController {
       return;
     }
 
+    // Flyover: HoleFlyoverManager owns the camera during active flyover
+    if (this.game.holeFlyoverManager?.isActive) {
+      this._decayShake(deltaTime);
+      return;
+    }
+
+    // Camera hint tween: drive linear interpolation to hint position over 0.5 s
+    if (this._hintTween) {
+      this._advanceHintTween(deltaTime);
+      this._applyShakeOffset(deltaTime);
+      return;
+    }
+
     // Update controls if they exist
     if (this.controls) {
       this.controls.update();
@@ -287,6 +316,120 @@ export class CameraController {
 
     // Update camera to follow the ball if it exists and is moving
     this.updateCameraFollowBall(deltaTime);
+    this._applyShakeOffset(deltaTime);
+  }
+
+  /**
+   * Trigger camera shake on wall impact.
+   * @param {number} impactSpeed - Speed at point of impact in m/s (>= 2 to register).
+   */
+  triggerShake(impactSpeed) {
+    // Max offset 0.04 units, scales linearly with speed above 2 m/s
+    this._shakeAmplitude = Math.min(0.04, 0.01 + (impactSpeed - 2) * 0.008);
+    this._shakeAge = 0;
+  }
+
+  /**
+   * Decay shake state without applying to camera (used during flyover).
+   * @param {number} dt
+   */
+  _decayShake(dt) {
+    if (this._shakeAmplitude <= 0) {
+      return;
+    }
+    this._shakeAge += dt;
+    if (this._shakeAge >= this._shakeDuration) {
+      this._shakeAmplitude = 0;
+      this._shakeAge = 0;
+    }
+  }
+
+  /**
+   * Apply and decay camera shake offset to camera.position.
+   * @param {number} dt
+   */
+  _applyShakeOffset(dt) {
+    if (this._shakeAmplitude <= 0) {
+      return;
+    }
+    this._shakeAge += dt;
+    const progress = Math.min(1, this._shakeAge / this._shakeDuration);
+    const decay = 1 - progress;
+    if (decay <= 0) {
+      this._shakeAmplitude = 0;
+      this._shakeAge = 0;
+      return;
+    }
+    const amp = this._shakeAmplitude * decay;
+    this.camera.position.x += (Math.random() - 0.5) * 2 * amp;
+    this.camera.position.y += (Math.random() - 0.5) * amp;
+    this.camera.position.z += (Math.random() - 0.5) * 2 * amp;
+  }
+
+  /**
+   * Begin a linear tween from current camera state to a hint-specified position and look-at.
+   * @param {THREE.Vector3} endPos - Target camera position
+   * @param {THREE.Vector3} endLookAt - Target look-at point
+   */
+  _startHintTween(endPos, endLookAt) {
+    const originalMaxPolarAngle = this.controls ? this.controls.maxPolarAngle : Math.PI / 2;
+    this._hintTween = {
+      startPos: { x: this.camera.position.x, y: this.camera.position.y, z: this.camera.position.z },
+      endPos,
+      startLookAt: this.controls
+        ? { x: this.controls.target.x, y: this.controls.target.y, z: this.controls.target.z }
+        : { x: 0, y: 0, z: 0 },
+      endLookAt,
+      elapsed: 0,
+      duration: 0.5,
+      originalMaxPolarAngle
+    };
+    if (this.controls) {
+      this.controls.maxPolarAngle = Math.PI;
+    }
+  }
+
+  /**
+   * Advance the active hint tween by dt seconds.
+   * Applies a floor-clip guard when the tween completes.
+   * @param {number} dt
+   */
+  _advanceHintTween(dt) {
+    const tween = this._hintTween;
+    tween.elapsed = Math.min(tween.elapsed + dt, tween.duration);
+    const t = tween.elapsed / tween.duration;
+
+    const sx = tween.startPos.x,
+      sy = tween.startPos.y,
+      sz = tween.startPos.z;
+    const ex = tween.endPos.x,
+      ey = tween.endPos.y,
+      ez = tween.endPos.z;
+    this.camera.position.set(sx + (ex - sx) * t, sy + (ey - sy) * t, sz + (ez - sz) * t);
+
+    const lx = tween.startLookAt.x + (tween.endLookAt.x - tween.startLookAt.x) * t;
+    const ly = tween.startLookAt.y + (tween.endLookAt.y - tween.startLookAt.y) * t;
+    const lz = tween.startLookAt.z + (tween.endLookAt.z - tween.startLookAt.z) * t;
+    this.camera.lookAt({ x: lx, y: ly, z: lz });
+
+    if (this.controls) {
+      this.controls.target.x = lx;
+      this.controls.target.y = ly;
+      this.controls.target.z = lz;
+      this.controls.update();
+    }
+
+    if (tween.elapsed >= tween.duration) {
+      // Floor-clip guard: ensure camera never drops below floor + 0.5
+      const floorMinY = this._floorY + 0.5;
+      if (this.camera.position.y < floorMinY) {
+        this.camera.position.y = floorMinY;
+      }
+      if (this.controls) {
+        this.controls.maxPolarAngle = tween.originalMaxPolarAngle;
+      }
+      this._hintTween = null;
+    }
   }
 
   /**
@@ -309,10 +452,10 @@ export class CameraController {
    * @returns {{ cameraPosition: THREE.Vector3, lookAtPoint: THREE.Vector3 }}
    */
   _computeCameraFromHint(hint) {
-    const cameraPosition = this._vector3FromLike(hint.offset);
-    const lookAtPoint = this._vector3FromLike(hint.lookAt);
+    const cameraPosition = this._vector3FromLike(hint.position);
+    const lookAtPoint = this._vector3FromLike(hint.target);
     debug.log(
-      `Using camera hint: offset=${cameraPosition.x},${cameraPosition.y},${cameraPosition.z} lookAt=${lookAtPoint.x},${lookAtPoint.y},${lookAtPoint.z}`
+      `Using camera hint: position=${cameraPosition.x},${cameraPosition.y},${cameraPosition.z} target=${lookAtPoint.x},${lookAtPoint.y},${lookAtPoint.z}`
     );
     return { cameraPosition, lookAtPoint };
   }
@@ -364,9 +507,9 @@ export class CameraController {
 
   /**
    * Position camera to view the current hole
-   * @param {Object} [cameraHint] - Optional camera hint with offset and lookAt vectors
-   * @param {THREE.Vector3} [cameraHint.offset] - Camera position offset from hole center
-   * @param {THREE.Vector3} [cameraHint.lookAt] - Camera look-at target position
+   * @param {Object} [cameraHint] - Optional camera hint with position and target vectors
+   * @param {THREE.Vector3} [cameraHint.position] - Camera world position
+   * @param {THREE.Vector3} [cameraHint.target] - Camera look-at target position
    */
   positionCameraForHole(cameraHint) {
     if (!this.course) {
@@ -392,31 +535,29 @@ export class CameraController {
 
     const hint = cameraHint || (this.course.getCameraHint ? this.course.getCameraHint() : null);
 
-    let originalMaxPolarAngle = Math.PI / 2;
-    if (this.controls) {
-      originalMaxPolarAngle = this.controls.maxPolarAngle;
-      this.controls.maxPolarAngle = Math.PI;
-    }
-
-    let cameraPosition;
-    let lookAtPoint;
-
-    if (hint && hint.offset && hint.lookAt) {
-      ({ cameraPosition, lookAtPoint } = this._computeCameraFromHint(hint));
+    if (hint && hint.position && hint.target) {
+      const { cameraPosition, lookAtPoint } = this._computeCameraFromHint(hint);
+      this._startHintTween(cameraPosition, lookAtPoint);
     } else {
-      ({ cameraPosition, lookAtPoint } = this._computeDefaultHoleCamera(
+      let originalMaxPolarAngle = Math.PI / 2;
+      if (this.controls) {
+        originalMaxPolarAngle = this.controls.maxPolarAngle;
+        this.controls.maxPolarAngle = Math.PI;
+      }
+
+      const { cameraPosition, lookAtPoint } = this._computeDefaultHoleCamera(
         worldStartPosition,
         worldHolePosition
-      ));
-    }
+      );
 
-    this.camera.position.copy(cameraPosition);
-    this.camera.lookAt(lookAtPoint);
+      this.camera.position.copy(cameraPosition);
+      this.camera.lookAt(lookAtPoint);
 
-    if (this.controls) {
-      this.controls.target.copy(lookAtPoint);
-      this.controls.update();
-      this.controls.maxPolarAngle = originalMaxPolarAngle;
+      if (this.controls) {
+        this.controls.target.copy(lookAtPoint);
+        this.controls.update();
+        this.controls.maxPolarAngle = originalMaxPolarAngle;
+      }
     }
 
     return this;
@@ -438,6 +579,16 @@ export class CameraController {
    */
   setTransitionMode(enabled) {
     this.isTransitioning = enabled;
+  }
+
+  /**
+   * Frame-rate-independent lerp alpha: error halves every `halfLife` seconds.
+   * @param {number} halfLife  Seconds for error to halve
+   * @param {number} dt        Delta time in seconds
+   * @returns {number} Alpha in [0, 1]
+   */
+  _lerpAlpha(halfLife, dt) {
+    return 1 - Math.pow(0.5, dt / halfLife);
   }
 
   /**
@@ -477,9 +628,14 @@ export class CameraController {
   /**
    * @param {object} ball
    * @param {THREE.Vector3} ballPosition
+   * @param {number} deltaTime
    */
-  _followCameraBallInMotion(ball, ballPosition) {
+  _followCameraBallInMotion(ball, ballPosition, deltaTime) {
     this._userAdjustedCamera = false;
+
+    // Frame-rate-independent alpha: halfLife ≈ 0.13 s for responsive ball follow
+    const followAlpha = this._lerpAlpha(0.13, deltaTime);
+    const targetAlpha = this._lerpAlpha(0.08, deltaTime);
 
     if (this.controls) {
       const targetPosition = ballPosition.clone();
@@ -493,7 +649,7 @@ export class CameraController {
         targetPosition.add(lookAheadDirection.multiplyScalar(lookAheadDistance));
       }
       targetPosition.y -= 1.5;
-      this.controls.target.lerp(targetPosition, 0.1);
+      this.controls.target.lerp(targetPosition, targetAlpha);
 
       const cameraDistance = 8;
       const cameraHeight = 6;
@@ -512,11 +668,11 @@ export class CameraController {
         currentDir.y = cameraHeight;
         idealCameraPosition = ballPosition.clone().add(currentDir);
       }
-      this.camera.position.lerp(idealCameraPosition, 0.05);
+      this.camera.position.lerp(idealCameraPosition, followAlpha);
       this.controls.update();
     } else {
       const cameraTargetPosition = ballPosition.clone().add(new THREE.Vector3(3, 15, 8));
-      this.camera.position.lerp(cameraTargetPosition, 0.1);
+      this.camera.position.lerp(cameraTargetPosition, followAlpha);
       this.camera.lookAt(ballPosition);
     }
   }
@@ -564,9 +720,9 @@ export class CameraController {
 
   /**
    * Update camera position to follow the ball
-   * @param {number} _deltaTime - Time since last update in seconds (reserved for smoothing)
+   * @param {number} deltaTime - Time since last update in seconds
    */
-  updateCameraFollowBall(_deltaTime) {
+  updateCameraFollowBall(deltaTime) {
     const ball = this.game.ballManager ? this.game.ballManager.ball : null;
     if (!ball || !ball.mesh) {
       return;
@@ -580,7 +736,7 @@ export class CameraController {
     }
 
     if (this.game.stateManager && this.game.stateManager.isBallInMotion()) {
-      this._followCameraBallInMotion(ball, ballPosition);
+      this._followCameraBallInMotion(ball, ballPosition, deltaTime);
     } else {
       this._followCameraBallStopped(ball, ballPosition);
     }

@@ -8,6 +8,7 @@ export class SpaceDecorations {
   constructor(scene) {
     this.scene = scene;
     this.decorations = [];
+    this._asteroids = [];
   }
 
   /**
@@ -18,6 +19,7 @@ export class SpaceDecorations {
     this.addDistantNebula();
     this.addSpaceDebris();
     this.addShootingStars();
+    this._addAsteroidDrift();
   }
 
   /**
@@ -182,6 +184,51 @@ export class SpaceDecorations {
     }
   }
 
+  /**
+   * Add 5 slow-drifting asteroid meshes off the playfield. No physics body — purely visual.
+   * Each loops across a ±90 unit band so it never intersects the course geometry.
+   */
+  _addAsteroidDrift() {
+    const BAND_MIN = 45;
+    const BAND_RANGE = 30;
+    const LOOP_BOUND = 90;
+    const HEIGHT_MIN = 5;
+    const HEIGHT_RANGE = 13;
+
+    for (let i = 0; i < 5; i++) {
+      const size = 0.6 + Math.random() * 1.2;
+      const geo = new THREE.IcosahedronGeometry(size, 1);
+      const mat = new THREE.MeshPhongMaterial({
+        color: 0x776655,
+        emissive: 0x221100,
+        emissiveIntensity: 0.15
+      });
+      const mesh = new THREE.Mesh(geo, mat);
+
+      // Place off the playfield on alternating sides
+      const side = i % 2 === 0 ? 1 : -1;
+      const x = side * (BAND_MIN + Math.random() * BAND_RANGE);
+      const y = HEIGHT_MIN + Math.random() * HEIGHT_RANGE;
+      const z = (Math.random() - 0.5) * BAND_MIN * 2;
+      mesh.position.set(x, y, z);
+      mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+      mesh.userData.type = 'asteroid';
+      mesh.userData.permanent = true;
+
+      const driftAxis = Math.random() < 0.5 ? 'x' : 'z';
+      const driftSpeed = (0.8 + Math.random() * 1.7) * (Math.random() < 0.5 ? 1 : -1);
+      const rotSpeed = new THREE.Vector3(
+        (Math.random() - 0.5) * 0.4,
+        (Math.random() - 0.5) * 0.4,
+        (Math.random() - 0.5) * 0.4
+      );
+
+      this.scene.add(mesh);
+      this.decorations.push(mesh);
+      this._asteroids.push({ mesh, driftAxis, driftSpeed, loopBound: LOOP_BOUND, rotSpeed });
+    }
+  }
+
   setThemeVariant(theme) {
     if (!theme?.nebula) {
       return;
@@ -238,6 +285,20 @@ export class SpaceDecorations {
         }
       }
     });
+
+    // Drift background asteroids; wrap position when they exit the loop band
+    for (const asteroid of this._asteroids) {
+      const { mesh, driftAxis, driftSpeed, loopBound, rotSpeed } = asteroid;
+      mesh.position[driftAxis] += driftSpeed * deltaTime;
+      if (driftSpeed > 0 && mesh.position[driftAxis] > loopBound) {
+        mesh.position[driftAxis] = -loopBound;
+      } else if (driftSpeed < 0 && mesh.position[driftAxis] < -loopBound) {
+        mesh.position[driftAxis] = loopBound;
+      }
+      mesh.rotation.x += rotSpeed.x * deltaTime;
+      mesh.rotation.y += rotSpeed.y * deltaTime;
+      mesh.rotation.z += rotSpeed.z * deltaTime;
+    }
   }
 
   /**
@@ -260,5 +321,6 @@ export class SpaceDecorations {
       }
     });
     this.decorations = [];
+    this._asteroids = [];
   }
 }

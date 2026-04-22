@@ -55,6 +55,7 @@ beforeAll(() => {
       setFromAxisAngle: jest.fn(),
       copy: jest.fn()
     },
+    angularVelocity: { x: 0, y: 0, z: 0, set: jest.fn() },
     addShape: jest.fn(),
     applyForce: jest.fn(),
     applyImpulse: jest.fn(),
@@ -534,7 +535,7 @@ describe('Pause/Resume: PortalGate', () => {
     // Trigger a teleport to start cooldown
     const ball = makeBallBody(-3, 0.5, 2);
     portal.update(0.016, ball);
-    expect(portal.cooldown).toBe(1.0);
+    expect(portal.cooldown).toBe(0.5);
 
     // Move ball away
     ball.position.x = 0;
@@ -543,7 +544,7 @@ describe('Pause/Resume: PortalGate', () => {
     // One frame to decrement cooldown slightly
     portal.update(0.2, ball);
     const cooldownBeforePause = portal.cooldown;
-    expect(cooldownBeforePause).toBeCloseTo(0.8, 5);
+    expect(cooldownBeforePause).toBeCloseTo(0.3, 5);
 
     // --- PAUSE: no update() calls ---
 
@@ -569,13 +570,13 @@ describe('Pause/Resume: PortalGate', () => {
     // Move ball away and decrement cooldown
     ball.position.x = 0;
     ball.position.z = 0;
-    portal.update(0.5, ball);
-    expect(portal.cooldown).toBeCloseTo(0.5, 5);
+    portal.update(0.2, ball);
+    expect(portal.cooldown).toBeCloseTo(0.3, 5);
 
     // --- PAUSE ---
 
     // Resume
-    portal.update(0.3, ball);
+    portal.update(0.1, ball);
     expect(portal.cooldown).toBeCloseTo(0.2, 5);
   });
 
@@ -599,16 +600,16 @@ describe('Pause/Resume: PortalGate', () => {
     // Move ball away, partial cooldown decrement
     ball.position.x = 0;
     ball.position.z = 0;
-    portal.update(0.3, ball);
+    portal.update(0.1, ball);
 
     // --- PAUSE ---
 
     // Resume — move ball back to entry, cooldown still active
     ball.position.x = -3;
     ball.position.z = 2;
-    portal.update(0.3, ball);
+    portal.update(0.1, ball);
 
-    // Cooldown started at 1.0, decremented 0.3 + 0.3 = 0.6, remaining = 0.4 > 0
+    // Cooldown started at 0.5, decremented 0.1 + 0.1 = 0.2, remaining = 0.3 > 0
     // Should NOT teleport
     expect(ball.position.set).not.toHaveBeenCalledWith(portal.exitX, portal.exitY, portal.exitZ);
   });
@@ -626,14 +627,14 @@ describe('Pause/Resume: BoostStrip', () => {
     group = makeMockGroup();
   });
 
-  it('does not apply force while game is paused (no update calls)', () => {
+  it('does not apply impulse while game is paused (no update calls)', () => {
     const boost = new BoostStrip(
       world,
       group,
       {
         position: { x: 0, y: 0, z: 0 },
-        direction: { x: 0, y: 0, z: -1 },
-        force: 10,
+        boost_direction: { x: 0, y: 0, z: -1 },
+        boost_magnitude: 10,
         size: { width: 2, length: 4 }
       },
       surfaceHeight
@@ -641,25 +642,25 @@ describe('Pause/Resume: BoostStrip', () => {
 
     const ball = makeBallBody(0, 0.5, 0);
 
-    // One frame — force is applied
+    // One frame — impulse is applied
     boost.update(0.016, ball);
-    const callCountBefore = ball.applyForce.mock.calls.length;
-    expect(callCountBefore).toBeGreaterThan(0);
+    const velocityAfterFirst = ball.velocity.z;
+    expect(velocityAfterFirst).not.toBe(0);
 
     // --- PAUSE: no update() calls ---
 
-    // No additional force calls during pause
-    expect(ball.applyForce.mock.calls.length).toBe(callCountBefore);
+    // Velocity remains unchanged during pause
+    expect(ball.velocity.z).toBe(velocityAfterFirst);
   });
 
-  it('resumes applying force on next update after pause', () => {
+  it('cooldown prevents re-trigger on the very next frame after pause', () => {
     const boost = new BoostStrip(
       world,
       group,
       {
         position: { x: 0, y: 0, z: 0 },
-        direction: { x: 0, y: 0, z: -1 },
-        force: 10,
+        boost_direction: { x: 0, y: 0, z: -1 },
+        boost_magnitude: 10,
         size: { width: 2, length: 4 }
       },
       surfaceHeight
@@ -668,38 +669,38 @@ describe('Pause/Resume: BoostStrip', () => {
     const ball = makeBallBody(0, 0.5, 0);
 
     boost.update(0.016, ball);
-    const callCountBefore = ball.applyForce.mock.calls.length;
+    const velocityAfterFirst = ball.velocity.z;
 
     // --- PAUSE ---
 
-    // Resume
+    // Resume — cooldown is active so impulse should not fire again
     boost.update(0.016, ball);
-    expect(ball.applyForce.mock.calls.length).toBeGreaterThan(callCountBefore);
+    expect(ball.velocity.z).toBeCloseTo(velocityAfterFirst);
   });
 
-  it('sound cooldown does not decrement during pause', () => {
+  it('boost cooldown decrements during update when not paused', () => {
     const boost = new BoostStrip(
       world,
       group,
       {
         position: { x: 0, y: 0, z: 0 },
-        direction: { x: 0, y: 0, z: -1 },
-        force: 10,
+        boost_direction: { x: 0, y: 0, z: -1 },
+        boost_magnitude: 10,
         size: { width: 2, length: 4 }
       },
       surfaceHeight
     );
 
     // Set a known cooldown value
-    boost.boostSoundCooldown = 0.3;
+    boost._boostCooldown = 0.8;
 
     // --- PAUSE: no update() calls ---
 
-    expect(boost.boostSoundCooldown).toBe(0.3);
+    expect(boost._boostCooldown).toBe(0.8);
 
     // Resume
     boost.update(0.1, null);
-    expect(boost.boostSoundCooldown).toBeCloseTo(0.2, 5);
+    expect(boost._boostCooldown).toBeCloseTo(0.7, 5);
   });
 });
 

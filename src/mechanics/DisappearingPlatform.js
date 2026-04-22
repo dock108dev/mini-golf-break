@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { MechanicBase } from './MechanicBase';
 import { registerMechanic } from './MechanicRegistry';
+import { HAZARD_COLORS } from '../themes/palette';
 
 const FADE_DURATION = 0.2;
 const WARN_DURATION = 0.3;
@@ -23,6 +24,7 @@ class DisappearingPlatform extends MechanicBase {
     }
 
     this.hazardBelowY = config.hazardBelowY ?? surfaceHeight - 2;
+    this._belowFloorImpulsed = false;
     this.platformData = [];
 
     const platforms = config.platforms;
@@ -91,7 +93,7 @@ class DisappearingPlatform extends MechanicBase {
     const cycleDuration = onDuration + offDuration;
     const timer = offset * cycleDuration;
     const meshY = surfaceHeight + py + height / 2;
-    const color = this.theme?.mechanics?.disappearingPlatform?.color || 0x33aaff;
+    const color = this.theme?.mechanics?.disappearingPlatform?.color || HAZARD_COLORS.danger;
 
     const dims = { w: width, h: height, d: depth };
     const meshPos = { x: px, y: meshY, z: pz };
@@ -159,13 +161,23 @@ class DisappearingPlatform extends MechanicBase {
       const timeUntilOff = plat.onDuration - cyclePos;
       const isWarning = plat.isOn && timeUntilOff > 0 && timeUntilOff <= WARN_DURATION;
 
+      // Danger-tier: pulse emissive at 1.5 Hz when platform is visible
+      if (plat.fadeProgress > 0 && plat.mesh.material && !isWarning) {
+        plat.mesh.material.emissiveIntensity = 0.5 + 0.3 * Math.sin(plat.timer * Math.PI * 3);
+      }
+
       this._applyState(plat, isWarning);
     }
 
-    // Hazard check: ball fell below hazardBelowY
+    // Hazard check: ball fell below hazardBelowY — impulse fires once per crossing
     if (ballBody && ballBody.sleepState !== CANNON.Body.SLEEPING) {
       if (ballBody.position.y < this.hazardBelowY) {
-        ballBody.applyImpulse(new CANNON.Vec3(0, 2, 0));
+        if (!this._belowFloorImpulsed) {
+          ballBody.applyImpulse(new CANNON.Vec3(0, 2, 0));
+          this._belowFloorImpulsed = true;
+        }
+      } else {
+        this._belowFloorImpulsed = false;
       }
     }
   }

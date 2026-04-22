@@ -115,8 +115,8 @@ describe('BoostStrip', () => {
 
   const defaultConfig = {
     position: new THREE.Vector3(0, 0, 0),
-    direction: new THREE.Vector3(0, 0, -1),
-    force: 10,
+    boost_direction: new THREE.Vector3(0, 0, -1),
+    boost_magnitude: 10,
     size: { width: 2, length: 4 }
   };
 
@@ -140,11 +140,11 @@ describe('BoostStrip', () => {
       expect(world.addBody).toHaveBeenCalledWith(strip.triggerBody);
     });
 
-    it('computes the direction force vector from config', () => {
+    it('normalizes boost_direction and stores boost_magnitude', () => {
       const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
-      // direction (0,0,-1) × force 10 → (0,0,-10)
-      expect(strip.direction.x).toBeCloseTo(0);
-      expect(strip.direction.z).toBeCloseTo(-10);
+      expect(strip._boostDir.x).toBeCloseTo(0);
+      expect(strip._boostDir.z).toBeCloseTo(-1);
+      expect(strip._boostMagnitude).toBe(10);
     });
 
     it('uses defaults when config fields are missing', () => {
@@ -155,26 +155,26 @@ describe('BoostStrip', () => {
   });
 
   describe('update', () => {
-    it('applies directional force when ball is in zone', () => {
+    it('adds velocity impulse when ball is in zone', () => {
       const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
-      // Place ball at same position as trigger body
       const ball = makeMockBall(strip.triggerBody.position.x, strip.triggerBody.position.z);
 
       strip.update(0.016, ball);
 
-      expect(ball.applyForce).toHaveBeenCalledWith(strip.direction);
+      // boost_direction [0,0,-1] * boost_magnitude 10 → velocity.z -= 10
+      expect(ball.velocity.z).toBeCloseTo(-10);
     });
 
-    it('does not apply force when ball is outside zone', () => {
+    it('does not modify velocity when ball is outside zone', () => {
       const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
       const ball = makeMockBall(100, 100);
 
       strip.update(0.016, ball);
 
-      expect(ball.applyForce).not.toHaveBeenCalled();
+      expect(ball.velocity.z).toBe(0);
     });
 
-    it('wakes sleeping ball in zone and applies force', () => {
+    it('wakes sleeping ball in zone and applies impulse', () => {
       const strip = new BoostStrip(world, group, defaultConfig, SURFACE_HEIGHT);
       const ball = makeMockBall(strip.triggerBody.position.x, strip.triggerBody.position.z);
       ball.sleepState = SLEEPING;
@@ -183,7 +183,7 @@ describe('BoostStrip', () => {
       strip.update(0.016, ball);
 
       expect(ball.wakeUp).toHaveBeenCalled();
-      expect(ball.applyForce).toHaveBeenCalledWith(strip.direction);
+      expect(ball.velocity.z).toBeCloseTo(-10);
     });
 
     it('does not throw when ballBody is null', () => {
@@ -292,7 +292,7 @@ describe('SuctionZone', () => {
       expect(ball.applyForce).not.toHaveBeenCalled();
     });
 
-    it('force is stronger closer to center (inverse distance)', () => {
+    it('force magnitude is constant (suction_force * mass) regardless of distance', () => {
       const zone = new SuctionZone(world, group, defaultConfig, SURFACE_HEIGHT);
 
       const ballClose = makeMockBall(1, 0);
@@ -303,7 +303,11 @@ describe('SuctionZone', () => {
       zone.update(0.016, ballFar);
       const forceFar = ballFar.applyForce.mock.calls[0][0];
 
-      expect(Math.abs(forceClose.x)).toBeGreaterThan(Math.abs(forceFar.x));
+      // Constant force: same magnitude at different distances
+      expect(Math.abs(forceClose.x)).toBeCloseTo(Math.abs(forceFar.x), 5);
+      // Magnitude equals force * mass
+      const expectedMagnitude = defaultConfig.force * 0.45;
+      expect(Math.abs(forceClose.x)).toBeCloseTo(expectedMagnitude, 5);
     });
 
     it('wakes sleeping ball in zone and applies force', () => {
@@ -348,7 +352,7 @@ describe('LowGravityZone', () => {
   const defaultConfig = {
     position: new THREE.Vector3(0, 0, 0),
     radius: 3,
-    gravityMultiplier: 0.3
+    gravity_fraction: 0.3
   };
 
   describe('constructor', () => {
@@ -358,19 +362,19 @@ describe('LowGravityZone', () => {
       expect(zone.mesh.material.transparent).toBe(true);
     });
 
-    it('computes counter-force from gravity multiplier', () => {
+    it('computes counter-force from gravity_fraction', () => {
       const zone = new LowGravityZone(world, group, defaultConfig, SURFACE_HEIGHT);
-      expect(zone.counterForce).toBeCloseTo(9.81 * 0.7);
+      expect(zone.counterForce).toBeCloseTo(9.82 * 0.7);
     });
 
-    it('handles zero gravity multiplier (full counter)', () => {
-      const config = { ...defaultConfig, gravityMultiplier: 0 };
+    it('handles gravity_fraction near 0 (nearly full counter)', () => {
+      const config = { ...defaultConfig, gravity_fraction: 0.01 };
       const zone = new LowGravityZone(world, group, config, SURFACE_HEIGHT);
-      expect(zone.counterForce).toBeCloseTo(9.81);
+      expect(zone.counterForce).toBeCloseTo(9.82 * 0.99);
     });
 
-    it('handles gravityMultiplier of 1 (no reduction)', () => {
-      const config = { ...defaultConfig, gravityMultiplier: 1 };
+    it('handles gravity_fraction of 1 (no reduction)', () => {
+      const config = { ...defaultConfig, gravity_fraction: 1 };
       const zone = new LowGravityZone(world, group, config, SURFACE_HEIGHT);
       expect(zone.counterForce).toBeCloseTo(0);
     });
@@ -389,7 +393,7 @@ describe('LowGravityZone', () => {
       expect(force.x).toBe(0);
       expect(force.y).toBeGreaterThan(0);
       expect(force.z).toBe(0);
-      expect(force.y).toBeCloseTo(0.45 * 9.81 * 0.7);
+      expect(force.y).toBeCloseTo(0.45 * 9.82 * 0.7);
     });
 
     it('does not apply force when ball is outside zone', () => {

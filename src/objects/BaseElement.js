@@ -50,8 +50,6 @@ export class BaseElement {
       );
       throw new Error('Cannot add group to scene - invalid scene reference');
     }
-    // We should track the group itself, maybe not add to meshes immediately
-    // this.meshes.push(this.group); // Subclasses add their specific meshes
   }
 
   /**

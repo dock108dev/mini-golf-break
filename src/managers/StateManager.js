@@ -202,17 +202,13 @@ export class StateManager {
       console.warn('[StateManager] ScoringSystem not found, cannot reset strokes.');
     }
 
-    // Set game state to aiming
     this.setGameState(GameState.AIMING);
-
-    // Log the transition
     debug.log(`[StateManager] Reset for hole ${this.state.currentHoleNumber} of ${totalHoles}`);
 
-    // --- Publish HOLE_STARTED event ---
     if (this.game.eventManager) {
       this.game.eventManager.publish(
         EventTypes.HOLE_STARTED,
-        { holeNumber: this.state.currentHoleNumber }, // Pass the updated hole number
+        { holeNumber: this.state.currentHoleNumber },
         this
       );
       debug.log(
@@ -221,7 +217,6 @@ export class StateManager {
     } else {
       console.error('[StateManager] EventManager not found, cannot publish HOLE_STARTED.');
     }
-    // --- End Publish ---
 
     return this;
   }
@@ -401,7 +396,10 @@ export class StateManager {
       try {
         callback();
       } catch (error) {
-        console.error('Error in hole completed callback:', error);
+        console.error(
+          `Error in hole completed callback [${callback?.name || 'anonymous'}]:`,
+          error
+        );
       }
     });
   }

@@ -138,7 +138,7 @@ export class CoursesManager {
 
   /**
    * Get camera hint for the current hole
-   * @returns {Object|null} Camera hint with offset and lookAt, or null for default positioning
+   * @returns {Object|null} Camera hint with position and target, or null for default positioning
    */
   getCameraHint() {
     return null;

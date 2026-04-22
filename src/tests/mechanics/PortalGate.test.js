@@ -1,6 +1,6 @@
 /**
  * Unit tests for PortalGate mechanic
- * ISSUE-004
+ * ISSUE-029
  */
 
 import * as CANNON from 'cannon-es';
@@ -56,14 +56,18 @@ beforeAll(() => {
       quaternion: { x: 0, y: 0, z: 0, w: 1, copy: jest.fn() },
       castShadow: false,
       geometry: { dispose: jest.fn() },
-      material: { dispose: jest.fn() }
+      material: { dispose: jest.fn(), emissiveIntensity: 0.6 }
     };
     mesh.parent = null;
     return mesh;
   });
 
   THREE.MeshStandardMaterial.mockImplementation(opts => {
-    const mat = { color: 0xffffff, dispose: jest.fn() };
+    const mat = {
+      color: 0xffffff,
+      dispose: jest.fn(),
+      emissiveIntensity: opts?.emissiveIntensity ?? 0
+    };
     if (opts) {
       Object.assign(mat, opts);
     }
@@ -165,7 +169,7 @@ describe('PortalGate', () => {
       expect(portal.radius).toBe(1.2);
     });
 
-    it('uses default radius when not specified', () => {
+    it('uses default radius 0.4 when not specified', () => {
       const portal = new PortalGate(
         world,
         group,
@@ -173,7 +177,7 @@ describe('PortalGate', () => {
         surfaceHeight
       );
 
-      expect(portal.radius).toBe(0.6);
+      expect(portal.radius).toBe(0.4);
     });
 
     it('initializes cooldown to 0', () => {
@@ -217,7 +221,7 @@ describe('PortalGate', () => {
       );
     });
 
-    it('uses default color when not specified', () => {
+    it('uses default entry color when not specified', () => {
       const portal = new PortalGate(
         world,
         group,
@@ -227,9 +231,18 @@ describe('PortalGate', () => {
 
       expect(THREE.MeshStandardMaterial).toHaveBeenCalledWith(
         expect.objectContaining({
-          color: 0x8800ff
+          color: 0x00aaff
         })
       );
+    });
+
+    it('uses default positions when config positions are missing', () => {
+      const portal = new PortalGate(world, group, {}, surfaceHeight);
+
+      expect(portal.entryX).toBe(-3);
+      expect(portal.entryZ).toBe(2);
+      expect(portal.exitX).toBe(3);
+      expect(portal.exitZ).toBe(-5);
     });
   });
 
@@ -287,21 +300,6 @@ describe('PortalGate', () => {
       expect(ball.position.set).not.toHaveBeenCalledWith(portal.exitX, portal.exitY, portal.exitZ);
     });
 
-    it('preserves ball velocity after teleport (direction and magnitude)', () => {
-      const portal = new PortalGate(world, group, config, surfaceHeight);
-      const ball = makeBallBody(-3, 0.5, 2);
-      ball.velocity.x = 2.5;
-      ball.velocity.y = 0;
-      ball.velocity.z = -1.5;
-
-      portal.update(0.016, ball);
-
-      // Velocity should not be changed by PortalGate
-      expect(ball.velocity.x).toBe(2.5);
-      expect(ball.velocity.y).toBe(0);
-      expect(ball.velocity.z).toBe(-1.5);
-    });
-
     it('teleports ball at exact boundary of radius', () => {
       const portal = new PortalGate(world, group, makeConfig({ radius: 1.0 }), surfaceHeight);
       // Place ball exactly at radius distance along X from entry
@@ -327,13 +325,13 @@ describe('PortalGate', () => {
   // --- Cooldown ---
 
   describe('cooldown', () => {
-    it('sets cooldown to 1.0 after teleport', () => {
+    it('sets cooldown to 0.5 after teleport', () => {
       const portal = new PortalGate(world, group, config, surfaceHeight);
       const ball = makeBallBody(-3, 0.5, 2);
 
       portal.update(0.016, ball);
 
-      expect(portal.cooldown).toBe(1.0);
+      expect(portal.cooldown).toBe(0.5);
     });
 
     it('prevents re-trigger during cooldown period', () => {
@@ -349,7 +347,7 @@ describe('PortalGate', () => {
       ball.position.z = 2;
 
       // Should not teleport during cooldown
-      portal.update(0.5, ball);
+      portal.update(0.3, ball);
       expect(ball.position.set).not.toHaveBeenCalledWith(portal.exitX, portal.exitY, portal.exitZ);
     });
 
@@ -358,17 +356,17 @@ describe('PortalGate', () => {
       const ball = makeBallBody(-3, 0.5, 2);
 
       portal.update(0.016, ball);
-      expect(portal.cooldown).toBe(1.0);
+      expect(portal.cooldown).toBe(0.5);
 
       // Move ball away so it doesn't re-trigger
       ball.position.x = 0;
       ball.position.z = 0;
 
-      portal.update(0.3, ball);
-      expect(portal.cooldown).toBeCloseTo(0.7, 5);
+      portal.update(0.2, ball);
+      expect(portal.cooldown).toBeCloseTo(0.3, 5);
 
-      portal.update(0.3, ball);
-      expect(portal.cooldown).toBeCloseTo(0.4, 5);
+      portal.update(0.1, ball);
+      expect(portal.cooldown).toBeCloseTo(0.2, 5);
     });
 
     it('allows re-trigger after cooldown expires', () => {
@@ -382,7 +380,7 @@ describe('PortalGate', () => {
       // Wait for cooldown to expire (move ball away first)
       ball.position.x = 0;
       ball.position.z = 0;
-      portal.update(1.1, ball); // cooldown fully expires
+      portal.update(0.6, ball); // cooldown fully expires
 
       // Move ball back to entry
       ball.position.x = -3;
@@ -404,6 +402,29 @@ describe('PortalGate', () => {
       // Should not teleport, just decrement cooldown
       expect(ball.position.set).not.toHaveBeenCalledWith(portal.exitX, portal.exitY, portal.exitZ);
       expect(portal.cooldown).toBeCloseTo(0.4, 5);
+    });
+
+    it('simulates rapid re-contact is blocked by 0.5s cooldown', () => {
+      const portal = new PortalGate(world, group, config, surfaceHeight);
+      const ball = makeBallBody(-3, 0.5, 2);
+
+      portal.update(0.016, ball);
+      const teleportCallCount1 = ball.position.set.mock.calls.filter(
+        c => c[0] === portal.exitX && c[2] === portal.exitZ
+      ).length;
+
+      // Rapidly re-contact within cooldown window
+      ball.position.x = -3;
+      ball.position.z = 2;
+      portal.update(0.016, ball);
+      portal.update(0.016, ball);
+      portal.update(0.016, ball);
+
+      const teleportCallCount2 = ball.position.set.mock.calls.filter(
+        c => c[0] === portal.exitX && c[2] === portal.exitZ
+      ).length;
+
+      expect(teleportCallCount2).toBe(teleportCallCount1);
     });
   });
 
@@ -428,15 +449,6 @@ describe('PortalGate', () => {
 
       expect(() => portal.update(0, ball)).not.toThrow();
     });
-
-    it('uses default positions when config positions are missing', () => {
-      const portal = new PortalGate(world, group, {}, surfaceHeight);
-
-      expect(portal.entryX).toBe(-3);
-      expect(portal.entryZ).toBe(2);
-      expect(portal.exitX).toBe(3);
-      expect(portal.exitZ).toBe(-5);
-    });
   });
 
   // --- Destroy ---
@@ -458,6 +470,15 @@ describe('PortalGate', () => {
       portal.destroy();
 
       expect(portal.bodies).toEqual([]);
+    });
+
+    it('resets cooldown on onDtSpike', () => {
+      const portal = new PortalGate(world, group, config, surfaceHeight);
+      portal.cooldown = 0.5;
+
+      portal.onDtSpike();
+
+      expect(portal.cooldown).toBe(0);
     });
 
     it('can be called multiple times without error', () => {

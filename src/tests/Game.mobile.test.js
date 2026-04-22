@@ -109,14 +109,19 @@ jest.mock('three', () => ({
   BufferGeometry: jest.fn(() => ({
     setAttribute: jest.fn()
   })),
+  BufferAttribute: jest.fn(),
   Float32BufferAttribute: jest.fn(),
   PointsMaterial: jest.fn(() => ({
     color: 0xffffff,
     size: 0.1,
-    transparent: true
+    transparent: true,
+    dispose: jest.fn()
   })),
   Points: jest.fn(() => ({
-    userData: {}
+    userData: {},
+    position: { x: 0, z: 0 },
+    geometry: { dispose: jest.fn() },
+    material: { dispose: jest.fn() }
   })),
   SphereGeometry: jest.fn(() => ({
     dispose: jest.fn()
@@ -224,7 +229,8 @@ describe('Game - Mobile Optimizations', () => {
     jest.doMock('../managers/StateManager', () => ({
       StateManager: jest.fn(() => ({
         resetState: jest.fn(),
-        getGameState: jest.fn(() => 'PLAYING')
+        getGameState: jest.fn(() => 'PLAYING'),
+        setGameState: jest.fn()
       }))
     }));
 
@@ -274,7 +280,8 @@ describe('Game - Mobile Optimizations', () => {
 
     jest.doMock('../managers/HazardManager', () => ({
       HazardManager: jest.fn(() => ({
-        init: jest.fn()
+        init: jest.fn(),
+        setHoleBounds: jest.fn()
       }))
     }));
 
@@ -296,6 +303,12 @@ describe('Game - Mobile Optimizations', () => {
       }))
     }));
 
+    jest.doMock('../managers/StuckBallManager', () => ({
+      StuckBallManager: jest.fn(() => ({
+        init: jest.fn()
+      }))
+    }));
+
     jest.doMock('../managers/GameLoopManager', () => ({
       GameLoopManager: jest.fn(() => ({
         init: jest.fn(),
@@ -309,7 +322,8 @@ describe('Game - Mobile Optimizations', () => {
         create: jest.fn(async () => ({
           totalHoles: 9,
           currentHoleEntity: { config: { index: 0 } },
-          getHoleStartPosition: jest.fn(() => ({ x: 0, y: 0, z: 0 }))
+          getHoleStartPosition: jest.fn(() => ({ x: 0, y: 0, z: 0 })),
+          getCurrentHoleConfig: jest.fn(() => ({ par: 3, maxStrokes: 10 }))
         }))
       }
     }));
@@ -338,7 +352,9 @@ describe('Game - Mobile Optimizations', () => {
     }));
 
     jest.doMock('../game/ScoringSystem', () => ({
-      ScoringSystem: jest.fn(() => ({}))
+      ScoringSystem: jest.fn(() => ({
+        setMaxStrokes: jest.fn()
+      }))
     }));
 
     // Create game instance

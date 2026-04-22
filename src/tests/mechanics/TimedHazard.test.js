@@ -471,6 +471,57 @@ describe('TimedHazard', () => {
     });
   });
 
+  // --- Emissive pulse (danger tier) ---
+
+  describe('danger-tier emissive pulse', () => {
+    it('sets emissiveIntensity on mesh material when active', () => {
+      const hazard = new TimedHazard(
+        world,
+        group,
+        { position: { x: 0, y: 0, z: 0 }, onDuration: 5, offDuration: 1 },
+        SURFACE_HEIGHT
+      );
+
+      hazard.update(0.1, null);
+
+      expect(hazard.mesh.material.emissiveIntensity).toBeDefined();
+      expect(hazard.mesh.material.emissiveIntensity).toBeGreaterThan(0);
+    });
+
+    it('emissiveIntensity changes between two update calls (1.5 Hz pulse)', () => {
+      const hazard = new TimedHazard(
+        world,
+        group,
+        { position: { x: 0, y: 0, z: 0 }, onDuration: 5, offDuration: 1 },
+        SURFACE_HEIGHT
+      );
+
+      hazard.update(0.1, null);
+      const intensity1 = hazard.mesh.material.emissiveIntensity;
+
+      hazard.update(0.1, null);
+      const intensity2 = hazard.mesh.material.emissiveIntensity;
+
+      expect(intensity1).not.toBeCloseTo(intensity2, 5);
+    });
+
+    it('does not set emissiveIntensity when inactive', () => {
+      const hazard = new TimedHazard(
+        world,
+        group,
+        { position: { x: 0, y: 0, z: 0 }, onDuration: 1, offDuration: 5 },
+        SURFACE_HEIGHT
+      );
+
+      hazard.update(1.5, null); // advance past onDuration into inactive window
+      const intensityAfterInactive = hazard.mesh.material.emissiveIntensity;
+
+      // Intensity should not have been set during the inactive phase
+      hazard.update(0.1, null);
+      expect(hazard.mesh.material.emissiveIntensity).toBe(intensityAfterInactive);
+    });
+  });
+
   // --- onDtSpike ---
 
   describe('onDtSpike', () => {

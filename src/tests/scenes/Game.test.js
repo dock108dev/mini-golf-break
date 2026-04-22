@@ -25,9 +25,15 @@ jest.mock('three', () => ({
     }
   })),
   BufferGeometry: jest.fn(() => ({ setAttribute: jest.fn() })),
+  BufferAttribute: jest.fn(),
   Float32BufferAttribute: jest.fn(),
-  PointsMaterial: jest.fn(() => ({})),
-  Points: jest.fn(() => ({ userData: {} })),
+  PointsMaterial: jest.fn(() => ({ dispose: jest.fn() })),
+  Points: jest.fn(() => ({
+    userData: {},
+    position: { x: 0, z: 0 },
+    geometry: { dispose: jest.fn() },
+    material: { dispose: jest.fn() }
+  })),
   PerspectiveCamera: jest.fn(() => ({
     position: { x: 0, y: 0, z: 0, set: jest.fn() },
     lookAt: jest.fn(),

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { MechanicBase } from './MechanicBase';
 import { registerMechanic } from './MechanicRegistry';
+import { HAZARD_COLORS } from '../themes/palette';
 
 /**
  * RicochetBumpers - Bumpers with varied geometry (cylinder, sphere, box) and high restitution.
@@ -22,7 +23,8 @@ class RicochetBumpers extends MechanicBase {
     super(world, group, config, surfaceHeight, theme);
 
     const bumpers = config.bumpers || [];
-    const defaultColor = config.color || theme?.mechanics?.ricochetBumpers?.color || 0xff6600;
+    const defaultColor =
+      config.color || theme?.mechanics?.ricochetBumpers?.color || HAZARD_COLORS.blocker;
 
     for (const b of bumpers) {
       const pos = b.position || new THREE.Vector3(0, 0, 0);
@@ -35,23 +37,39 @@ class RicochetBumpers extends MechanicBase {
       let mesh;
       let shape;
 
+      const emissiveMat = { emissive: HAZARD_COLORS.blocker, emissiveIntensity: 0.2 };
       if (geomType === 'sphere') {
         const geom = new THREE.SphereGeometry(radius, 16, 16);
-        const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.6 });
+        const mat = new THREE.MeshStandardMaterial({
+          color,
+          roughness: 0.3,
+          metalness: 0.6,
+          ...emissiveMat
+        });
         mesh = new THREE.Mesh(geom, mat);
         mesh.position.set(pos.x, surfaceHeight + radius, pos.z);
         shape = new CANNON.Sphere(radius);
       } else if (geomType === 'box') {
         const size = b.size || new THREE.Vector3(0.8, height, 0.8);
         const geom = new THREE.BoxGeometry(size.x, size.y, size.z);
-        const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.4, metalness: 0.5 });
+        const mat = new THREE.MeshStandardMaterial({
+          color,
+          roughness: 0.4,
+          metalness: 0.5,
+          ...emissiveMat
+        });
         mesh = new THREE.Mesh(geom, mat);
         mesh.position.set(pos.x, bumperY, pos.z);
         shape = new CANNON.Box(new CANNON.Vec3(size.x / 2, size.y / 2, size.z / 2));
       } else {
         // Default: cylinder
         const geom = new THREE.CylinderGeometry(radius, radius, height, 16);
-        const mat = new THREE.MeshStandardMaterial({ color, roughness: 0.3, metalness: 0.6 });
+        const mat = new THREE.MeshStandardMaterial({
+          color,
+          roughness: 0.3,
+          metalness: 0.6,
+          ...emissiveMat
+        });
         mesh = new THREE.Mesh(geom, mat);
         mesh.position.set(pos.x, bumperY, pos.z);
         shape = new CANNON.Cylinder(radius, radius, height, 16);

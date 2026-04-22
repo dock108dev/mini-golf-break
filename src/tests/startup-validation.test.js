@@ -106,8 +106,8 @@ describe('Dev-mode startup validation (ISSUE-065)', () => {
           {
             type: 'boost_strip',
             position: { x: 0, y: 0, z: 0 },
-            direction: { x: 1, y: 0, z: 0 },
-            force: 5,
+            boost_direction: { x: 1, y: 0, z: 0 },
+            boost_magnitude: 5,
             size: { width: 2, length: 1 }
           }
         ]

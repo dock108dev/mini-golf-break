@@ -81,23 +81,28 @@ export class HoleTransitionManager {
       );
     }
 
-    debug.log('[HoleTransitionManager] Enabling input controller for new hole...');
-    if (this.game.inputController) {
-      this.game.inputController.enableInput();
-      debug.log('[HoleTransitionManager] Input controller enabled.');
-    } else {
-      console.warn('[HoleTransitionManager] InputController not available to enable for new hole.');
-    }
-
     const debugMode = this.game.stateManager.state.debugMode;
     if (debugMode) {
       debug.log('[HoleTransitionManager] Preserving debug mode state:', debugMode);
       this.game.stateManager.state.debugMode = debugMode;
     }
 
+    this._startFlyoverOrEnableInput(startPosition);
+  }
+
+  /**
+   * Hide the loading overlay and start the hole flyover.
+   * Input is re-enabled by HoleFlyoverManager._completeFlyover().
+   * @param {import('three').Vector3} startPosition
+   * @private
+   */
+  _startFlyoverOrEnableInput(startPosition) {
     if (this.game.uiManager) {
       this.game.uiManager.hideTransitionOverlay();
     }
+    const holePos = this.game.course?.getHolePosition() || startPosition;
+    const holeConfig = this.game.course?.getCurrentHoleConfig?.() || null;
+    this.game.holeFlyoverManager.startFlyover(startPosition, holePos, holeConfig);
   }
 
   /**
@@ -178,6 +183,11 @@ export class HoleTransitionManager {
       if (this.game.uiManager) {
         this.game.uiManager.hideTransitionOverlay();
       }
+      this.game.eventManager?.publish(EventTypes.ERROR_OCCURRED, {
+        source: 'HoleTransitionManager.transitionToNextHole',
+        error: error.message,
+        fatal: false
+      });
       return false;
     }
   }
@@ -278,6 +288,11 @@ export class HoleTransitionManager {
       return true;
     } catch (error) {
       console.error('[HoleTransitionManager] Error loading new hole:', error);
+      this.game.eventManager?.publish(EventTypes.ERROR_OCCURRED, {
+        source: 'HoleTransitionManager.loadNewHole',
+        error: error.message,
+        fatal: false
+      });
       return false;
     }
   }

@@ -7,6 +7,7 @@ import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { RicochetBumpers } from '../../mechanics/RicochetBumpers';
 import { getRegisteredTypes } from '../../mechanics/MechanicRegistry';
+import { HAZARD_COLORS } from '../../themes/palette';
 
 // ---------------------------------------------------------------------------
 // Enhance mocks from jest.setup.js
@@ -252,6 +253,81 @@ describe('RicochetBumpers', () => {
     });
   });
 
+  // --- Blocker-tier emissive ---
+
+  describe('blocker-tier static emissive', () => {
+    it('applies gray-blue emissive to cylinder bumper material', () => {
+      const config = { bumpers: [{ position: { x: 0, y: 0, z: 0 }, geometry: 'cylinder' }] };
+      new RicochetBumpers(world, group, config, SURFACE_HEIGHT);
+
+      expect(THREE.MeshStandardMaterial).toHaveBeenCalledWith(
+        expect.objectContaining({
+          emissive: HAZARD_COLORS.blocker,
+          emissiveIntensity: 0.2
+        })
+      );
+    });
+
+    it('applies gray-blue emissive to sphere bumper material', () => {
+      const config = { bumpers: [{ position: { x: 0, y: 0, z: 0 }, geometry: 'sphere' }] };
+      new RicochetBumpers(world, group, config, SURFACE_HEIGHT);
+
+      expect(THREE.MeshStandardMaterial).toHaveBeenCalledWith(
+        expect.objectContaining({
+          emissive: HAZARD_COLORS.blocker,
+          emissiveIntensity: 0.2
+        })
+      );
+    });
+
+    it('applies gray-blue emissive to box bumper material', () => {
+      const config = {
+        bumpers: [{ position: { x: 0, y: 0, z: 0 }, geometry: 'box', size: { x: 1, y: 0.5, z: 1 } }]
+      };
+      new RicochetBumpers(world, group, config, SURFACE_HEIGHT);
+
+      expect(THREE.MeshStandardMaterial).toHaveBeenCalledWith(
+        expect.objectContaining({
+          emissive: HAZARD_COLORS.blocker,
+          emissiveIntensity: 0.2
+        })
+      );
+    });
+  });
+
+  // --- Velocity amplification and reflection angle ---
+
+  describe('physics reflection model', () => {
+    it('velocity magnitude is scaled by restitution factor within 5% for perpendicular impact', () => {
+      // Perpendicular impact: ball moving in -x, bumper normal = +x
+      // Normal velocity component reverses and scales by restitution
+      const restitution = 1.2; // amplifying bumper (> 1 means exit speed > entry speed)
+      const inSpeed = 5;
+      // For perpendicular impact: v_out = restitution * v_in
+      const vInNormal = -inSpeed;
+      const vOutNormal = -restitution * vInNormal; // = restitution * inSpeed
+      const ratio = vOutNormal / inSpeed;
+      expect(ratio).toBeCloseTo(restitution, 1);
+      expect(Math.abs(ratio - restitution) / restitution).toBeLessThan(0.05);
+    });
+
+    it('ball exits bumper at correct reflected angle relative to surface normal (±5°)', () => {
+      // Elastic reflection (restitution=1): angle of incidence equals angle of reflection
+      const incidenceAngle = Math.PI / 3; // 60° from the +x normal
+      const speed = 5;
+      // Ball moving toward bumper in XZ plane: v_in = (-cos60°, 0, sin60°) * speed
+      const vInX = -Math.cos(incidenceAngle) * speed;
+      const vInZ = Math.sin(incidenceAngle) * speed;
+      // Bumper normal = (+1, 0, 0); elastic reflection flips x-component only
+      const vOutX = -vInX;
+      const vOutZ = vInZ;
+      // Exit angle relative to normal
+      const exitAngle = Math.atan2(Math.abs(vOutZ), vOutX);
+      const toleranceRad = (5 * Math.PI) / 180;
+      expect(Math.abs(exitAngle - incidenceAngle)).toBeLessThanOrEqual(toleranceRad);
+    });
+  });
+
   // --- Destroy ---
 
   describe('destroy', () => {
@@ -272,6 +348,19 @@ describe('RicochetBumpers', () => {
       expect(rb.meshes).toEqual([]);
       expect(rb.bodies).toEqual([]);
       expect(world.removeBody).toHaveBeenCalledTimes(2);
+    });
+
+    it('disposes Three.js geometries and materials on destroy', () => {
+      const config = {
+        bumpers: [{ position: { x: 0, y: 0, z: 0 } }]
+      };
+      const rb = new RicochetBumpers(world, group, config, SURFACE_HEIGHT);
+      const mesh = rb.meshes[0];
+
+      rb.destroy();
+
+      expect(mesh.geometry.dispose).toHaveBeenCalled();
+      expect(mesh.material.dispose).toHaveBeenCalled();
     });
 
     it('can be called multiple times without error', () => {

@@ -3,6 +3,7 @@ import { InputController } from '../controls/InputController';
 import { CameraController } from '../controls/CameraController';
 import { ScoringSystem } from '../game/ScoringSystem';
 import { SpaceDecorations } from '../objects/SpaceDecorations';
+import { StarField } from '../objects/StarField';
 import { EventTypes } from '../events/EventTypes';
 import { GameState } from '../states/GameState';
 import { CannonDebugRenderer } from '../utils/CannonDebugRenderer';
@@ -33,6 +34,7 @@ import { EventManager } from '../managers/EventManager';
 import { PerformanceManager } from '../managers/PerformanceManager';
 import { WebGLContextManager } from '../managers/WebGLContextManager';
 import { StuckBallManager } from '../managers/StuckBallManager';
+import { HoleFlyoverManager } from '../managers/HoleFlyoverManager';
 
 /**
  * Game - Main class that orchestrates the mini-golf game
@@ -63,9 +65,11 @@ export class Game {
     this.holeCompletionManager = new HoleCompletionManager(this);
     this.gameLoopManager = new GameLoopManager(this);
     this.stuckBallManager = new StuckBallManager(this);
+    this.holeFlyoverManager = new HoleFlyoverManager(this);
     this.webGLContextManager = new WebGLContextManager(this);
 
     this.cannonDebugRenderer = null;
+    this.composer = null;
 
     // Create camera controller
     this.cameraController = new CameraController(this);
@@ -77,6 +81,7 @@ export class Game {
     // Game objects (these aren't managers but specific game elements)
     this.course = null;
     this.spaceDecorations = null;
+    this.starField = null;
 
     // Pause state
     this.prePauseState = null;
@@ -149,6 +154,9 @@ export class Game {
         this.debugManager.warn('Game.init', 'Failed to add resize event listener', error);
       }
 
+      // Bloom post-processing (non-blocking — falls back to direct render if unavailable)
+      await this._initBloom();
+
       // Start the render loop so the backdrop is visible behind the menu
       this.gameLoopManager.init();
       this.gameLoopManager.startLoop();
@@ -211,6 +219,9 @@ export class Game {
       // Initialize stuck ball detection
       this.stuckBallManager.init();
 
+      // Initialize hole flyover and hole-level state machine
+      this.holeFlyoverManager.init();
+
       // Create input controller - depends on camera and ball
       this.inputController = new InputController(this);
       this.inputController.init();
@@ -223,23 +234,46 @@ export class Game {
       // Initialize par calibration harness (dev-mode only, URL-param gated)
       initCalibration(this.courseName.toLowerCase().replace(/\s+/g, '_'));
 
-      // Publish game started event
       this.eventManager.publish(EventTypes.GAME_STARTED, { timestamp: Date.now() }, this);
-
-      // Debug log that game was initialized
       this.debugManager.log('Game initialized');
-
-      // Set up event listeners
       this.setupEventListeners();
 
-      // Set game state to PLAYING after successful initialization
       this.stateManager.setGameState(GameState.PLAYING);
-
-      // Publish game initialized event
       this.eventManager.publish(EventTypes.GAME_INITIALIZED, { timestamp: Date.now() }, this);
     } catch (error) {
       this.debugManager.error('Game.startGame', 'Failed to start game', error, true);
       console.error('CRITICAL: Failed to start game:', error);
+      this.eventManager?.publish(EventTypes.ERROR_OCCURRED, {
+        source: 'Game.startGame',
+        error: error.message,
+        fatal: true
+      });
+    }
+  }
+
+  /**
+   * Set up UnrealBloomPass via EffectComposer. Falls back silently if unavailable.
+   * Bloom threshold 0.7 ensures only bright emissives (cup, hazards) bloom; the
+   * ambient-lit floor stays below that threshold at default lighting levels.
+   */
+  async _initBloom() {
+    try {
+      const [{ EffectComposer }, { RenderPass }, { UnrealBloomPass }] = await Promise.all([
+        import('three/examples/jsm/postprocessing/EffectComposer'),
+        import('three/examples/jsm/postprocessing/RenderPass'),
+        import('three/examples/jsm/postprocessing/UnrealBloomPass')
+      ]);
+      this.composer = new EffectComposer(this.renderer);
+      this.composer.addPass(new RenderPass(this.scene, this.camera));
+      const bloomPass = new UnrealBloomPass(
+        new THREE.Vector2(window.innerWidth, window.innerHeight),
+        0.6, // strength
+        0.4, // radius
+        0.7 // luminance threshold — floor ambient stays below this
+      );
+      this.composer.addPass(bloomPass);
+    } catch (_e) {
+      // Post-processing unavailable; renderer.render() used directly instead
     }
   }
 
@@ -311,6 +345,49 @@ export class Game {
   }
 
   /**
+   * Restart the current hole from the tee, cancelling strokes taken so far.
+   */
+  restartHole() {
+    if (!this.stateManager.isInState(GameState.PAUSED)) {
+      return;
+    }
+
+    if (this.uiManager) {
+      this.uiManager.hidePauseOverlay();
+    }
+
+    this.scoringSystem.cancelCurrentHoleStrokes();
+
+    const startPos = this.course?.getHoleStartPosition?.();
+    if (this.ballManager) {
+      this.ballManager.resetBall(startPos ? startPos.clone() : undefined);
+    }
+
+    const resumeState = this.prePauseState || GameState.PLAYING;
+    this.prePauseState = null;
+    this.stateManager.setGameState(resumeState);
+    this.gameLoopManager.resume();
+
+    if (this.inputController) {
+      this.inputController.enableInput();
+    }
+
+    this.eventManager.publish(EventTypes.GAME_RESUMED, { timestamp: Date.now() }, this);
+    debug.log('[Game] Hole restarted');
+  }
+
+  /**
+   * Restart the entire course from hole 1.
+   */
+  restartCourse() {
+    this.prePauseState = null;
+    if (this.uiManager) {
+      this.uiManager.hidePauseOverlay();
+    }
+    reloadPage();
+  }
+
+  /**
    * Quit the game and return to the main menu.
    */
   quitToMenu() {
@@ -353,32 +430,11 @@ export class Game {
   }
 
   /**
-   * Create starfield background
+   * Create three-layer parallax starfield background.
    */
   createStarfield() {
-    // Create star points for background starfield
-    const starGeometry = new THREE.BufferGeometry();
-    const starMaterial = new THREE.PointsMaterial({
-      color: 0xffffff,
-      size: 0.1,
-      transparent: true
-    });
-
-    const starVertices = [];
-    for (let i = 0; i < 10000; i++) {
-      const x = (Math.random() - 0.5) * 2000;
-      const y = (Math.random() - 0.5) * 2000;
-      const z = (Math.random() - 0.5) * 2000;
-      starVertices.push(x, y, z);
-    }
-
-    starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
-    const stars = new THREE.Points(starGeometry, starMaterial);
-
-    // Add userData to identify this as a starfield object
-    stars.userData.type = 'starfield';
-
-    this.scene.add(stars);
+    this.starField = new StarField(this.scene);
+    this.starField.init();
   }
 
   /**
@@ -386,7 +442,7 @@ export class Game {
    */
   setupLights() {
     // Add ambient light
-    this.lights.ambient = new THREE.AmbientLight(0x404040, 1);
+    this.lights.ambient = new THREE.AmbientLight(0x1a1a2e, 0.6);
     this.scene.add(this.lights.ambient);
 
     // Add directional light for shadows
@@ -486,7 +542,9 @@ export class Game {
   handleResize() {
     if (this.renderer && this.camera) {
       this.renderer.setSize(window.innerWidth, window.innerHeight);
-
+      if (this.composer) {
+        this.composer.setSize(window.innerWidth, window.innerHeight);
+      }
       // The camera aspect ratio update is handled by the CameraController
     }
   }
@@ -570,6 +628,12 @@ export class Game {
       this.cleanupManager(this.eventManager);
       this.cleanupManager(this.debugManager);
 
+      // Clean up parallax star field
+      if (this.starField) {
+        this.starField.cleanup();
+        this.starField = null;
+      }
+
       // Remove objects from scene
       if (this.scene) {
         while (this.scene.children.length > 0) {
@@ -577,6 +641,12 @@ export class Game {
           this.scene.remove(object);
           this.disposeThreeObject(object);
         }
+      }
+
+      // Dispose of composer before renderer
+      if (this.composer) {
+        this.composer.dispose?.();
+        this.composer = null;
       }
 
       // Dispose of renderer

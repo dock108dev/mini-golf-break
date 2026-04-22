@@ -3,6 +3,7 @@ import * as CANNON from 'cannon-es';
 import { debug } from '../utils/debug';
 import { EventTypes } from '../events/EventTypes';
 import { resetBodyVelocity, checkBunkerOverlap, checkWaterOverlap } from './BallPhysicsHelper';
+import { PhysicsConstants } from '../physics/PhysicsConstants';
 
 const HOLE_ENTRY_OVERLAP_REQUIRED = 0.55;
 const HOLE_ENTRY_MAX_SPEED = 4.06;
@@ -21,7 +22,7 @@ export class Ball {
 
     this.radius = 0.2;
     this.segments = 32;
-    this.mass = 1;
+    this.mass = PhysicsConstants.ball.mass;
     this.body = null;
     this.mesh = null;
     this.isBallActive = true;
@@ -34,8 +35,16 @@ export class Ball {
     this.justAppliedHop = false;
     this.isInBunker = false;
     this.lastHitPosition = new THREE.Vector3();
-    this.defaultLinearDamping = 0.78;
+    this.defaultLinearDamping = PhysicsConstants.ball.linearDamping;
     this.bunkerLinearDamping = 0.98;
+
+    // Emissive flash state: null when inactive, seconds elapsed when decaying
+    this._emissiveFlashAge = null;
+    this._emissiveBaseline = 0.3;
+
+    // Idle glow state: pulses 0.3→0.6 via sine when ball speed < sleepSpeedLimit
+    this._idleGlowAge = 0;
+    this._isIdleGlowing = false;
 
     this.defaultMaterial = new THREE.MeshStandardMaterial({
       color: 0xffffff,
@@ -54,6 +63,17 @@ export class Ball {
 
     this.createMesh();
     this.createPhysicsBody();
+
+    // Flash ball emissive on each shot and cancel idle glow
+    this._onBallHit = () => {
+      if (this.defaultMaterial) {
+        this.defaultMaterial.emissiveIntensity = 1.0;
+        this._emissiveFlashAge = 0;
+      }
+      this._isIdleGlowing = false;
+      this._idleGlowAge = 0;
+    };
+    this.game?.eventManager?.subscribe?.(EventTypes.BALL_HIT, this._onBallHit);
     debug.log('[Ball] Initialized with physics world:', {
       exists: !!this.physicsWorld,
       bodyAdded: !!this.body
@@ -113,12 +133,12 @@ export class Ball {
       shape: new CANNON.Sphere(this.radius),
       material: this.game.physicsManager.world.ballMaterial,
       linearDamping: this.defaultLinearDamping,
-      angularDamping: 0.45,
+      angularDamping: PhysicsConstants.ball.angularDamping,
       collisionFilterGroup: 4,
       collisionFilterMask: -1,
       allowSleep: true,
-      sleepSpeedLimit: 0.03,
-      sleepTimeLimit: 0.3,
+      sleepSpeedLimit: PhysicsConstants.ball.sleepSpeedLimit,
+      sleepTimeLimit: PhysicsConstants.ball.sleepTimeLimit,
       ccdSpeedThreshold: 1.5,
       ccdIterations: 8
     });
@@ -150,21 +170,31 @@ export class Ball {
 
     const otherBody = event.body;
     const otherMatName = otherBody.material?.name || 'unknown';
-    if (
-      (otherMatName === 'bumper' || otherBody.userData?.type?.startsWith('wall')) &&
-      this.game?.audioManager
-    ) {
-      const impactSpeed = event.contact.getImpactVelocityAlongNormal();
-      this.game.audioManager.playSound(
-        'bump',
-        Math.min(0.8, Math.max(0.1, Math.abs(impactSpeed) / 5.0))
-      );
+    if (otherMatName === 'bumper' || otherBody.userData?.type?.startsWith('wall')) {
+      const impactSpeed = Math.abs(event.contact.getImpactVelocityAlongNormal());
+      if (this.game?.audioManager) {
+        this.game.audioManager.playWallImpact(impactSpeed);
+      }
+      if (impactSpeed >= 2 && this.game?.eventManager) {
+        this.game.eventManager.publish(EventTypes.BALL_WALL_IMPACT, { impactSpeed }, this);
+      }
     }
   }
 
-  update(_dt) {
+  update(dt) {
     if (!this.body || !this.mesh) {
       return;
+    }
+
+    // Decay emissive flash over 0.1 s back to baseline
+    if (this._emissiveFlashAge !== null && this.defaultMaterial) {
+      this._emissiveFlashAge += dt;
+      const progress = Math.min(1, this._emissiveFlashAge / 0.1);
+      this.defaultMaterial.emissiveIntensity = 1.0 - progress * (1.0 - this._emissiveBaseline);
+      if (this._emissiveFlashAge >= 0.1) {
+        this.defaultMaterial.emissiveIntensity = this._emissiveBaseline;
+        this._emissiveFlashAge = null;
+      }
     }
 
     this.mesh.position.copy(this.body.position);
@@ -217,11 +247,36 @@ export class Ball {
       }
     }
 
+    this._updateIdleGlow(dt);
     this.checkAndUpdateBunkerState();
     this.checkAndUpdateWaterHazardState();
 
     if (this.body.position.y < -50) {
       this.handleOutOfBounds();
+    }
+  }
+
+  /**
+   * Pulse emissive intensity 0.3→0.6 via 2-second sine wave when ball is idle.
+   * Cancels immediately when a shot fires (handled via _onBallHit).
+   */
+  _updateIdleGlow(dt) {
+    if (this._emissiveFlashAge !== null || !this.body || !this.defaultMaterial) {
+      return;
+    }
+    const speed = this.body.velocity.length();
+    if (speed < PhysicsConstants.ball.sleepSpeedLimit) {
+      if (!this._isIdleGlowing) {
+        this._isIdleGlowing = true;
+        this._idleGlowAge = 0;
+      }
+      this._idleGlowAge += dt;
+      this.defaultMaterial.emissiveIntensity =
+        0.45 + 0.15 * Math.sin((Math.PI * 2 * this._idleGlowAge) / 2.0);
+    } else if (this._isIdleGlowing) {
+      this._isIdleGlowing = false;
+      this._idleGlowAge = 0;
+      this.defaultMaterial.emissiveIntensity = this._emissiveBaseline;
     }
   }
 
@@ -485,6 +540,10 @@ export class Ball {
 
   cleanup() {
     debug.log('[Ball] Cleaning up...');
+    if (this._onBallHit) {
+      this.game?.eventManager?.unsubscribe?.(EventTypes.BALL_HIT, this._onBallHit);
+      this._onBallHit = null;
+    }
     if (this.mesh && this.scene) {
       this.scene.remove(this.mesh);
     }

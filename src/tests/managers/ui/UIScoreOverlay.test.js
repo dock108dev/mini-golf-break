@@ -1,5 +1,6 @@
 import { UIScoreOverlay } from '../../../managers/ui/UIScoreOverlay';
 import { HighScoreManager } from '../../../game/HighScoreManager';
+import { trapFocus } from '../../../utils/domHelpers';
 
 jest.mock('../../../game/HighScoreManager');
 jest.mock('../../../utils/navigation', () => ({
@@ -93,7 +94,8 @@ describe('UIScoreOverlay', () => {
         getStrokes: jest.fn(() => 0),
         getTotalScore: jest.fn(() => 0),
         getTotalStrokes: jest.fn(() => 0),
-        getCurrentStrokes: jest.fn(() => 0)
+        getCurrentStrokes: jest.fn(() => 0),
+        getHoleScores: jest.fn(() => [])
       },
       debugManager: {
         log: jest.fn()
@@ -142,7 +144,7 @@ describe('UIScoreOverlay', () => {
 
       expect(uiScoreOverlay.holeInfoElement.textContent).toContain('Hole');
       expect(uiScoreOverlay.strokesCountSpan.textContent).toBe('0');
-      expect(uiScoreOverlay.scoreElement.textContent).toBe('Total Strokes: 0');
+      expect(uiScoreOverlay.scoreElement.textContent).toBe('Score: E');
     });
   });
 
@@ -183,20 +185,39 @@ describe('UIScoreOverlay', () => {
       uiScoreOverlay.init();
     });
 
-    test('should update total strokes', () => {
-      mockGame.scoringSystem.getTotalStrokes.mockReturnValue(15);
+    test('should show E when no holes completed', () => {
+      mockGame.scoringSystem.getHoleScores.mockReturnValue([]);
 
       uiScoreOverlay.updateScore();
 
-      expect(uiScoreOverlay.scoreElement.textContent).toBe('Total Strokes: 15');
+      expect(uiScoreOverlay.scoreElement.textContent).toBe('Score: E');
     });
 
-    test('should display total strokes correctly', () => {
-      mockGame.scoringSystem.getTotalStrokes.mockReturnValue(8);
+    test('should show positive diff when over par', () => {
+      mockGame.scoringSystem.getHoleScores.mockReturnValue([4]);
+      mockGame.course.getAllHolePars.mockReturnValue([3]);
 
       uiScoreOverlay.updateScore();
 
-      expect(uiScoreOverlay.scoreElement.textContent).toBe('Total Strokes: 8');
+      expect(uiScoreOverlay.scoreElement.textContent).toBe('Score: +1');
+    });
+
+    test('should show negative diff when under par', () => {
+      mockGame.scoringSystem.getHoleScores.mockReturnValue([2]);
+      mockGame.course.getAllHolePars.mockReturnValue([3]);
+
+      uiScoreOverlay.updateScore();
+
+      expect(uiScoreOverlay.scoreElement.textContent).toBe('Score: -1');
+    });
+
+    test('should show E when completed strokes equal par', () => {
+      mockGame.scoringSystem.getHoleScores.mockReturnValue([3, 4]);
+      mockGame.course.getAllHolePars.mockReturnValue([3, 4]);
+
+      uiScoreOverlay.updateScore();
+
+      expect(uiScoreOverlay.scoreElement.textContent).toBe('Score: E');
     });
   });
 
@@ -285,16 +306,12 @@ describe('UIScoreOverlay', () => {
     });
   });
 
-  describe('_trapFocus', () => {
-    beforeEach(() => {
-      uiScoreOverlay = new UIScoreOverlay(mockGame, mockParentContainer);
-    });
-
+  describe('trapFocus (shared utility)', () => {
     test('should ignore non-Tab keys', () => {
       const event = { key: 'Enter', preventDefault: jest.fn() };
       const container = { querySelectorAll: jest.fn() };
 
-      uiScoreOverlay._trapFocus(event, container);
+      trapFocus(event, container);
 
       expect(container.querySelectorAll).not.toHaveBeenCalled();
     });
@@ -307,7 +324,7 @@ describe('UIScoreOverlay', () => {
 
       Object.defineProperty(document, 'activeElement', { value: btn2, configurable: true });
 
-      uiScoreOverlay._trapFocus(event, container);
+      trapFocus(event, container);
 
       expect(event.preventDefault).toHaveBeenCalled();
       expect(btn1.focus).toHaveBeenCalled();
@@ -321,7 +338,7 @@ describe('UIScoreOverlay', () => {
 
       Object.defineProperty(document, 'activeElement', { value: btn1, configurable: true });
 
-      uiScoreOverlay._trapFocus(event, container);
+      trapFocus(event, container);
 
       expect(event.preventDefault).toHaveBeenCalled();
       expect(btn2.focus).toHaveBeenCalled();
@@ -401,16 +418,29 @@ describe('UIScoreOverlay', () => {
       delete window.App;
     });
 
-    test('should call window.App.returnToMenu when Play Again is clicked', () => {
+    test('should call window.App.restartGame when Play Again is clicked', () => {
       HighScoreManager.isTopTen.mockReturnValue(false);
-      const mockReturnToMenu = jest.fn();
-      window.App = { returnToMenu: mockReturnToMenu };
+      const mockRestartGame = jest.fn();
+      window.App = { restartGame: mockRestartGame, returnToMenu: jest.fn() };
 
       uiScoreOverlay.showFinalScorecard();
 
       expect(clickHandlers.length).toBeGreaterThan(0);
       const playAgainHandler = clickHandlers[0];
       playAgainHandler();
+
+      expect(mockRestartGame).toHaveBeenCalled();
+    });
+
+    test('should call window.App.returnToMenu when Quit is clicked', () => {
+      HighScoreManager.isTopTen.mockReturnValue(false);
+      const mockReturnToMenu = jest.fn();
+      window.App = { restartGame: jest.fn(), returnToMenu: mockReturnToMenu };
+
+      uiScoreOverlay.showFinalScorecard();
+
+      const quitHandler = clickHandlers[1];
+      quitHandler();
 
       expect(mockReturnToMenu).toHaveBeenCalled();
     });
@@ -657,7 +687,7 @@ describe('UIScoreOverlay', () => {
       delete window.App;
     });
 
-    test('should show name entry modal when score qualifies for top-10', () => {
+    test('should show name entry modal when score is a new personal best', () => {
       uiScoreOverlay.showFinalScorecard();
 
       expect(uiScoreOverlay.nameEntryElement).not.toBeNull();
@@ -668,7 +698,8 @@ describe('UIScoreOverlay', () => {
       expect(promptEl.textContent).toContain('NEW PERSONAL BEST');
     });
 
-    test('should not show name entry modal when score does not qualify', () => {
+    test('should not show name entry modal when score is not a new best', () => {
+      HighScoreManager.saveScore.mockReturnValue(false);
       HighScoreManager.isTopTen.mockReturnValue(false);
 
       uiScoreOverlay.showFinalScorecard();
@@ -685,13 +716,12 @@ describe('UIScoreOverlay', () => {
       expect(playAgainBtn.style.display).toBe('none');
     });
 
-    test('should create input with max length 3 and autocapitalize', () => {
+    test('should create input with max length 12', () => {
       uiScoreOverlay.showFinalScorecard();
 
       const inputEl = createdElements.find(el => el.tagName === 'INPUT');
       expect(inputEl).toBeDefined();
-      expect(inputEl.maxLength).toBe(3);
-      expect(inputEl.setAttribute).toHaveBeenCalledWith('autocapitalize', 'characters');
+      expect(inputEl.maxLength).toBe(12);
     });
 
     test('should create Save and Skip buttons', () => {
@@ -721,7 +751,7 @@ describe('UIScoreOverlay', () => {
       expect(HighScoreManager.saveNamedScore).toHaveBeenCalledWith('ABC', 9, expect.any(String));
     });
 
-    test('should call saveNamedScore with --- on Skip click', () => {
+    test('should call saveNamedScore with Anonymous on Skip click', () => {
       uiScoreOverlay.showFinalScorecard();
 
       const skipClick = clickHandlers.find(
@@ -729,7 +759,11 @@ describe('UIScoreOverlay', () => {
       );
       skipClick.handler();
 
-      expect(HighScoreManager.saveNamedScore).toHaveBeenCalledWith('---', 9, expect.any(String));
+      expect(HighScoreManager.saveNamedScore).toHaveBeenCalledWith(
+        'Anonymous',
+        9,
+        expect.any(String)
+      );
     });
 
     test('should remove name entry modal after save', () => {
@@ -787,15 +821,12 @@ describe('UIScoreOverlay', () => {
       expect(inputEl.focus).toHaveBeenCalled();
     });
 
-    test('input handler should uppercase and strip non-alpha chars', () => {
+    test('should accept any characters in the name input (no uppercase stripping)', () => {
       uiScoreOverlay.showFinalScorecard();
 
+      // No input handler is registered for character sanitization — name accepts any chars
       const inputEntry = inputHandlers.find(h => h.el.tagName === 'INPUT');
-      const inputEl = inputEntry.el;
-      inputEl.value = 'a1b';
-      inputEntry.handler();
-
-      expect(inputEl.value).toBe('AB');
+      expect(inputEntry).toBeUndefined();
     });
   });
 
@@ -1247,6 +1278,87 @@ describe('UIScoreOverlay', () => {
 
       expect(uiScoreOverlay.scorecardElement).toBe(firstScorecard);
       expect(firstScorecard.classList.add).toHaveBeenCalledWith('visible');
+    });
+  });
+
+  describe('_getScoreLabel', () => {
+    beforeEach(() => {
+      uiScoreOverlay = new UIScoreOverlay(mockGame, mockParentContainer);
+    });
+
+    test('Eagle for diff <= -2', () => {
+      expect(uiScoreOverlay._getScoreLabel(-2)).toBe('Eagle');
+      expect(uiScoreOverlay._getScoreLabel(-5)).toBe('Eagle');
+    });
+
+    test('Birdie for diff === -1', () => {
+      expect(uiScoreOverlay._getScoreLabel(-1)).toBe('Birdie');
+    });
+
+    test('Par for diff === 0', () => {
+      expect(uiScoreOverlay._getScoreLabel(0)).toBe('Par');
+    });
+
+    test('Bogey for diff === 1', () => {
+      expect(uiScoreOverlay._getScoreLabel(1)).toBe('Bogey');
+    });
+
+    test('Double for diff === 2', () => {
+      expect(uiScoreOverlay._getScoreLabel(2)).toBe('Double');
+    });
+
+    test('Hole-Out for diff >= 3', () => {
+      expect(uiScoreOverlay._getScoreLabel(3)).toBe('Hole-Out');
+      expect(uiScoreOverlay._getScoreLabel(10)).toBe('Hole-Out');
+    });
+  });
+
+  describe('showHoleScoreCard / auto-dismiss', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+      uiScoreOverlay = new UIScoreOverlay(mockGame, mockParentContainer);
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    test('card auto-dismisses after 2000 ms (via _dismissHoleScoreCard)', () => {
+      const mockCard = { remove: jest.fn() };
+      uiScoreOverlay.holeScoreCardElement = mockCard;
+      uiScoreOverlay._holeScoreCardTimeout = setTimeout(
+        () => uiScoreOverlay._dismissHoleScoreCard(),
+        2000
+      );
+
+      expect(uiScoreOverlay.holeScoreCardElement).not.toBeNull();
+
+      jest.advanceTimersByTime(2000);
+
+      expect(uiScoreOverlay.holeScoreCardElement).toBeNull();
+      expect(mockCard.remove).toHaveBeenCalled();
+    });
+
+    test('_dismissHoleScoreCard clears element and timeout immediately', () => {
+      const mockCard = { remove: jest.fn() };
+      uiScoreOverlay.holeScoreCardElement = mockCard;
+      uiScoreOverlay._holeScoreCardTimeout = setTimeout(() => {}, 2000);
+
+      uiScoreOverlay._dismissHoleScoreCard();
+
+      expect(uiScoreOverlay.holeScoreCardElement).toBeNull();
+      expect(uiScoreOverlay._holeScoreCardTimeout).toBeNull();
+      expect(mockCard.remove).toHaveBeenCalled();
+    });
+
+    test('shows correct label via _getScoreLabel', () => {
+      const overlay = new UIScoreOverlay(mockGame, mockParentContainer);
+      expect(overlay._getScoreLabel(-2)).toBe('Eagle');
+      expect(overlay._getScoreLabel(-1)).toBe('Birdie');
+      expect(overlay._getScoreLabel(0)).toBe('Par');
+      expect(overlay._getScoreLabel(1)).toBe('Bogey');
+      expect(overlay._getScoreLabel(2)).toBe('Double');
+      expect(overlay._getScoreLabel(3)).toBe('Hole-Out');
     });
   });
 

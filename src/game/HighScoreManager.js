@@ -2,10 +2,12 @@ import { debug } from '../utils/debug';
 
 const STORAGE_KEY = 'miniGolfBreak_highScores';
 const MAX_LEADERBOARD_SIZE = 10;
+const GAME_RECORD_KEY = 'orbital-drift-scores';
+const MAX_GAME_RECORDS = 3;
 
 export class HighScoreManager {
   /**
-   * Save a completed game score (legacy format — kept for backward compat).
+   * Save a completed game score.
    * @param {number} totalStrokes - Total strokes for the game
    * @param {string} courseName - Name of the course played
    * @returns {boolean} Whether this score is a new personal best
@@ -39,8 +41,12 @@ export class HighScoreManager {
    * @param {string} courseName - Name of the course
    * @returns {boolean} Whether this score made the top 10
    */
-  static saveNamedScore(initials, score, courseName) {
-    const sanitized = String(initials || '---')
+  static saveNamedScore(name, score, courseName) {
+    const sanitizedName =
+      String(name || '')
+        .trim()
+        .slice(0, 12) || 'Anonymous';
+    const sanitizedInitials = String(name || '---')
       .toUpperCase()
       .replace(/[^A-Z]/g, '')
       .slice(0, 3)
@@ -54,16 +60,33 @@ export class HighScoreManager {
         totalStrokes: score,
         courseName,
         timestamp: Date.now(),
-        initials: sanitized,
+        name: sanitizedName,
+        initials: sanitizedInitials,
         date: new Date().toISOString().split('T')[0]
       });
       localStorage.setItem(STORAGE_KEY, JSON.stringify(scores));
-      debug.log(`[HighScoreManager] Saved named score: ${sanitized} ${score} for ${courseName}`);
+      debug.log(
+        `[HighScoreManager] Saved named score: ${sanitizedName} ${score} for ${courseName}`
+      );
     } catch {
       console.warn('[HighScoreManager] Failed to save named score to localStorage.');
     }
 
     return qualifies;
+  }
+
+  /**
+   * Check if a score is in the top 3 of the leaderboard (call after saveScore).
+   * @param {number} score - Total strokes to check
+   * @param {string} courseName - Name of the course
+   * @returns {boolean} True if score ranks in the top 3
+   */
+  static isTopThree(score, courseName) {
+    const entries = HighScoreManager.loadScores(courseName);
+    if (entries.length < 3) {
+      return true;
+    }
+    return score <= entries[2].score;
   }
 
   /**
@@ -83,7 +106,6 @@ export class HighScoreManager {
 
   /**
    * Load leaderboard entries for a course, sorted best-first.
-   * Migrates old raw-number entries on the fly.
    * @param {string} courseName - Name of the course
    * @returns {Array<{initials: string, score: number, date: string|null}>}
    */
@@ -92,6 +114,7 @@ export class HighScoreManager {
     return raw
       .filter(s => s.courseName === courseName)
       .map(s => ({
+        name: s.name || s.initials || '---',
         initials: s.initials || '---',
         score: s.totalStrokes,
         date: s.date || null
@@ -147,35 +170,53 @@ export class HighScoreManager {
   }
 
   /**
-   * Migrate old raw-number localStorage entries to the object format.
-   * Called once on load by _loadScores.
+   * Save a completed game record to the orbital-drift-scores store (top 3 retained).
+   * @param {number} totalStrokes - Total strokes for the game
+   * @param {number[]} holeSplits - Strokes per hole
+   * @param {string} [courseName] - Optional course label
+   * @returns {Array} The updated records array (up to 3 entries)
    */
-  static _migrateIfNeeded(parsed) {
-    let migrated = false;
-    const result = parsed.map(entry => {
-      if (typeof entry === 'number') {
-        migrated = true;
-        return {
-          totalStrokes: entry,
-          courseName: 'default',
-          timestamp: Date.now(),
-          initials: '---',
-          date: null
-        };
-      }
-      return entry;
-    });
-
-    if (migrated) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(result));
-        debug.log('[HighScoreManager] Migrated old raw-number entries to object format.');
-      } catch {
-        console.warn('[HighScoreManager] Failed to persist migration.');
-      }
+  static saveGameRecord(totalStrokes, holeSplits, courseName = 'Orbital Drift') {
+    try {
+      let records = HighScoreManager.loadGameRecords();
+      records.push({
+        date: new Date().toISOString().split('T')[0],
+        totalStrokes,
+        holeSplits: holeSplits ?? [],
+        courseName
+      });
+      records.sort((a, b) => a.totalStrokes - b.totalStrokes);
+      records = records.slice(0, MAX_GAME_RECORDS);
+      localStorage.setItem(GAME_RECORD_KEY, JSON.stringify(records));
+      debug.log(`[HighScoreManager] Saved game record: ${totalStrokes} strokes`);
+      return records;
+    } catch {
+      console.warn('[HighScoreManager] Failed to save game record to localStorage.');
+      return [];
     }
+  }
 
-    return result;
+  /**
+   * Load top-3 game records from the orbital-drift-scores store.
+   * @returns {Array<{date: string, totalStrokes: number, holeSplits: number[], courseName: string}>}
+   */
+  static loadGameRecords() {
+    try {
+      const raw = localStorage.getItem(GAME_RECORD_KEY);
+      if (!raw) {
+        return [];
+      }
+      const parsed = JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.warn('[HighScoreManager] Corrupt game records — clearing:', e.message);
+      try {
+        localStorage.removeItem(GAME_RECORD_KEY);
+      } catch {
+        /* storage unavailable */
+      }
+      return [];
+    }
   }
 
   static _loadScores() {
@@ -185,11 +226,14 @@ export class HighScoreManager {
         return [];
       }
       const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed)) {
-        return [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.warn('[HighScoreManager] Corrupt score data — clearing:', e.message);
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+      } catch {
+        /* storage unavailable */
       }
-      return HighScoreManager._migrateIfNeeded(parsed);
-    } catch {
       return [];
     }
   }

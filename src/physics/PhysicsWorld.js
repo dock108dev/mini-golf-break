@@ -1,5 +1,6 @@
 import * as CANNON from 'cannon-es';
 import { debug } from '../utils/debug';
+import { PhysicsConstants } from './PhysicsConstants';
 
 export class PhysicsWorld {
   constructor() {
@@ -20,9 +21,8 @@ export class PhysicsWorld {
     // Allow sleeping bodies for better performance
     this.world.allowSleep = true;
 
-    // Set default sleep parameters to match documentation
-    this.world.defaultSleepSpeedLimit = 0.15; // Updated to match documentation
-    this.world.defaultSleepTimeLimit = 0.2; // Updated to match documentation
+    this.world.defaultSleepSpeedLimit = PhysicsConstants.world.sleepSpeedLimit;
+    this.world.defaultSleepTimeLimit = PhysicsConstants.world.sleepTimeLimit;
 
     // Set default material properties
     this.defaultMaterial = new CANNON.Material('default');
@@ -47,7 +47,7 @@ export class PhysicsWorld {
 
     // Set the timestep (fixed at 60fps)
     this.fixedTimeStep = 1.0 / 60.0;
-    this.maxSubSteps = 8; // Increased from 3 for better handling of fast-moving objects
+    this.maxSubSteps = 4; // Default; obstacle holes override to 8 via setMaxSubSteps()
 
     // Last time used for calculating elapsed time
     this.lastCallTime = performance.now() / 1000;
@@ -65,12 +65,12 @@ export class PhysicsWorld {
   createContactMaterials() {
     // Set up contact between ball and ground (normal green)
     const ballGroundContact = new CANNON.ContactMaterial(this.ballMaterial, this.groundMaterial, {
-      friction: 0.4, // Tuned per golf-ball-physics-tuning research
-      restitution: 0.05, // Tuned per golf-ball-physics-tuning research
+      friction: PhysicsConstants.contact.floorFriction,
+      restitution: PhysicsConstants.contact.floorRestitution,
       contactEquationStiffness: 1e7,
       contactEquationRelaxation: 3,
       frictionEquationStiffness: 1e7,
-      frictionEquationRelaxation: 1 // Reduced relaxation for better friction response
+      frictionEquationRelaxation: 1
     });
     this.world.addContactMaterial(ballGroundContact);
 
@@ -79,12 +79,12 @@ export class PhysicsWorld {
       `[PhysicsWorld] Defining ballBumperContact with ballMat ID: ${this.ballMaterial?.id}, bumperMat ID: ${this.bumperMaterial?.id}`
     ); // Log IDs before definition
     const ballBumperContact = new CANNON.ContactMaterial(this.ballMaterial, this.bumperMaterial, {
-      friction: 0.2, // Restored original value
-      restitution: 0.65, // Tuned per golf-ball-physics-tuning research
+      friction: PhysicsConstants.contact.wallFriction,
+      restitution: PhysicsConstants.contact.wallRestitution,
       contactEquationStiffness: 1e8,
-      contactEquationRelaxation: 3, // Increased for more elastic collisions
+      contactEquationRelaxation: 3,
       frictionEquationStiffness: 1e7,
-      frictionEquationRelaxation: 1 // Reduced from 2 for firmer friction response
+      frictionEquationRelaxation: 1
     });
     this.world.addContactMaterial(ballBumperContact);
     debug.log(
@@ -384,16 +384,21 @@ export class PhysicsWorld {
   }
 
   // Helper to create a sphere body
-  createSphereBody(radius, position, material = this.ballMaterial, mass = 1) {
+  createSphereBody(
+    radius,
+    position,
+    material = this.ballMaterial,
+    mass = PhysicsConstants.ball.mass
+  ) {
     const sphereBody = new CANNON.Body({
       mass,
       material,
       position: new CANNON.Vec3(position.x, position.y, position.z),
-      linearDamping: 0.6,
-      angularDamping: 0.6,
-      allowSleep: true, // Let body sleep when stopped
-      sleepSpeedLimit: 0.15, // Updated to match documentation (was 0.03)
-      sleepTimeLimit: 0.2 // Updated to match documentation (was 0.5)
+      linearDamping: PhysicsConstants.ball.linearDamping,
+      angularDamping: PhysicsConstants.ball.angularDamping,
+      allowSleep: true,
+      sleepSpeedLimit: PhysicsConstants.ball.sleepSpeedLimit,
+      sleepTimeLimit: PhysicsConstants.ball.sleepTimeLimit
     });
 
     // Add a sphere shape
@@ -460,8 +465,8 @@ export class PhysicsWorld {
     this.world.solver.iterations = 30;
     this.world.solver.tolerance = 0.0001;
     this.world.allowSleep = true;
-    this.world.defaultSleepSpeedLimit = 0.15;
-    this.world.defaultSleepTimeLimit = 0.2;
+    this.world.defaultSleepSpeedLimit = PhysicsConstants.world.sleepSpeedLimit;
+    this.world.defaultSleepTimeLimit = PhysicsConstants.world.sleepTimeLimit;
 
     // Recreate contact materials
     this.createContactMaterials();
@@ -493,6 +498,15 @@ export class PhysicsWorld {
 
       this.world.step(fixedTimeStep, timeStep, maxSteps);
     }
+  }
+
+  /**
+   * Set the maximum number of physics substeps per frame.
+   * Use 8 for holes with kinematic moving obstacles to prevent ball tunneling.
+   * @param {number} n - Number of substeps (default 4)
+   */
+  setMaxSubSteps(n) {
+    this.maxSubSteps = n;
   }
 
   /**

@@ -2,7 +2,7 @@
   "appId": "com.minigolfbreak.app",
   "appName": "Mini Golf Break",
   "webDir": "dist",
-  "loggingBehavior": "debug",
+  "loggingBehavior": "none",
   "server": {
     "androidScheme": "https",
     "iosScheme": "https"

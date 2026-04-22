@@ -129,10 +129,7 @@ jest.mock('cannon-es', () => ({
     })),
     { STATIC: 1 }
   ),
-  Trimesh: jest.fn(() => ({})),
-  Quaternion: jest.fn(() => ({
-    setFromAxisAngle: jest.fn().mockReturnThis()
-  })),
+  Box: jest.fn(() => ({})),
   Vec3: jest.fn((x = 0, y = 0, z = 0) => ({ x, y, z }))
 }));
 
@@ -256,7 +253,7 @@ describe('GreenSurfaceBuilder', () => {
 
       expect(THREE.MeshStandardMaterial).toHaveBeenCalledWith(
         expect.objectContaining({
-          color: 0x1a3a2a
+          color: 0x0d1117
         })
       );
     });
@@ -316,13 +313,14 @@ describe('GreenSurfaceBuilder', () => {
       expect(meshInstance.position.y).toBe(surfaceHeight - greenDepth / 2);
     });
 
-    it('positions physics body at surfaceHeight', () => {
+    it('positions physics body so its top face is at surfaceHeight', () => {
       const surfaceHeight = 1.5;
 
       callBuilder({ surfaceHeight });
 
       const body = CANNON.Body.mock.results[0].value;
-      expect(body.position.set).toHaveBeenCalledWith(0, surfaceHeight, 0);
+      // Box center is 0.1 below surfaceHeight so the top face sits at surfaceHeight
+      expect(body.position.set).toHaveBeenCalledWith(0, surfaceHeight - 0.1, 0);
     });
 
     it('default surfaceHeight of 0.2 produces valid result', () => {
@@ -340,7 +338,7 @@ describe('GreenSurfaceBuilder', () => {
       expect(result.bodies.length).toBe(1);
 
       const body = CANNON.Body.mock.results[0].value;
-      expect(body.position.set).toHaveBeenCalledWith(0, 2.0, 0);
+      expect(body.position.set).toHaveBeenCalledWith(0, 2.0 - 0.1, 0);
     });
 
     it('zero elevation produces valid result', () => {
@@ -350,7 +348,7 @@ describe('GreenSurfaceBuilder', () => {
       expect(result.bodies.length).toBe(1);
 
       const body = CANNON.Body.mock.results[0].value;
-      expect(body.position.set).toHaveBeenCalledWith(0, 0, 0);
+      expect(body.position.set).toHaveBeenCalledWith(0, -0.1, 0);
     });
   });
 
@@ -459,8 +457,8 @@ describe('GreenSurfaceBuilder', () => {
     });
   });
 
-  describe('boundary shape dimensions affect physics plane size', () => {
-    it('creates physics PlaneGeometry sized from boundary shape bounds plus padding', () => {
+  describe('boundary shape dimensions affect physics box size', () => {
+    it('creates physics Box sized from boundary shape bounds plus padding', () => {
       const boundaryShape = [
         new THREE.Vector2(-3, -6),
         new THREE.Vector2(3, -6),
@@ -470,10 +468,11 @@ describe('GreenSurfaceBuilder', () => {
 
       callBuilder({ boundaryShape });
 
-      expect(THREE.PlaneGeometry).toHaveBeenCalled();
-      const planeArgs = THREE.PlaneGeometry.mock.calls[0];
-      expect(planeArgs[0]).toBeGreaterThan(0);
-      expect(planeArgs[1]).toBeGreaterThan(0);
+      expect(CANNON.Box).toHaveBeenCalled();
+      // Vec3 half-extents should be positive
+      const vec3Call = CANNON.Vec3.mock.calls[0];
+      expect(vec3Call[0]).toBeGreaterThan(0); // halfX
+      expect(vec3Call[2]).toBeGreaterThan(0); // halfZ
     });
 
     it('creates ExtrudeGeometry from boundaryShape', () => {
@@ -484,13 +483,6 @@ describe('GreenSurfaceBuilder', () => {
         depth: 0.01,
         bevelEnabled: false
       });
-    });
-
-    it('disposes temporary physics plane geometry after creating trimesh', () => {
-      callBuilder();
-
-      const planeGeom = THREE.PlaneGeometry.mock.results[0].value;
-      expect(planeGeom.dispose).toHaveBeenCalled();
     });
   });
 
@@ -725,10 +717,10 @@ describe('GreenSurfaceBuilder', () => {
       );
     });
 
-    it('adds a Trimesh shape to the physics body', () => {
+    it('adds a Box shape to the physics body', () => {
       callBuilder();
 
-      expect(CANNON.Trimesh).toHaveBeenCalled();
+      expect(CANNON.Box).toHaveBeenCalled();
       const body = CANNON.Body.mock.results[0].value;
       expect(body.addShape).toHaveBeenCalled();
     });

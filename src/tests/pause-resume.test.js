@@ -326,6 +326,90 @@ describe('Pause/Resume Functionality', () => {
       });
     });
 
+    describe('restartHole', () => {
+      test('restartHole should do nothing when not paused', () => {
+        mockGame = createMockGame(GameState.PLAYING);
+        const { Game } = require('../scenes/Game');
+        mockGame.restartHole = Game.prototype.restartHole.bind(mockGame);
+        mockGame.scoringSystem = { cancelCurrentHoleStrokes: jest.fn() };
+        mockGame.course = null;
+        mockGame.ballManager = { resetBall: jest.fn() };
+
+        mockGame.restartHole();
+
+        expect(mockGame.stateManager.setGameState).not.toHaveBeenCalled();
+      });
+
+      test('restartHole should cancel hole strokes and resume from PAUSED', () => {
+        mockGame = createMockGame(GameState.PLAYING);
+        const { Game } = require('../scenes/Game');
+        mockGame.pauseGame = Game.prototype.pauseGame.bind(mockGame);
+        mockGame.restartHole = Game.prototype.restartHole.bind(mockGame);
+        mockGame.scoringSystem = { cancelCurrentHoleStrokes: jest.fn() };
+        mockGame.course = null;
+        mockGame.ballManager = { resetBall: jest.fn() };
+        mockGame.pauseGame();
+
+        mockGame.stateManager.isInState.mockImplementation(s => s === GameState.PAUSED);
+        mockGame.stateManager.setGameState.mockClear();
+        mockGame.restartHole();
+
+        expect(mockGame.scoringSystem.cancelCurrentHoleStrokes).toHaveBeenCalled();
+        expect(mockGame.ballManager.resetBall).toHaveBeenCalled();
+        expect(mockGame.gameLoopManager.resume).toHaveBeenCalled();
+        expect(mockGame.inputController.enableInput).toHaveBeenCalled();
+      });
+
+      test('restartHole should hide the pause overlay', () => {
+        mockGame = createMockGame(GameState.PLAYING);
+        const { Game } = require('../scenes/Game');
+        mockGame.restartHole = Game.prototype.restartHole.bind(mockGame);
+        mockGame.scoringSystem = { cancelCurrentHoleStrokes: jest.fn() };
+        mockGame.course = null;
+        mockGame.ballManager = { resetBall: jest.fn() };
+
+        mockGame.stateManager.isInState.mockImplementation(s => s === GameState.PAUSED);
+        mockGame.restartHole();
+
+        expect(mockGame.uiManager.hidePauseOverlay).toHaveBeenCalled();
+      });
+    });
+
+    describe('restartCourse', () => {
+      test('restartCourse should reload the page', () => {
+        const { reloadPage } = require('../utils/navigation');
+        mockGame = createMockGame(GameState.PLAYING);
+        const { Game } = require('../scenes/Game');
+        mockGame.restartCourse = Game.prototype.restartCourse.bind(mockGame);
+
+        mockGame.restartCourse();
+
+        expect(reloadPage).toHaveBeenCalled();
+      });
+
+      test('restartCourse should hide the pause overlay', () => {
+        mockGame = createMockGame(GameState.PLAYING);
+        const { Game } = require('../scenes/Game');
+        mockGame.restartCourse = Game.prototype.restartCourse.bind(mockGame);
+
+        mockGame.stateManager.isInState.mockImplementation(s => s === GameState.PAUSED);
+        mockGame.restartCourse();
+
+        expect(mockGame.uiManager.hidePauseOverlay).toHaveBeenCalled();
+      });
+
+      test('restartCourse should clear prePauseState', () => {
+        mockGame = createMockGame(GameState.PLAYING);
+        const { Game } = require('../scenes/Game');
+        mockGame.restartCourse = Game.prototype.restartCourse.bind(mockGame);
+        mockGame.prePauseState = GameState.PLAYING;
+
+        mockGame.restartCourse();
+
+        expect(mockGame.prePauseState).toBeNull();
+      });
+    });
+
     describe('quitToMenu', () => {
       afterEach(() => {
         delete window.App;
@@ -398,7 +482,9 @@ describe('Pause/Resume Functionality', () => {
         courseName: 'Test Course',
         pauseGame: jest.fn(),
         resumeGame: jest.fn(),
-        quitToMenu: jest.fn()
+        quitToMenu: jest.fn(),
+        restartHole: jest.fn(),
+        restartCourse: jest.fn()
       };
 
       const { UIManager } = require('../managers/UIManager');
@@ -442,17 +528,38 @@ describe('Pause/Resume Functionality', () => {
     });
 
     test('should create Quit to Menu button in pause overlay', () => {
-      const content = uiManager.pauseOverlay.children[0];
-      const quitButton = content.children[2];
-      expect(quitButton.textContent).toBe('Quit to Menu');
-      expect(quitButton.classList.contains('pause-quit-button')).toBe(true);
+      expect(uiManager.quitButton).toBeTruthy();
+      expect(uiManager.quitButton.textContent).toBe('Quit to Menu');
+      expect(uiManager.quitButton.classList.contains('pause-quit-button')).toBe(true);
     });
 
     test('Quit to Menu button click should call game.quitToMenu', () => {
-      const content = uiManager.pauseOverlay.children[0];
-      const quitButton = content.children[2];
-      quitButton.click();
+      uiManager.quitButton.click();
       expect(mockGame.quitToMenu).toHaveBeenCalled();
+    });
+
+    test('should create Restart Hole button in pause overlay', () => {
+      expect(uiManager.restartHoleButton).toBeTruthy();
+      expect(uiManager.restartHoleButton.textContent).toBe('Restart Hole');
+    });
+
+    test('Restart Hole button click should call game.restartHole', () => {
+      uiManager.restartHoleButton.click();
+      expect(mockGame.restartHole).toHaveBeenCalled();
+    });
+
+    test('should create Restart Course button in pause overlay', () => {
+      expect(uiManager.restartCourseButton).toBeTruthy();
+      expect(uiManager.restartCourseButton.textContent).toBe('Restart Course');
+    });
+
+    test('Restart Course button click should call game.restartCourse', () => {
+      uiManager.restartCourseButton.click();
+      expect(mockGame.restartCourse).toHaveBeenCalled();
+    });
+
+    test('should create Mute Toggle button in pause overlay', () => {
+      expect(uiManager.pauseMuteButton).toBeTruthy();
     });
 
     test('should create mobile pause button', () => {

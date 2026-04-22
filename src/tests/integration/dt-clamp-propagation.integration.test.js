@@ -170,11 +170,43 @@ jest.mock('three', () => {
     CylinderGeometry: jest.fn(mockGeometry),
     PlaneGeometry: jest.fn(mockGeometry),
     CircleGeometry: jest.fn(mockGeometry),
+    TorusGeometry: jest.fn(mockGeometry),
     BoxGeometry: jest.fn(mockGeometry),
     RingGeometry: jest.fn(mockGeometry),
     SphereGeometry: jest.fn(mockGeometry),
     Path: jest.fn(function () {
       return {};
+    }),
+    SpriteMaterial: jest.fn(function (opts) {
+      this.opacity = opts?.opacity !== undefined ? opts.opacity : 1;
+      this.dispose = jest.fn();
+    }),
+    Sprite: jest.fn(function (material) {
+      this.material = material || { opacity: 1, dispose: jest.fn() };
+      this.position = { x: 0, y: 0, z: 0, set: jest.fn(), copy: jest.fn() };
+      this.scale = { set: jest.fn() };
+      this.parent = null;
+    }),
+    PointLight: jest.fn(function () {
+      this.position = { x: 0, y: 0, z: 0, set: jest.fn() };
+      this.parent = null;
+    }),
+    Color: jest.fn(function (hex) {
+      this.r = 0;
+      this.g = 0;
+      this.b = 0;
+      this.setRGB = jest.fn(function (r, g, b) {
+        this.r = r;
+        this.g = g;
+        this.b = b;
+      });
+      this.set = jest.fn();
+    }),
+    AdditiveBlending: 2,
+    GridHelper: jest.fn(function () {
+      this.geometry = { dispose: jest.fn() };
+      this.material = { dispose: jest.fn() };
+      this.position = { set: jest.fn() };
     })
   };
 });
@@ -203,6 +235,7 @@ jest.mock('cannon-es', () => {
         this.z = z;
       })
     };
+    this.angularVelocity = { x: 0, y: 0, z: 0, set: jest.fn() };
     this.force = { x: 0, y: 0, z: 0 };
     this.material = opts?.material || null;
     this.type = opts?.type || 'STATIC';
@@ -601,7 +634,7 @@ describe('dt clamp propagation to mechanics (integration)', () => {
       portal.update(1 / 60, ball);
 
       // Cooldown should be set
-      expect(portal.cooldown).toBe(1.0);
+      expect(portal.cooldown).toBe(0.5);
 
       // Simulate dt spike — cooldown should be cleared
       portal.onDtSpike();
@@ -634,16 +667,16 @@ describe('dt clamp propagation to mechanics (integration)', () => {
 
       // Trigger teleport
       portal.update(1 / 60, ball);
-      expect(portal.cooldown).toBe(1.0);
+      expect(portal.cooldown).toBe(0.5);
 
-      // Without spike handling, clamped dt (0.033s) barely dents the 1s cooldown
+      // Without spike handling, clamped dt (0.033s) barely dents the 0.5s cooldown
       portal.update(MAX_DELTA_TIME, ball);
-      expect(portal.cooldown).toBeGreaterThan(0.9);
+      expect(portal.cooldown).toBeGreaterThan(0.4);
     });
   });
 
   describe('Force fields apply force based on clamped dt magnitude, not raw dt', () => {
-    it('BoostStrip applies force with clamped dt — same force regardless of dt value', () => {
+    it('BoostStrip applies fixed velocity impulse — same delta regardless of dt value', () => {
       const world = makeMockWorld();
       const THREE = require('three');
       const group = new THREE.Group();
@@ -651,8 +684,8 @@ describe('dt clamp propagation to mechanics (integration)', () => {
       const config = {
         type: 'boost_strip',
         position: new THREE.Vector3(0, 0, 0),
-        direction: new THREE.Vector3(0, 0, -1),
-        force: 10,
+        boost_direction: new THREE.Vector3(0, 0, -1),
+        boost_magnitude: 10,
         size: { width: 2, length: 3 }
       };
 
@@ -661,25 +694,22 @@ describe('dt clamp propagation to mechanics (integration)', () => {
       // Place ball inside the boost strip zone
       const ball = makeMockBallBody(0, 0);
 
-      // Update with clamped dt
+      // Update with clamped dt — impulse fires once
       boost.update(MAX_DELTA_TIME, ball);
 
-      // Force should have been applied
-      expect(ball.applyForce).toHaveBeenCalledTimes(1);
+      // Velocity impulse was applied (not scaled by dt)
+      expect(ball.velocity.z).toBeCloseTo(-10);
+      const firstVelocityZ = ball.velocity.z;
 
-      // BoostStrip applies a constant force per frame (not scaled by dt),
-      // so the force magnitude is the same whether dt is 0.016 or 0.033
-      const firstCallArgs = ball.applyForce.mock.calls[0][0];
-      ball.applyForce.mockClear();
+      // Reset ball and cooldown for second test
+      ball.velocity.x = 0;
+      ball.velocity.y = 0;
+      ball.velocity.z = 0;
+      boost._boostCooldown = 0;
 
-      // Now update with a normal frame dt
+      // Update with a normal frame dt — impulse fires again identically
       boost.update(1 / 60, ball);
-      expect(ball.applyForce).toHaveBeenCalledTimes(1);
-
-      // Force direction/magnitude should be identical
-      const secondCallArgs = ball.applyForce.mock.calls[0][0];
-      expect(secondCallArgs.x).toBe(firstCallArgs.x);
-      expect(secondCallArgs.z).toBe(firstCallArgs.z);
+      expect(ball.velocity.z).toBeCloseTo(firstVelocityZ);
     });
 
     it('SuctionZone applies force based on position, not dt', () => {

@@ -58,6 +58,7 @@ beforeAll(() => {
       setFromAxisAngle: jest.fn(),
       copy: jest.fn()
     },
+    angularVelocity: { x: 0, y: 0, z: 0, set: jest.fn() },
     addShape: jest.fn(),
     addEventListener: jest.fn(),
     userData: {}
@@ -327,25 +328,22 @@ describe('Ball reset into BoostStrip zone', () => {
       group,
       {
         position: stripPos,
-        direction: new THREE.Vector3(1, 0, 0),
-        force: stripForce,
+        boost_direction: new THREE.Vector3(1, 0, 0),
+        boost_magnitude: stripForce,
         size: { width: 2, length: 3 }
       },
       SURFACE_HEIGHT
     );
   });
 
-  it('applies force on update when ball is inside the strip zone', () => {
+  it('applies velocity impulse on update when ball is inside the strip zone', () => {
     // Ball reset into the boost strip zone (ball at strip trigger body position)
     const ball = makeResetBall(strip.triggerBody.position.x, strip.triggerBody.position.z);
 
     strip.update(1 / 60, ball);
 
-    // BoostStrip applies force every frame — this documents the behavior
-    expect(ball.applyForce).toHaveBeenCalledTimes(1);
-    const force = ball.applyForce.mock.calls[0][0];
-    // Force is bounded by the configured magnitude
-    expect(force.x).toBeCloseTo(stripForce);
+    // BoostStrip adds velocity impulse — velocity.x should equal boost_magnitude
+    expect(ball.velocity.x).toBeCloseTo(stripForce);
   });
 
   it('does not teleport or directly set ball position', () => {
@@ -353,34 +351,33 @@ describe('Ball reset into BoostStrip zone', () => {
 
     strip.update(1 / 60, ball);
 
-    // BoostStrip only applies force — never directly moves the ball
+    // BoostStrip only modifies velocity — never directly moves the ball
     expect(ball.position.set).not.toHaveBeenCalled();
   });
 
-  it('single frame force does not cause extreme velocity with physics step', () => {
+  it('single frame impulse is bounded and manageable', () => {
     const ball = makeResetBall(strip.triggerBody.position.x, strip.triggerBody.position.z);
 
     // Simulate one update frame
     strip.update(1 / 60, ball);
 
-    // The applied force is finite and equal to the configured force
-    const force = ball.applyForce.mock.calls[0][0];
-    const magnitude = Math.sqrt(force.x * force.x + force.z * force.z);
-    expect(magnitude).toBeCloseTo(stripForce);
+    // The velocity delta equals boost_magnitude in configured direction
+    expect(ball.velocity.x).toBeCloseTo(stripForce);
+    expect(ball.velocity.z).toBeCloseTo(0);
 
-    // With mass 0.45 and force 10, acceleration = F/m ≈ 22.2 m/s²
-    // Over one frame (1/60s), delta-v ≈ 0.37 m/s — manageable
-    const acceleration = magnitude / ball.mass;
-    const deltaV = acceleration * (1 / 60);
-    expect(deltaV).toBeLessThan(1.0); // Less than 1 m/s per frame
+    // Impulse magnitude is bounded — no runaway values
+    const magnitude = Math.sqrt(ball.velocity.x ** 2 + ball.velocity.z ** 2);
+    expect(magnitude).toBeCloseTo(stripForce);
+    expect(magnitude).toBeLessThan(100); // sanity check
   });
 
-  it('does not apply force when ball is reset outside the strip zone', () => {
+  it('does not apply impulse when ball is reset outside the strip zone', () => {
     const ball = makeResetBall(50, 50); // far away
 
     strip.update(1 / 60, ball);
 
-    expect(ball.applyForce).not.toHaveBeenCalled();
+    expect(ball.velocity.x).toBe(0);
+    expect(ball.velocity.z).toBe(0);
   });
 });
 

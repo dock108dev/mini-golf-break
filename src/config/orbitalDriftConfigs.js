@@ -14,6 +14,7 @@ export function createOrbitalDriftConfigs() {
       index: 0,
       description: '1. Docking Lane',
       par: 2,
+      physicsSubsteps: 8,
       theme: STATION_SIDE,
       boundaryShape: [
         [-2, -6],
@@ -36,6 +37,7 @@ export function createOrbitalDriftConfigs() {
         }
       ],
       outOfBounds: { minX: -7, maxX: 7, minZ: -11, maxZ: 11, minY: -10 },
+      cameraHint: { position: [0, 18, 12], target: [0, 0, 0] },
       heroProps: [
         { type: 'docking_clamp', position: [-3, 0, 5], scale: 1.2 },
         { type: 'docking_clamp', position: [3, 0, 5], scale: 1.2 }
@@ -60,6 +62,7 @@ export function createOrbitalDriftConfigs() {
       bumpers: [],
       mechanics: [{ type: 'bowl_contour', position: [0, 0, 0], radius: 6, force: 3.0 }],
       outOfBounds: { minX: -12, maxX: 12, minZ: -12, maxZ: 12, minY: -10 },
+      cameraHint: { position: [0, 20, 14], target: [0, 0, 0] },
       heroProps: [
         { type: 'asteroid_cluster', position: [-7, 0, 0], scale: 1.8 },
         { type: 'asteroid_cluster', position: [7, 0, 0], scale: 1.6 },
@@ -72,11 +75,12 @@ export function createOrbitalDriftConfigs() {
       index: 2,
       description: '3. Satellite Slingshot',
       par: 3,
+      physicsSubsteps: 8,
       theme: STATION_SIDE,
       boundaryShape: [
         [-5, -9],
-        [-7, -3],
-        [-7, 5],
+        [-7, -7],
+        [-7, 7],
         [-5, 9],
         [5, 9],
         [5, -9],
@@ -102,6 +106,7 @@ export function createOrbitalDriftConfigs() {
         }
       ],
       outOfBounds: { minX: -12, maxX: 10, minZ: -14, maxZ: 14, minY: -10 },
+      cameraHint: { position: [0, 24, 16], target: [0, 0, 0] },
       heroProps: [{ type: 'satellite_dish', position: [0, 0, 6], scale: 1.5 }]
     },
     // H4: Asteroid Belt Bounce (par 3) — ricochet_bumpers + elevated_green
@@ -140,6 +145,7 @@ export function createOrbitalDriftConfigs() {
         }
       ],
       outOfBounds: { minX: -14, maxX: 14, minZ: -10, maxZ: 10, minY: -10 },
+      cameraHint: { position: [0, 18, 12], target: [0, 0, -1] },
       heroProps: [
         { type: 'asteroid_cluster', position: [-7, 0, 0], scale: 2 },
         { type: 'asteroid_cluster', position: [7, 0, 2], scale: 1.5 }
@@ -173,6 +179,7 @@ export function createOrbitalDriftConfigs() {
         }
       ],
       outOfBounds: { minX: -12, maxX: 8, minZ: -12, maxZ: 12, minY: -10 },
+      cameraHint: { position: [-3, 20, 4], target: [-2, 0, 0] },
       heroProps: [
         { type: 'wormhole_ring', position: [0, 0, -1], scale: 1.0 },
         { type: 'wormhole_ring', position: [-5, 0, 3], scale: 1.0 }
@@ -225,6 +232,7 @@ export function createOrbitalDriftConfigs() {
         }
       ],
       outOfBounds: { minX: -7, maxX: 7, minZ: -15, maxZ: 15, minY: -10 },
+      cameraHint: { position: [0, 22, 16], target: [0, 0, -2] },
       heroProps: [{ type: 'energy_collector', position: [-4, 0, 0], scale: 1.5 }]
     },
     // H7: Zero G Lab (par 2) — low_gravity_zone + bank_wall
@@ -251,7 +259,7 @@ export function createOrbitalDriftConfigs() {
           type: 'low_gravity_zone',
           position: [0, 0, 0],
           radius: 3.5,
-          gravityMultiplier: 0.2
+          gravity_fraction: 0.2
         },
         {
           type: 'bank_wall',
@@ -263,6 +271,7 @@ export function createOrbitalDriftConfigs() {
         }
       ],
       outOfBounds: { minX: -9, maxX: 9, minZ: -12, maxZ: 12, minY: -10 },
+      cameraHint: { position: [0, 20, 12], target: [0, 0, 0] },
       heroProps: [
         { type: 'gravity_vortex', position: [0, 0.5, 0], scale: 0.7 },
         { type: 'gravity_vortex', position: [-1.5, 0.3, 1], scale: 0.4 },
@@ -277,6 +286,7 @@ export function createOrbitalDriftConfigs() {
       index: 7,
       description: '8. Event Horizon',
       par: 3,
+      physicsSubsteps: 8,
       theme: STATION_SIDE,
       boundaryShape: [
         [-8, -8],
@@ -296,10 +306,12 @@ export function createOrbitalDriftConfigs() {
           position: [3, 0, -3],
           size: { width: 2, height: 0.8, depth: 0.2 },
           openDuration: 2.5,
-          closedDuration: 3
+          closedDuration: 3,
+          gracePeriod: 2
         }
       ],
       outOfBounds: { minX: -13, maxX: 13, minZ: -13, maxZ: 13, minY: -10 },
+      cameraHint: { position: [0, 22, 14], target: [0, 0, 0] },
       heroProps: [{ type: 'black_hole_core', position: [0, 0, 0], scale: 1.5 }]
     },
     // H9: Station Core Finale (par 4) — split_route + moving_sweeper + boost_strip + elevated_green
@@ -309,6 +321,7 @@ export function createOrbitalDriftConfigs() {
       index: 8,
       description: '9. Station Core Finale',
       par: 4,
+      physicsSubsteps: 8,
       theme: STATION_SIDE,
       boundaryShape: [
         [-5, -11],
@@ -337,8 +350,8 @@ export function createOrbitalDriftConfigs() {
         {
           type: 'boost_strip',
           position: [0, 0, -2],
-          direction: [0, 0, -1],
-          force: 12,
+          boost_direction: [0, 0, -1],
+          boost_magnitude: 12,
           size: { width: 2, length: 3 }
         },
         {
@@ -349,6 +362,7 @@ export function createOrbitalDriftConfigs() {
         }
       ],
       outOfBounds: { minX: -10, maxX: 10, minZ: -16, maxZ: 16, minY: -10 },
+      cameraHint: { position: [0, 30, 18], target: [0, 0, -2] },
       heroProps: [{ type: 'station_reactor', position: [0, 0, 0], scale: 1.8 }]
     },
     // H10: Laser Grid (par 3) — back-nine opener, timed laser beam threading
@@ -433,17 +447,18 @@ export function createOrbitalDriftConfigs() {
         }
       },
       boundaryShape: [
-        // S-curve: corridor shifts right (x+1.5) between z=3..z=-3, then back
+        // S-curve: corridor shifts right (x+1.75) between z=3..z=-3, then back.
+        // Offset increased from 1.5 → 1.75 so diagonal corners meet the ≥0.05 overlap spec.
         [-2, 11],
         [-2, 3],
-        [-0.5, 0],
-        [-0.5, -3],
+        [-0.25, 0],
+        [-0.25, -3],
         [-2, -6],
         [-2, -11],
         [2, -11],
         [2, -6],
-        [3.5, -3],
-        [3.5, 0],
+        [3.75, -3],
+        [3.75, 0],
         [2, 3],
         [2, 11],
         [-2, 11]
@@ -663,8 +678,8 @@ export function createOrbitalDriftConfigs() {
         {
           type: 'boost_strip',
           position: [4.5, 0, 2],
-          direction: [0, 0, -1],
-          force: 14,
+          boost_direction: [0, 0, -1],
+          boost_magnitude: 14,
           size: { width: 2, length: 3 }
         }
       ],
@@ -682,6 +697,7 @@ export function createOrbitalDriftConfigs() {
       index: 14,
       description: '15. Wormhole Relay',
       par: 4,
+      physicsSubsteps: 8,
       theme: {
         ...DEEP_VOID,
         green: {
@@ -756,6 +772,7 @@ export function createOrbitalDriftConfigs() {
       index: 15,
       description: '16. Eclipse Steps',
       par: 4,
+      physicsSubsteps: 8,
       theme: {
         ...DEEP_VOID,
         green: {
@@ -823,6 +840,7 @@ export function createOrbitalDriftConfigs() {
       index: 16,
       description: '17. Comet Run',
       par: 3,
+      physicsSubsteps: 8,
       theme: {
         ...DEEP_VOID,
         green: {
@@ -854,10 +872,9 @@ export function createOrbitalDriftConfigs() {
         {
           type: 'boost_strip',
           position: [0, 0, 3],
-          direction: [0, 0, -1],
-          force: 12,
-          size: { width: 3.5, length: 3 },
-          color: 0x00ddff
+          boost_direction: [0, 0, -1],
+          boost_magnitude: 12,
+          size: { width: 3.5, length: 3 }
         },
         {
           type: 'moving_sweeper',
@@ -870,10 +887,9 @@ export function createOrbitalDriftConfigs() {
         {
           type: 'boost_strip',
           position: [0, 0, -7],
-          direction: [0, 0, -1],
-          force: 12,
-          size: { width: 3.5, length: 3 },
-          color: 0x00ddff
+          boost_direction: [0, 0, -1],
+          boost_magnitude: 12,
+          size: { width: 3.5, length: 3 }
         }
       ],
       outOfBounds: { minX: -7, maxX: 7, minZ: -17, maxZ: 17, minY: -10 },
@@ -934,8 +950,8 @@ export function createOrbitalDriftConfigs() {
         {
           type: 'boost_strip',
           position: [5, 0, -3],
-          direction: [0, 0, -1],
-          force: 12,
+          boost_direction: [0, 0, -1],
+          boost_magnitude: 12,
           size: { width: 3, length: 3 }
         },
         {
@@ -955,8 +971,8 @@ export function createOrbitalDriftConfigs() {
       ],
       outOfBounds: { minX: -15, maxX: 15, minZ: -33, maxZ: 9, minY: -10 },
       cameraHint: {
-        offset: [0, 35, -12],
-        lookAt: [0, 0, -13]
+        position: [0, 35, -12],
+        target: [0, 0, -13]
       },
       heroProps: [
         { type: 'station_reactor', position: [0, 0, -26], scale: 2.0 },

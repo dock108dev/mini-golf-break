@@ -534,6 +534,31 @@ describe('HighScoreManager', () => {
       expect(saved[0].date).toBeDefined();
     });
 
+    test('should save name field with { name, totalStrokes, date } shape', () => {
+      HighScoreManager.saveNamedScore('GolfPro', 24, 'Orbital Drift');
+
+      const saved = JSON.parse(mockStorage['miniGolfBreak_highScores']);
+      expect(saved).toHaveLength(1);
+      expect(saved[0].name).toBe('GolfPro');
+      expect(saved[0].totalStrokes).toBe(24);
+      expect(saved[0].date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    });
+
+    test('should truncate name to 12 characters', () => {
+      HighScoreManager.saveNamedScore('VeryLongNameExceeding', 24, 'Orbital Drift');
+
+      const saved = JSON.parse(mockStorage['miniGolfBreak_highScores']);
+      expect(saved[0].name).toBe('VeryLongName');
+      expect(saved[0].name.length).toBe(12);
+    });
+
+    test('should default name to Anonymous when empty', () => {
+      HighScoreManager.saveNamedScore('', 24, 'Orbital Drift');
+
+      const saved = JSON.parse(mockStorage['miniGolfBreak_highScores']);
+      expect(saved[0].name).toBe('Anonymous');
+    });
+
     test('should uppercase and sanitize initials', () => {
       HighScoreManager.saveNamedScore('a1b', 24, 'Orbital Drift');
 
@@ -590,12 +615,13 @@ describe('HighScoreManager', () => {
       expect(result).toEqual([]);
     });
 
-    test('should return objects with initials, score, date fields', () => {
+    test('should return objects with name, initials, score, date fields', () => {
       mockStorage['miniGolfBreak_highScores'] = JSON.stringify([
         {
           totalStrokes: 24,
           courseName: 'Orbital Drift',
           timestamp: 1000,
+          name: 'Alice',
           initials: 'ABC',
           date: '2026-04-11'
         }
@@ -605,6 +631,7 @@ describe('HighScoreManager', () => {
 
       expect(result).toHaveLength(1);
       expect(result[0]).toEqual({
+        name: 'Alice',
         initials: 'ABC',
         score: 24,
         date: '2026-04-11'
@@ -642,7 +669,7 @@ describe('HighScoreManager', () => {
       expect(result).toHaveLength(10);
     });
 
-    test('should default initials to --- for old entries without initials', () => {
+    test('should default initials and name to --- for old entries without either field', () => {
       mockStorage['miniGolfBreak_highScores'] = JSON.stringify([
         { totalStrokes: 24, courseName: 'Orbital Drift', timestamp: 1000 }
       ]);
@@ -650,6 +677,7 @@ describe('HighScoreManager', () => {
       const result = HighScoreManager.loadScores('Orbital Drift');
 
       expect(result[0].initials).toBe('---');
+      expect(result[0].name).toBe('---');
     });
 
     test('should default date to null for old entries without date', () => {
@@ -675,73 +703,67 @@ describe('HighScoreManager', () => {
     });
   });
 
-  describe('_migrateIfNeeded', () => {
-    test('should migrate raw numbers to object format', () => {
-      mockStorage['miniGolfBreak_highScores'] = JSON.stringify([24, 30, 18]);
+  describe('saveGameRecord', () => {
+    test('saves to orbital-drift-scores key with correct shape', () => {
+      HighScoreManager.saveGameRecord(54, [3, 4, 2], 'Orbital Drift');
 
-      const result = HighScoreManager._loadScores();
-
-      expect(result).toHaveLength(3);
-      result.forEach(entry => {
-        expect(entry).toHaveProperty('totalStrokes');
-        expect(entry).toHaveProperty('courseName', 'default');
-        expect(entry).toHaveProperty('initials', '---');
-        expect(entry).toHaveProperty('date', null);
-      });
-      expect(result[0].totalStrokes).toBe(24);
-      expect(result[1].totalStrokes).toBe(30);
-      expect(result[2].totalStrokes).toBe(18);
+      const saved = JSON.parse(mockStorage['orbital-drift-scores']);
+      expect(saved).toHaveLength(1);
+      expect(saved[0].totalStrokes).toBe(54);
+      expect(saved[0].holeSplits).toEqual([3, 4, 2]);
+      expect(saved[0].date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     });
 
-    test('should persist migrated data to localStorage', () => {
-      mockStorage['miniGolfBreak_highScores'] = JSON.stringify([24]);
+    test('retains only top 3 sorted by totalStrokes (lowest first)', () => {
+      HighScoreManager.saveGameRecord(60, [], 'Orbital Drift');
+      HighScoreManager.saveGameRecord(50, [], 'Orbital Drift');
+      HighScoreManager.saveGameRecord(70, [], 'Orbital Drift');
+      HighScoreManager.saveGameRecord(45, [], 'Orbital Drift'); // 4th entry
 
-      HighScoreManager._loadScores();
-
-      const stored = JSON.parse(mockStorage['miniGolfBreak_highScores']);
-      expect(stored[0].initials).toBe('---');
-      expect(stored[0].totalStrokes).toBe(24);
+      const saved = JSON.parse(mockStorage['orbital-drift-scores']);
+      expect(saved).toHaveLength(3);
+      expect(saved[0].totalStrokes).toBe(45);
+      expect(saved[1].totalStrokes).toBe(50);
+      expect(saved[2].totalStrokes).toBe(60);
     });
 
-    test('should not modify already-migrated entries', () => {
-      const existing = [
-        { totalStrokes: 24, courseName: 'Orbital Drift', timestamp: 1000, initials: 'ABC' }
-      ];
-      mockStorage['miniGolfBreak_highScores'] = JSON.stringify(existing);
-
-      const result = HighScoreManager._loadScores();
-
-      expect(result[0].initials).toBe('ABC');
-    });
-
-    test('should handle mixed old and new format entries', () => {
-      mockStorage['miniGolfBreak_highScores'] = JSON.stringify([
-        24,
-        { totalStrokes: 30, courseName: 'Orbital Drift', timestamp: 1000, initials: 'XYZ' }
-      ]);
-
-      const result = HighScoreManager._loadScores();
-
-      expect(result[0].totalStrokes).toBe(24);
-      expect(result[0].initials).toBe('---');
-      expect(result[1].totalStrokes).toBe(30);
-      expect(result[1].initials).toBe('XYZ');
-    });
-
-    test('should handle migration localStorage write failure gracefully', () => {
-      mockStorage['miniGolfBreak_highScores'] = JSON.stringify([24]);
-      let callCount = 0;
+    test('handles localStorage failure without throwing', () => {
       Storage.prototype.setItem.mockImplementation(() => {
-        callCount++;
-        throw new Error('quota exceeded');
+        throw new DOMException('quota exceeded', 'QuotaExceededError');
       });
       jest.spyOn(console, 'warn').mockImplementation(() => {});
 
-      const result = HighScoreManager._loadScores();
+      expect(() => {
+        HighScoreManager.saveGameRecord(54, []);
+      }).not.toThrow();
 
-      expect(result[0].totalStrokes).toBe(24);
-      expect(result[0].initials).toBe('---');
       console.warn.mockRestore();
+    });
+
+    test('defaults holeSplits to [] when not provided', () => {
+      HighScoreManager.saveGameRecord(54);
+
+      const saved = JSON.parse(mockStorage['orbital-drift-scores']);
+      expect(saved[0].holeSplits).toEqual([]);
+    });
+  });
+
+  describe('loadGameRecords', () => {
+    test('returns empty array when no records exist', () => {
+      expect(HighScoreManager.loadGameRecords()).toEqual([]);
+    });
+
+    test('returns saved records', () => {
+      HighScoreManager.saveGameRecord(54, [3, 4]);
+
+      const records = HighScoreManager.loadGameRecords();
+      expect(records).toHaveLength(1);
+      expect(records[0].totalStrokes).toBe(54);
+    });
+
+    test('returns empty array on corrupted data', () => {
+      mockStorage['orbital-drift-scores'] = '{invalid}';
+      expect(HighScoreManager.loadGameRecords()).toEqual([]);
     });
   });
 });

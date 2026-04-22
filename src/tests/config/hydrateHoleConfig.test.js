@@ -254,7 +254,7 @@ describe('hydrateHoleConfig', () => {
   });
 
   describe('mechanics — boost_strip', () => {
-    test('converts position and direction to Vector3', () => {
+    test('converts position and boost_direction to Vector3', () => {
       const config = {
         startPosition: [0, 0, 0],
         holePosition: [0, 0, 0],
@@ -262,8 +262,8 @@ describe('hydrateHoleConfig', () => {
           {
             type: 'boost_strip',
             position: [4, 0, -4],
-            direction: [0, 0, -1],
-            force: 10,
+            boost_direction: [0, 0, -1],
+            boost_magnitude: 10,
             size: { width: 1.5, length: 3 }
           }
         ]
@@ -271,8 +271,8 @@ describe('hydrateHoleConfig', () => {
       const hydrated = hydrateHoleConfig(config);
 
       expect(hydrated.mechanics[0].position).toBeInstanceOf(THREE.Vector3);
-      expect(hydrated.mechanics[0].direction).toBeInstanceOf(THREE.Vector3);
-      expect(hydrated.mechanics[0].direction.z).toBe(-1);
+      expect(hydrated.mechanics[0].boost_direction).toBeInstanceOf(THREE.Vector3);
+      expect(hydrated.mechanics[0].boost_direction.z).toBe(-1);
     });
   });
 
@@ -347,6 +347,46 @@ describe('hydrateHoleConfig', () => {
       expect(hydrated.hazards).toBeUndefined();
       expect(hydrated.mechanics).toBeUndefined();
       expect(hydrated.heroProps).toBeUndefined();
+    });
+  });
+
+  describe('cameraHint', () => {
+    test('converts cameraHint position and target arrays to Vector3', () => {
+      const config = {
+        startPosition: [0, 0, 0],
+        holePosition: [0, 0, 0],
+        cameraHint: { position: [0, 18, 12], target: [0, 0, 0] }
+      };
+      const hydrated = hydrateHoleConfig(config);
+
+      expect(hydrated.cameraHint.position).toBeInstanceOf(THREE.Vector3);
+      expect(hydrated.cameraHint.position.x).toBe(0);
+      expect(hydrated.cameraHint.position.y).toBe(18);
+      expect(hydrated.cameraHint.position.z).toBe(12);
+      expect(hydrated.cameraHint.target).toBeInstanceOf(THREE.Vector3);
+      expect(hydrated.cameraHint.target.x).toBe(0);
+      expect(hydrated.cameraHint.target.z).toBe(0);
+    });
+
+    test('passes through already-hydrated cameraHint Vector3 values', () => {
+      const pos = new THREE.Vector3(0, 18, 12);
+      const tgt = new THREE.Vector3(0, 0, 0);
+      const config = {
+        startPosition: [0, 0, 0],
+        holePosition: [0, 0, 0],
+        cameraHint: { position: pos, target: tgt }
+      };
+      const hydrated = hydrateHoleConfig(config);
+
+      expect(hydrated.cameraHint.position).toBe(pos);
+      expect(hydrated.cameraHint.target).toBe(tgt);
+    });
+
+    test('leaves cameraHint undefined when not present', () => {
+      const config = { startPosition: [0, 0, 0], holePosition: [0, 0, 0] };
+      const hydrated = hydrateHoleConfig(config);
+
+      expect(hydrated.cameraHint).toBeUndefined();
     });
   });
 

@@ -1,6 +1,6 @@
 /**
  * Unit tests for SuctionZone mechanic
- * ISSUE-043
+ * ISSUE-026
  */
 
 import * as CANNON from 'cannon-es';
@@ -19,7 +19,7 @@ beforeAll(() => {
 
   CANNON.Vec3.mockImplementation((x = 0, y = 0, z = 0) => ({ x, y, z }));
 
-  THREE.Mesh.mockImplementation(() => {
+  THREE.Mesh.mockImplementation((_geometry, material) => {
     const mesh = {
       position: {
         x: 0,
@@ -34,7 +34,7 @@ beforeAll(() => {
       rotation: { x: 0, y: 0, z: 0 },
       visible: true,
       geometry: { dispose: jest.fn() },
-      material: { dispose: jest.fn(), transparent: true, opacity: 0.3 }
+      material: material || { dispose: jest.fn(), transparent: true, opacity: 0.9 }
     };
     mesh.parent = null;
     return mesh;
@@ -48,7 +48,7 @@ beforeAll(() => {
     return mat;
   });
 
-  THREE.CircleGeometry.mockImplementation(() => ({ dispose: jest.fn() }));
+  THREE.TorusGeometry.mockImplementation(() => ({ dispose: jest.fn() }));
 });
 
 // ---------------------------------------------------------------------------
@@ -158,6 +158,27 @@ describe('SuctionZone', () => {
         expect.objectContaining({ color: 0x998877 })
       );
     });
+
+    it('uses TorusGeometry for the visual ring', () => {
+      new SuctionZone(world, group, defaultConfig, SURFACE_HEIGHT);
+
+      expect(THREE.TorusGeometry).toHaveBeenCalledWith(
+        defaultConfig.radius,
+        expect.any(Number),
+        expect.any(Number),
+        expect.any(Number)
+      );
+    });
+
+    it('warns when radius is zero or negative', () => {
+      new SuctionZone(world, group, { ...defaultConfig, radius: 0 }, SURFACE_HEIGHT);
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('outer_radius'));
+    });
+
+    it('warns when force is zero or negative', () => {
+      new SuctionZone(world, group, { ...defaultConfig, force: -1 }, SURFACE_HEIGHT);
+      expect(console.warn).toHaveBeenCalledWith(expect.stringContaining('suction_force'));
+    });
   });
 
   // --- Update ---
@@ -189,7 +210,7 @@ describe('SuctionZone', () => {
       expect(Math.sign(f1.x)).toBe(-Math.sign(f2.x));
     });
 
-    it('force is stronger closer to center (inverse distance)', () => {
+    it('force magnitude is constant (suction_force * mass) regardless of distance', () => {
       const zone = new SuctionZone(world, group, defaultConfig, SURFACE_HEIGHT);
 
       const ballClose = makeBallBody(1, 0);
@@ -200,7 +221,11 @@ describe('SuctionZone', () => {
       zone.update(0.016, ballFar);
       const forceFar = ballFar.applyForce.mock.calls[0][0];
 
-      expect(Math.abs(forceClose.x)).toBeGreaterThan(Math.abs(forceFar.x));
+      // Constant force: same magnitude at different distances
+      expect(Math.abs(forceClose.x)).toBeCloseTo(Math.abs(forceFar.x), 5);
+      // Magnitude equals force * mass
+      const expectedMagnitude = defaultConfig.force * 0.45;
+      expect(Math.abs(forceClose.x)).toBeCloseTo(expectedMagnitude, 5);
     });
 
     it('does not apply force when ball is outside zone', () => {
@@ -236,6 +261,49 @@ describe('SuctionZone', () => {
       const zone = new SuctionZone(world, group, defaultConfig, SURFACE_HEIGHT);
 
       expect(() => zone.update(0.016, null)).not.toThrow();
+    });
+  });
+
+  // --- Visual rotation ---
+
+  describe('visual rotation', () => {
+    it('rotates mesh on Y-axis at 0.5 rad/s', () => {
+      const zone = new SuctionZone(world, group, defaultConfig, SURFACE_HEIGHT);
+      const initialY = zone.mesh.rotation.y;
+
+      zone.update(1.0, null);
+
+      expect(zone.mesh.rotation.y).toBeCloseTo(initialY + 0.5, 5);
+    });
+
+    it('rotation.y increases monotonically across frames', () => {
+      const zone = new SuctionZone(world, group, defaultConfig, SURFACE_HEIGHT);
+
+      zone.update(0.016, null);
+      const y1 = zone.mesh.rotation.y;
+
+      zone.update(0.016, null);
+      const y2 = zone.mesh.rotation.y;
+
+      expect(y2).toBeGreaterThan(y1);
+    });
+  });
+
+  // --- Emissive visual ---
+
+  describe('emissive visual', () => {
+    it('material uses reward-color emissive (#aaff44) by default', () => {
+      new SuctionZone(world, group, defaultConfig, SURFACE_HEIGHT);
+
+      expect(THREE.MeshStandardMaterial).toHaveBeenCalledWith(
+        expect.objectContaining({ emissive: 0xaaff44 })
+      );
+    });
+
+    it('material emissiveIntensity is positive', () => {
+      const zone = new SuctionZone(world, group, defaultConfig, SURFACE_HEIGHT);
+
+      expect(zone.mesh.material.emissiveIntensity).toBeGreaterThan(0);
     });
   });
 

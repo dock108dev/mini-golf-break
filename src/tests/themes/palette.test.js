@@ -1,4 +1,4 @@
-import { MATERIAL_PALETTE } from '../../themes/palette';
+import { MATERIAL_PALETTE, HAZARD_COLORS } from '../../themes/palette';
 import { spaceTheme } from '../../themes/spaceTheme';
 
 describe('MATERIAL_PALETTE', () => {
@@ -40,9 +40,9 @@ describe('MATERIAL_PALETTE', () => {
   });
 
   describe('wall', () => {
-    it('has gloss metallic properties', () => {
-      expect(MATERIAL_PALETTE.wall.metalness).toBeGreaterThanOrEqual(0.5);
-      expect(MATERIAL_PALETTE.wall.roughness).toBeLessThanOrEqual(0.5);
+    it('has mid-gray specular properties', () => {
+      expect(MATERIAL_PALETTE.wall.metalness).toBeGreaterThan(0);
+      expect(MATERIAL_PALETTE.wall.roughness).toBeLessThan(1.0);
     });
   });
 
@@ -106,6 +106,40 @@ describe('MATERIAL_PALETTE', () => {
     it('nebula has low opacity for muted appearance', () => {
       expect(MATERIAL_PALETTE.background.nebula.opacity).toBeLessThan(0.2);
     });
+  });
+});
+
+describe('HAZARD_COLORS', () => {
+  it('exports a HAZARD_COLORS object', () => {
+    expect(HAZARD_COLORS).toBeDefined();
+    expect(typeof HAZARD_COLORS).toBe('object');
+  });
+
+  it('has danger, blocker, and reward keys', () => {
+    expect(HAZARD_COLORS).toHaveProperty('danger');
+    expect(HAZARD_COLORS).toHaveProperty('blocker');
+    expect(HAZARD_COLORS).toHaveProperty('reward');
+  });
+
+  it('danger is a red hex color', () => {
+    const red = (HAZARD_COLORS.danger >> 16) & 0xff;
+    expect(red).toBeGreaterThan(0x80);
+    const green = (HAZARD_COLORS.danger >> 8) & 0xff;
+    expect(green).toBeLessThan(0x40);
+  });
+
+  it('blocker is a gray-blue hex color', () => {
+    const blue = HAZARD_COLORS.blocker & 0xff;
+    expect(blue).toBeGreaterThan(0x80);
+    const red = (HAZARD_COLORS.blocker >> 16) & 0xff;
+    expect(red).toBeLessThan(blue);
+  });
+
+  it('reward is a green-gold hex color', () => {
+    const green = (HAZARD_COLORS.reward >> 8) & 0xff;
+    expect(green).toBeGreaterThan(0x80);
+    const red = (HAZARD_COLORS.reward >> 16) & 0xff;
+    expect(red).toBeGreaterThan(0x80);
   });
 });
 

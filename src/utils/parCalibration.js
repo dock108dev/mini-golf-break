@@ -69,7 +69,13 @@ export function recordHoleStrokes(holeNumber, strokes) {
         existing = [];
       }
     }
-  } catch (_e) {
+  } catch (e) {
+    console.warn(`[ParCalibration] Corrupt data for key "${key}" — clearing:`, e.message);
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      /* storage unavailable */
+    }
     existing = [];
   }
   existing.push(strokes);
@@ -91,8 +97,13 @@ export function getHoleData(holeNumber) {
         return parsed;
       }
     }
-  } catch (_e) {
-    // corrupted data
+  } catch (e) {
+    console.warn(`[ParCalibration] Corrupt data for key "${key}" — clearing:`, e.message);
+    try {
+      localStorage.removeItem(key);
+    } catch {
+      /* storage unavailable */
+    }
   }
   return [];
 }

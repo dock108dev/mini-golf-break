@@ -15,10 +15,12 @@ export class BallManager {
     this.wasMoving = false;
     this.followLerp = 0.1; // Controls how quickly the camera follows the ball
 
-    // Manager references
-    this.physicsManager = null;
+    // lastValidPosition: updated when speed > 0.2, throttled to once per second.
+    // Used as the respawn target for OOB and hazard resets.
+    this.lastValidPosition = new THREE.Vector3();
+    this._lastValidPositionTimer = 0;
 
-    // Initialization state tracking
+    this.physicsManager = null;
     this.isInitialized = false;
     this.eventSubscriptions = [];
   }
@@ -150,6 +152,11 @@ export class BallManager {
       console.error(
         '[BallManager] Fallback start position also invalid! Using absolute default (0,0,0).'
       );
+      this.game.eventManager?.publish(EventTypes.ERROR_OCCURRED, {
+        source: 'BallManager._normalizeWorldStartPosition',
+        error: 'Ball spawned at world origin (0,0,0) — hole config may be missing startPosition',
+        fatal: false
+      });
     }
     return resolved;
   }
@@ -172,43 +179,35 @@ export class BallManager {
    * @private
    */
   createBall(worldStartPosition) {
-    // --- GUARD CLAUSE ---
     if (!this.game || !this.game.course || !this.game.course.currentHole) {
       console.warn('[BallManager.createBall] Aborting: Course/hole not ready.');
       return null;
     }
-    // --- END GUARD CLAUSE ---
 
     debug.log('[BallManager] Creating new ball (Course seems ready)');
 
     worldStartPosition = this._normalizeWorldStartPosition(worldStartPosition);
 
-    // Clean up existing ball if any
     this.removeBall();
 
-    // Get physics world
     const physicsWorld = this.game.physicsManager.getWorld();
     if (!physicsWorld) {
       console.error('[BallManager] Physics world not available for ball creation.');
       return null;
     }
 
-    // Create the Ball instance
     this.ball = new Ball(this.game.scene, physicsWorld, this.game);
 
-    // --- Assign current WORLD Hole Position to the Ball instance ---
-    const worldHolePosition = this.game.course?.getHolePosition(); // Already returns WORLD coords
+    const worldHolePosition = this.game.course?.getHolePosition();
 
     if (worldHolePosition) {
-      this.ball.currentHolePosition = worldHolePosition.clone(); // Store WORLD position
+      this.ball.currentHolePosition = worldHolePosition.clone();
       debug.log('[BallManager] Assigned WORLD holePosition to Ball:', worldHolePosition);
     } else {
       console.error('[BallManager] Failed to get world hole position to assign to ball!');
       this.ball.currentHolePosition = null;
     }
-    // --- End Assignment ---
 
-    // Position the ball at the start position, slightly elevated
     const finalPosition = new THREE.Vector3(
       worldStartPosition.x,
       worldStartPosition.y + Ball.START_HEIGHT,
@@ -218,31 +217,29 @@ export class BallManager {
 
     debug.log('[BallManager] Ball positioned at world:', this.ball.mesh.position);
 
-    // Log distance (now using world coordinates)
     if (worldHolePosition) {
-      let distance = 5; // Default for tests
+      let distance = 5; // fallback for test environments where distanceTo may be mocked
       if (this.ball.mesh.position.distanceTo) {
         distance = this.ball.mesh.position.distanceTo(worldHolePosition);
       }
       debug.log(`[BallManager] Ball created at distance ${distance.toFixed(2)} from hole`);
     }
 
-    // Wake up the ball's physics body
     if (this.ball.body) {
       this.ball.body.wakeUp();
       debug.log('[BallManager] Ball body woken up with world position:', this.ball.body.position);
     } else {
       console.error('[BallManager] Ball body not created or available after instantiation.');
-      this.removeBall(); // Clean up partial creation
+      this.removeBall();
       return null;
     }
 
-    // Store initial safe position
     this.lastBallPosition.copy(this.ball.mesh.position);
+    this.lastValidPosition.copy(this.ball.mesh.position);
+    this._lastValidPositionTimer = 0;
 
     this._publishBallCreatedEvent();
 
-    // Update camera to follow new ball
     if (this.game.cameraController) {
       this.game.cameraController.setBall(this.ball);
     }
@@ -261,11 +258,9 @@ export class BallManager {
     // Previous state
     this.wasMoving = this.game.stateManager.isBallInMotion();
 
-    // Update state based on ball motion
     const isMoving = this.ball.isMoving;
     this.game.stateManager.setBallInMotion(isMoving);
 
-    // If ball is moving, publish ball moved event
     if (isMoving) {
       this.game.eventManager.publish(
         EventTypes.BALL_MOVED,
@@ -277,20 +272,14 @@ export class BallManager {
       );
     }
 
-    // If ball has just stopped and hole not completed
     if (this.wasMoving && !isMoving) {
-      // Publish ball stopped event
       this.game.eventManager.publish(
         EventTypes.BALL_STOPPED,
         { position: this.ball.mesh.position.clone() },
         this
       );
-
-      // Update the tee marker at the current ball position
-      // this.updateTeeMarker();
     }
 
-    // Debug log for ball physics
     if (this.game.debugManager.enabled && this.ball.body) {
       const velocity = this.ball.body.velocity;
       this.game.debugManager.logBallVelocity(new THREE.Vector3(velocity.x, velocity.y, velocity.z));
@@ -305,20 +294,31 @@ export class BallManager {
       return;
     }
 
-    // Update ball physics and rendering
     this.ball.update(this.game.deltaTime);
 
-    // Check if ball has fallen below the course
-    const outOfBoundYThreshold = -5; // Consider anything below -5 as out of bounds
+    // Track lastValidPosition when ball is moving fast enough (throttled to 1/sec)
+    if (this.ball.body && this.ball.body.velocity) {
+      const v = this.ball.body.velocity;
+      const speed = Math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+      if (speed > 0.2) {
+        this._lastValidPositionTimer += this.game.deltaTime;
+        if (this._lastValidPositionTimer >= 1.0) {
+          this.lastValidPosition.copy(this.ball.mesh.position);
+          this._lastValidPositionTimer = 0;
+        }
+      } else {
+        this._lastValidPositionTimer = 0;
+      }
+    }
+
+    const outOfBoundYThreshold = -5;
     if (this.ball.mesh.position.y < outOfBoundYThreshold) {
       debug.log(
         `[BallManager] Ball out of bounds at y=${this.ball.mesh.position.y.toFixed(2)}, resetting to start position`
       );
 
-      // Reset ball to last safe position or start position
       this.resetBall();
 
-      // Publish out of bounds event
       if (this.game.eventManager) {
         this.game.eventManager.publish(
           EventTypes.BALL_OUT_OF_BOUNDS,
@@ -327,22 +327,17 @@ export class BallManager {
         );
       }
 
-      // Play sound for out of bounds
       if (this.game.audioManager) {
         this.game.audioManager.playSound('outOfBounds', 0.5);
       }
 
-      return; // Skip remaining update after reset
+      return;
     }
 
-    // Store last position if ball is safely on the course
     if (this.ball.mesh.position.y > 0) {
       this.lastBallPosition.copy(this.ball.mesh.position);
 
-      // If ball is close to the ground and not in a hazard or falling,
-      // store the position as safe
       if (this.ball.mesh.position.y < 0.5) {
-        // Store safe position locally
         this.lastSafePosition = this.ball.mesh.position.clone();
 
         // If hazard manager exists and has the method, update it too
@@ -355,12 +350,10 @@ export class BallManager {
       }
     }
 
-    // Update UI stroke counter if game is in putting state
     if (this.game.uiManager) {
       this.game.uiManager.updateStrokes();
     }
 
-    // Update ball motion state (moving or stopped)
     this.updateBallState();
   }
 
@@ -463,8 +456,14 @@ export class BallManager {
     // Add penalty strokes
     this.game.scoringSystem.addPenaltyStrokes(penalty);
 
-    // Reset ball to safe position
-    this.resetBall();
+    // Respawn at lastValidPosition (tracked when speed > 0.2) so the ball
+    // always returns to a position it was actively moving through, not the
+    // OOB location or a stale safe position.
+    const respawnPos =
+      this.lastValidPosition && typeof this.lastValidPosition.clone === 'function'
+        ? this.lastValidPosition.clone()
+        : null;
+    this.resetBall(respawnPos);
   }
 
   /**
@@ -558,19 +557,16 @@ export class BallManager {
         this.game.scene.remove(this.ball.mesh);
       }
 
-      // --- REMOVE BALL LIGHT ---
       if (this.ball.ballLight) {
         this.game.scene.remove(this.ball.ballLight);
-        // No need to dispose PointLight geometry/material usually
+        // PointLight has no geometry/material to dispose
         debug.log('[BallManager] Removed ballLight from scene');
       }
-      // --- END REMOVE BALL LIGHT ---
 
-      // Clear the reference
       this.ball = null;
-      debug.log('[BallManager] Ball removed and cleaned up'); // Add log
+      debug.log('[BallManager] Ball removed and cleaned up');
     } else {
-      debug.log('[BallManager] No ball to remove.'); // Add log
+      debug.log('[BallManager] No ball to remove.');
     }
   }
 }

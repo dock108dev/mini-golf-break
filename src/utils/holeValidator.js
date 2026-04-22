@@ -1,5 +1,11 @@
 import { debug } from './debug';
 
+/** Wall thickness must match HoleEntity.wallThickness. */
+const WALL_THICKNESS = 0.2;
+
+/** Minimum overlap (units) required at each wall corner to prevent physics gaps. */
+const MIN_CORNER_OVERLAP = 0.05;
+
 /**
  * Required fields per mechanic type (from docs/course-infrastructure.md Section 4).
  * Fields ending with '?' are optional and excluded from validation.
@@ -8,9 +14,9 @@ export const MECHANIC_REQUIRED_FIELDS = {
   moving_sweeper: ['pivot', 'armLength', 'speed', 'size'],
   timed_hazard: ['position', 'size', 'onDuration', 'offDuration', 'hazardType'],
   timed_gate: ['position', 'size', 'openDuration', 'closedDuration'],
-  boost_strip: ['position', 'direction', 'force', 'size'],
+  boost_strip: ['position', 'boost_direction', 'boost_magnitude', 'size'],
   suction_zone: ['position', 'radius', 'force'],
-  low_gravity_zone: ['position', 'radius', 'gravityMultiplier'],
+  low_gravity_zone: ['position', 'radius'],
   bowl_contour: ['position', 'radius', 'force'],
   portal_gate: ['entryPosition', 'exitPosition', 'radius'],
   bank_wall: ['segments'],
@@ -52,6 +58,8 @@ export function validateHoleConfig(config, options = {}) {
   _checkCupReachability(config, holeLabel, issues);
   _checkMechanicRequiredFields(config, holeLabel, issues);
   _checkOutOfBounds(config, holeLabel, issues);
+  _checkObstaclePhysicsSubsteps(config, holeLabel, issues);
+  _checkWallCornerOverlap(config, holeLabel, issues);
 
   return issues;
 }
@@ -341,6 +349,87 @@ function _checkOutOfBounds(config, holeLabel, issues) {
     issues.push({
       level: 'warning',
       message: `${holeLabel}: missing outOfBounds field — will use default ±50 boundary`
+    });
+  }
+}
+
+const KINEMATIC_OBSTACLE_TYPES = new Set(['moving_sweeper', 'timed_gate']);
+const RECOMMENDED_OBSTACLE_SUBSTEPS = 8;
+
+function _checkObstaclePhysicsSubsteps(config, holeLabel, issues) {
+  const hasMovingObstacle = (config.mechanics || []).some(m =>
+    KINEMATIC_OBSTACLE_TYPES.has(m.type)
+  );
+  if (
+    hasMovingObstacle &&
+    (!config.physicsSubsteps || config.physicsSubsteps < RECOMMENDED_OBSTACLE_SUBSTEPS)
+  ) {
+    issues.push({
+      level: 'warning',
+      message:
+        `${holeLabel}: has moving obstacles (moving_sweeper/timed_gate) but ` +
+        `physicsSubsteps=${config.physicsSubsteps ?? 'unset'} ` +
+        `(recommended: ${RECOMMENDED_OBSTACLE_SUBSTEPS})`
+    });
+  }
+}
+
+/**
+ * Checks that each pair of adjacent wall segments in the boundary polygon overlaps
+ * sufficiently at their shared corner.  When two wall Box bodies meet at nearly the
+ * same angle (collinear segments), the physics coverage gap at the corner can exceed
+ * the ball radius and allow the ball to escape.
+ *
+ * Overlap formula (2D): overlap = (wallThickness / 2) × |cross(d1, d2)|
+ * where d1, d2 are normalised unit vectors along each wall.
+ */
+function _checkWallCornerOverlap(config, holeLabel, issues) {
+  if (!Array.isArray(config.boundaryShape) || config.boundaryShape.length < 4) {
+    return;
+  }
+  const shape = config.boundaryShape;
+  const n = shape.length;
+
+  for (let i = 0; i < n - 2; i++) {
+    _checkOneCorner(shape[i], shape[i + 1], shape[i + 2], i + 1, holeLabel, issues);
+  }
+
+  // Closed polygon: also check the corner where the last wall meets the first wall.
+  const dxClose = getX(shape[0]) - getX(shape[n - 1]);
+  const dyClose = getY(shape[0]) - getY(shape[n - 1]);
+  if (Math.sqrt(dxClose * dxClose + dyClose * dyClose) < 0.1) {
+    _checkOneCorner(shape[n - 2], shape[n - 1], shape[1], 0, holeLabel, issues);
+  }
+}
+
+function _checkOneCorner(prev, corner, next, idx, holeLabel, issues) {
+  const d1x = getX(corner) - getX(prev);
+  const d1y = getY(corner) - getY(prev);
+  const d1len = Math.sqrt(d1x * d1x + d1y * d1y);
+  if (d1len < 0.01) {
+    return;
+  }
+
+  const d2x = getX(next) - getX(corner);
+  const d2y = getY(next) - getY(corner);
+  const d2len = Math.sqrt(d2x * d2x + d2y * d2y);
+  if (d2len < 0.01) {
+    return;
+  }
+
+  const e1x = d1x / d1len;
+  const e1y = d1y / d1len;
+  const e2x = d2x / d2len;
+  const e2y = d2y / d2len;
+  const sinAngle = Math.abs(e1x * e2y - e1y * e2x);
+  const overlap = (WALL_THICKNESS / 2) * sinAngle;
+
+  if (overlap < MIN_CORNER_OVERLAP) {
+    issues.push({
+      level: 'error',
+      message:
+        `${holeLabel}: wall corner at boundary index ${idx} has insufficient overlap ` +
+        `(${overlap.toFixed(3)} < ${MIN_CORNER_OVERLAP}); adjacent segments nearly collinear`
     });
   }
 }

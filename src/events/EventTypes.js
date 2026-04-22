@@ -10,6 +10,8 @@ export const EventTypes = {
   BALL_STOPPED: 'ball:stopped',
   BALL_RESET: 'ball:reset',
   BALL_IN_HOLE: 'ball:in_hole',
+  BALL_WALL_IMPACT: 'ball:wall_impact',
+  BALL_OUT_OF_BOUNDS: 'ball:out_of_bounds',
 
   // Game state events
   HOLE_COMPLETED: 'hole:completed',
@@ -36,6 +38,15 @@ export const EventTypes = {
 
   // UI events
   UI_REQUEST_RESTART_GAME: 'ui:request_restart_game',
+
+  // Mechanic events
+  GATE_STATE_CHANGED: 'mechanic:gate_state_changed',
+  LASER_GRID_STATE_CHANGE: 'mechanic:laser_grid_state_change',
+
+  // Hole flyover / flow events
+  HOLE_FLYOVER_START: 'hole:flyover_start',
+  HOLE_FLYOVER_END: 'hole:flyover_end',
+  HOLE_STATE_CHANGED: 'hole:state_changed',
 
   // System events
   ERROR_OCCURRED: 'system:error'

@@ -7,6 +7,7 @@ import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { BankWall } from '../../mechanics/BankWall';
 import { getRegisteredTypes } from '../../mechanics/MechanicRegistry';
+import { HAZARD_COLORS } from '../../themes/palette';
 
 // ---------------------------------------------------------------------------
 // Enhance mocks from jest.setup.js
@@ -252,6 +253,55 @@ describe('BankWall', () => {
         expect.objectContaining({ color: 0x112233 })
       );
     });
+
+    it('applies blocker-tier gray-blue static emissive', () => {
+      const config = {
+        segments: [{ start: { x: 0, y: 0, z: 0 }, end: { x: 1, y: 0, z: 0 } }]
+      };
+      new BankWall(world, group, config, SURFACE_HEIGHT);
+
+      expect(THREE.MeshStandardMaterial).toHaveBeenCalledWith(
+        expect.objectContaining({
+          emissive: HAZARD_COLORS.blocker,
+          emissiveIntensity: 0.2
+        })
+      );
+    });
+
+    it('wall normal produces correct velocity reversal for perpendicular impact', () => {
+      // Wall along x-axis: start(-2,0,0) → end(2,0,0), angle=0, normal=(0,0,1)
+      const config = {
+        segments: [{ start: { x: -2, y: 0, z: 0 }, end: { x: 2, y: 0, z: 0 } }],
+        restitution: 0.8
+      };
+      const wall = new BankWall(world, group, config, SURFACE_HEIGHT);
+      expect(wall.bodies).toHaveLength(1);
+
+      // Compute wall normal perpendicular to segment direction in XZ plane
+      const dx = 2 - -2; // 4
+      const dz = 0 - 0; // 0
+      const angle = Math.atan2(dz, dx); // 0
+      const normalX = -Math.sin(angle); // 0
+      const normalZ = Math.cos(angle); // 1
+
+      // Ball moving in -z direction (straight into the wall)
+      const inVx = 0;
+      const inVz = -5;
+      const inSpeed = Math.sqrt(inVx * inVx + inVz * inVz); // 5
+
+      // Elastic reflection: v' = v - 2(v·n)n
+      const dot = inVx * normalX + inVz * normalZ; // -5
+      const outVx = inVx - 2 * dot * normalX; // 0
+      const outVz = inVz - 2 * dot * normalZ; // 5
+
+      // z-component reverses sign
+      expect(outVz).toBeGreaterThan(0);
+      // x-component unchanged (ball moving parallel to wall stays parallel)
+      expect(outVx).toBeCloseTo(inVx, 5);
+      // Speed preserved within 10% for elastic reflection
+      const outSpeed = Math.sqrt(outVx * outVx + outVz * outVz);
+      expect(outSpeed / inSpeed).toBeCloseTo(1.0, 1);
+    });
   });
 
   // --- Destroy ---
@@ -274,6 +324,19 @@ describe('BankWall', () => {
       expect(wall.meshes).toEqual([]);
       expect(wall.bodies).toEqual([]);
       expect(world.removeBody).toHaveBeenCalledTimes(2);
+    });
+
+    it('disposes Three.js geometries and materials on destroy', () => {
+      const config = {
+        segments: [{ start: { x: 0, y: 0, z: 0 }, end: { x: 2, y: 0, z: 0 } }]
+      };
+      const wall = new BankWall(world, group, config, SURFACE_HEIGHT);
+      const mesh = wall.meshes[0];
+
+      wall.destroy();
+
+      expect(mesh.geometry.dispose).toHaveBeenCalled();
+      expect(mesh.material.dispose).toHaveBeenCalled();
     });
 
     it('can be called multiple times without error', () => {

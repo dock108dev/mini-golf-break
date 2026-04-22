@@ -322,6 +322,44 @@ describe('MultiLevelRamp', () => {
     });
   });
 
+  // --- Height calculation ---
+
+  describe('height calculation', () => {
+    it('computes rampLength as hypotenuse of horizontal distance and elevation', () => {
+      // startPosition [0,0,0] endPosition [0,1,-4]: horizLen=4, elevation=1
+      // actualLength = sqrt(4^2 + 1^2) = sqrt(17)
+      const ramp = new MultiLevelRamp(
+        world,
+        group,
+        makeConfig({ startPosition: [0, 0, 0], endPosition: [0, 1, -4] }),
+        SURFACE_HEIGHT
+      );
+
+      expect(ramp.rampLength).toBeCloseTo(Math.sqrt(17), 5);
+    });
+
+    it('clamps elevation when angle would exceed 30 degrees', () => {
+      // horizLen=1, requested elevation=10 → maxElev=tan(PI/6)*1≈0.5774
+      // actualLength = sqrt(1 + tan(PI/6)^2) = 1/cos(PI/6) ≈ 1.1547
+      const ramp = new MultiLevelRamp(
+        world,
+        group,
+        makeConfig({ startPosition: [0, 0, 0], endPosition: [0, 10, -1] }),
+        SURFACE_HEIGHT
+      );
+
+      const maxElev = Math.tan(Math.PI / 6);
+      const expected = Math.sqrt(1 + maxElev * maxElev);
+      expect(ramp.rampLength).toBeCloseTo(expected, 5);
+    });
+
+    it('computes correct rampWidth from config', () => {
+      const ramp = new MultiLevelRamp(world, group, makeConfig({ width: 2.4 }), SURFACE_HEIGHT);
+
+      expect(ramp.rampWidth).toBe(2.4);
+    });
+  });
+
   // --- Destroy ---
 
   describe('destroy', () => {
@@ -336,6 +374,18 @@ describe('MultiLevelRamp', () => {
       expect(ramp.meshes).toEqual([]);
       expect(ramp.bodies).toEqual([]);
       expect(world.removeBody).toHaveBeenCalledTimes(3);
+    });
+
+    it('disposes Three.js geometries and materials for all meshes', () => {
+      const ramp = new MultiLevelRamp(world, group, makeConfig(), SURFACE_HEIGHT);
+      const meshesBeforeDestroy = [...ramp.meshes];
+
+      ramp.destroy();
+
+      for (const mesh of meshesBeforeDestroy) {
+        expect(mesh.geometry.dispose).toHaveBeenCalled();
+        expect(mesh.material.dispose).toHaveBeenCalled();
+      }
     });
 
     it('can be called multiple times safely', () => {

@@ -8,6 +8,7 @@ import { createMechanic } from '../mechanics/MechanicRegistry';
 import { createHeroProp } from './HeroPropFactory';
 import { defaultTheme } from '../themes/defaultTheme';
 import { MATERIAL_PALETTE } from '../themes/palette';
+import { EventTypes } from '../events/EventTypes';
 // Trigger mechanic self-registration
 import '../mechanics/index';
 
@@ -93,6 +94,7 @@ export class HoleEntity extends BaseElement {
     this.wallHeight = 1.0;
     this.wallThickness = 0.2;
     this.holeRadius = 0.35;
+    this.cupRadius = config.cupRadius ?? 0.3;
     this.surfaceHeight = 0.2;
     this.visualGreenY = this.surfaceHeight;
 
@@ -115,11 +117,18 @@ export class HoleEntity extends BaseElement {
     }
 
     try {
+      // Apply per-hole physics substep count (default 4, 8 for obstacle holes)
+      if (typeof this.world?.setMaxSubSteps === 'function') {
+        this.world.setMaxSubSteps(this.config.physicsSubsteps || 4);
+      }
       // Create elements using WORLD coordinates from config
       this.createGreenSurfaceAndPhysics();
+      this.createFloorGrid();
       this.createWalls();
       this.createHoleRim();
       this.createHoleVisual();
+      this.createCupPointLight();
+      this.createCupHaloSprite();
       this.createHoleTrigger();
       this.createStartPosition();
       this.createNeonTrim();
@@ -127,6 +136,9 @@ export class HoleEntity extends BaseElement {
       this.createBumpers();
       this.createMechanics();
       this.createHeroProps();
+      if (this.config.index <= 3) {
+        this.createLaneMarkers();
+      }
       debug.log(`[HoleEntity] Initialization complete for hole index ${this.config.index}.`);
       return Promise.resolve();
     } catch (error) {
@@ -161,8 +173,8 @@ export class HoleEntity extends BaseElement {
       color: rimTheme.color || MATERIAL_PALETTE.rim.color,
       roughness: rimTheme.roughness ?? MATERIAL_PALETTE.rim.roughness,
       metalness: rimTheme.metalness ?? MATERIAL_PALETTE.rim.metalness,
-      ...(rimTheme.emissive && { emissive: rimTheme.emissive }),
-      ...(rimTheme.emissiveIntensity && { emissiveIntensity: rimTheme.emissiveIntensity })
+      emissive: rimTheme.emissive ?? MATERIAL_PALETTE.rim.emissive,
+      emissiveIntensity: rimTheme.emissiveIntensity ?? MATERIAL_PALETTE.rim.emissiveIntensity
     });
     const rim = new THREE.Mesh(rimGeometry, rimMaterial);
     rim.rotation.x = -Math.PI / 2;
@@ -210,6 +222,33 @@ export class HoleEntity extends BaseElement {
     holeInteriorMesh.receiveShadow = true;
     this.group.add(holeInteriorMesh); // Add to group at (0,0,0)
     this.meshes.push(holeInteriorMesh);
+  }
+
+  createCupPointLight() {
+    const light = new THREE.PointLight(0x00ffcc, 1.5, 4, 2);
+    light.position.set(this.worldHolePosition.x, this.visualGreenY + 0.5, this.worldHolePosition.z);
+    this.group.add(light);
+    this._cupPointLight = light;
+  }
+
+  createCupHaloSprite() {
+    this._haloTime = 0;
+    const material = new THREE.SpriteMaterial({
+      color: 0x00ffcc,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false
+    });
+    const sprite = new THREE.Sprite(material);
+    sprite.scale.set(1.2, 1.2, 1.2);
+    sprite.position.set(
+      this.worldHolePosition.x,
+      this.visualGreenY + 0.8,
+      this.worldHolePosition.z
+    );
+    this.group.add(sprite);
+    this._haloSprite = sprite;
   }
 
   createWalls() {
@@ -365,6 +404,61 @@ export class HoleEntity extends BaseElement {
     }
   }
 
+  createFloorGrid() {
+    let minX = Infinity,
+      maxX = -Infinity,
+      minZ = Infinity,
+      maxZ = -Infinity;
+    for (const pt of this.boundaryShape) {
+      minX = Math.min(minX, pt.x);
+      maxX = Math.max(maxX, pt.x);
+      minZ = Math.min(minZ, pt.y);
+      maxZ = Math.max(maxZ, pt.y);
+    }
+    if (!isFinite(minX)) {
+      return;
+    }
+    const sizeX = maxX - minX;
+    const sizeZ = maxZ - minZ;
+    const gridSize = Math.ceil(Math.max(sizeX, sizeZ)) + 2;
+    const divisions = Math.max(gridSize * 2, 4);
+    const gridHelper = new THREE.GridHelper(gridSize, divisions, 0x1a2a3a, 0x111e2a);
+    gridHelper.position.set((minX + maxX) / 2, this.visualGreenY + 0.001, (minZ + maxZ) / 2);
+    this.group.add(gridHelper);
+    this.meshes.push(gridHelper);
+  }
+
+  createLaneMarkers() {
+    const start = this.worldStartPosition;
+    const end = this.worldHolePosition;
+    const dx = end.x - start.x;
+    const dz = end.z - start.z;
+    const length = Math.sqrt(dx * dx + dz * dz);
+    if (length < 0.1) {
+      return;
+    }
+    const midX = (start.x + end.x) / 2;
+    const midZ = (start.z + end.z) / 2;
+    const angle = Math.atan2(dx, dz);
+    const geometry = new THREE.PlaneGeometry(0.15, length);
+    const material = new THREE.MeshStandardMaterial({
+      color: 0x1a3a5c,
+      emissive: 0x1a3a5c,
+      emissiveIntensity: 0.8,
+      roughness: 0.5,
+      metalness: 0.3,
+      transparent: true,
+      opacity: 0.85
+    });
+    const marker = new THREE.Mesh(geometry, material);
+    marker.rotation.x = -Math.PI / 2;
+    marker.rotation.y = angle;
+    marker.position.set(midX, this.visualGreenY + 0.003, midZ);
+    marker.name = 'lane_marker';
+    this.group.add(marker);
+    this.meshes.push(marker);
+  }
+
   createHazards() {
     // Assumes HazardFactory positions elements LOCALLY within the provided group
     // We pass this.group (at 0,0,0) and hazard configs with WORLD positions
@@ -398,6 +492,13 @@ export class HoleEntity extends BaseElement {
         this.bodies.push(...bodies); // Track bodies created by factory
       } catch (error) {
         console.error('[HoleEntity] Failed to create hazard:', error, hazardConfig);
+        this.eventManager?.publish(EventTypes.ERROR_OCCURRED, {
+          source: 'HoleEntity.createHazards',
+          error: error.message,
+          fatal: false,
+          holeIndex: this.config.index,
+          hazardType: hazardConfig?.type
+        });
       }
     });
   }
@@ -435,7 +536,7 @@ export class HoleEntity extends BaseElement {
         this.group.add(bumperMesh); // Add to group at (0,0,0)
         this.meshes.push(bumperMesh);
 
-        // --- Physics Body --- (Also uses WORLD transform)
+        // Physics body positioned in world space (not local group space)
         const bumperBody = new CANNON.Body({
           type: CANNON.Body.STATIC,
           mass: 0,
@@ -466,6 +567,13 @@ export class HoleEntity extends BaseElement {
         this.bodies.push(bumperBody);
       } catch (error) {
         console.error(`[HoleEntity] Failed to create bumper ${index}:`, error, bumperConfig);
+        this.eventManager?.publish(EventTypes.ERROR_OCCURRED, {
+          source: 'HoleEntity.createBumpers',
+          error: error.message,
+          fatal: false,
+          holeIndex: this.config.index,
+          bumperIndex: index
+        });
       }
     });
   }
@@ -493,6 +601,7 @@ export class HoleEntity extends BaseElement {
         );
         if (mechanic) {
           mechanic.audioManager = this.audioManager || null;
+          mechanic.eventManager = this.eventManager || null;
           this.mechanics.push(mechanic);
           // Track mechanic's resources for cleanup
           this.meshes.push(...(mechanic.getMeshes?.() || mechanic.meshes || []));
@@ -508,6 +617,13 @@ export class HoleEntity extends BaseElement {
           `[HoleEntity] Hole ${this.config.index}: failed to create mechanic "${mechConfig.type}":`,
           error
         );
+        this.eventManager?.publish(EventTypes.ERROR_OCCURRED, {
+          source: 'HoleEntity.createMechanics',
+          error: error.message,
+          fatal: false,
+          holeIndex: this.config.index,
+          mechanicType: mechConfig?.type
+        });
       }
     }
   }
@@ -537,6 +653,11 @@ export class HoleEntity extends BaseElement {
    * @param {boolean} [options.dtWasClamped] - True if dt was clamped due to a spike
    */
   update(dt, ballBody, options) {
+    if (this._haloSprite) {
+      this._haloTime += dt;
+      this._haloSprite.material.opacity = 0.6 + 0.4 * Math.sin(this._haloTime * 2);
+    }
+
     if (!this.mechanics) {
       return;
     }
@@ -597,6 +718,20 @@ export class HoleEntity extends BaseElement {
    * but leaves the main container group (this.group or this.parentGroup) intact.
    */
   destroy() {
+    if (this._haloSprite) {
+      if (this._haloSprite.parent) {
+        this._haloSprite.parent.remove(this._haloSprite);
+      }
+      this._haloSprite.material.dispose();
+      this._haloSprite = null;
+    }
+    if (this._cupPointLight) {
+      if (this._cupPointLight.parent) {
+        this._cupPointLight.parent.remove(this._cupPointLight);
+      }
+      this._cupPointLight = null;
+    }
+
     // Destroy mechanics first (they manage their own mesh/body cleanup)
     if (this.mechanics) {
       for (const mechanic of this.mechanics) {
@@ -648,7 +783,5 @@ export class HoleEntity extends BaseElement {
     // DO NOT remove this.group or this.parentGroup from the scene here.
     // The course manager manages those groups.
     debug.log(`[HoleEntity] Component cleanup complete for Hole ${this.config.index + 1}`);
-    // Setting group to null might cause issues if reused, let course manager manage it.
-    // this.group = null;
   }
 }

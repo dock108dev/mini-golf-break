@@ -130,6 +130,14 @@ describe('PhysicsWorld', () => {
       expect(physicsWorld.world.allowSleep).toBe(true);
     });
 
+    test('should set defaultSleepSpeedLimit to 0.1', () => {
+      expect(physicsWorld.world.defaultSleepSpeedLimit).toBe(0.1);
+    });
+
+    test('should set defaultSleepTimeLimit to 1.0', () => {
+      expect(physicsWorld.world.defaultSleepTimeLimit).toBe(1.0);
+    });
+
     test('should initialize materials array with 6 materials', () => {
       expect(physicsWorld.materials).toHaveLength(6);
     });
@@ -165,8 +173,8 @@ describe('PhysicsWorld', () => {
         physicsWorld.ballMaterial,
         physicsWorld.groundMaterial,
         expect.objectContaining({
-          friction: 0.4,
-          restitution: 0.05
+          friction: 0.5,
+          restitution: 0.35
         })
       );
     });
@@ -176,8 +184,8 @@ describe('PhysicsWorld', () => {
         physicsWorld.ballMaterial,
         physicsWorld.bumperMaterial,
         expect.objectContaining({
-          friction: 0.2,
-          restitution: 0.65
+          friction: 0.35,
+          restitution: 0.58
         })
       );
     });
@@ -308,7 +316,7 @@ describe('PhysicsWorld', () => {
     test('should call world.step with correct fixed timestep', () => {
       physicsWorld.step(1 / 60);
 
-      expect(physicsWorld.world.step).toHaveBeenCalledWith(1 / 60, 1 / 60, 8);
+      expect(physicsWorld.world.step).toHaveBeenCalledWith(1 / 60, 1 / 60, 4);
     });
 
     test('should not throw on delta-time of 1/60', () => {
@@ -322,13 +330,24 @@ describe('PhysicsWorld', () => {
     test('should use fixed timestep regardless of input', () => {
       physicsWorld.step(0.033);
 
-      expect(physicsWorld.world.step).toHaveBeenCalledWith(1 / 60, 0.033, 8);
+      expect(physicsWorld.world.step).toHaveBeenCalledWith(1 / 60, 0.033, 4);
     });
 
     test('should allow overriding maxSubSteps', () => {
       physicsWorld.step(0.016, null, 5);
 
       expect(physicsWorld.world.step).toHaveBeenCalledWith(1 / 60, 0.016, 5);
+    });
+
+    test('setMaxSubSteps updates maxSubSteps used in step()', () => {
+      physicsWorld.setMaxSubSteps(8);
+      physicsWorld.step(0.016);
+
+      expect(physicsWorld.world.step).toHaveBeenCalledWith(1 / 60, 0.016, 8);
+    });
+
+    test('default maxSubSteps is 4', () => {
+      expect(physicsWorld.maxSubSteps).toBe(4);
     });
 
     test('should update lastCallTime', () => {

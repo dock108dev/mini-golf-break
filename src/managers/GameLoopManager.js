@@ -1,5 +1,10 @@
+import { EventTypes } from '../events/EventTypes';
+
 /** Maximum delta time in seconds — frames exceeding this are clamped. */
 export const MAX_DELTA_TIME = 1 / 30; // ~33ms
+
+/** Stop the loop after this many consecutive frame errors to prevent console flooding. */
+const MAX_LOOP_ERRORS = 3;
 
 /**
  * GameLoopManager - Orchestrates the main game update loop
@@ -141,9 +146,21 @@ export class GameLoopManager {
       } else {
         this.update();
       }
+      this._loopErrorCount = 0;
     } catch (error) {
-      console.error('Error in game loop:', error);
-      // Continue rendering even if update fails
+      this._loopErrorCount = (this._loopErrorCount || 0) + 1;
+      console.error(`Error in game loop (occurrence #${this._loopErrorCount}):`, error);
+      if (this._loopErrorCount >= MAX_LOOP_ERRORS) {
+        console.error('GameLoopManager: too many consecutive errors — stopping loop');
+        this.stop();
+        this.game.eventManager?.publish(EventTypes.ERROR_OCCURRED, {
+          source: 'GameLoopManager',
+          error: error.message,
+          fatal: true
+        });
+        return;
+      }
+      // Continue rendering so the scene stays visible while we wait for recovery
       if (this.game.renderer && this.game.scene && this.game.camera) {
         this.game.renderer.render(this.game.scene, this.game.camera);
       }
@@ -185,6 +202,10 @@ export class GameLoopManager {
       this.game.holeManager.checkBallInHole();
     }
 
+    if (this.game.holeFlyoverManager) {
+      this.game.holeFlyoverManager.update(this.deltaTime);
+    }
+
     if (this.game.cameraController) {
       if (this.game.performanceManager) {
         this.game.performanceManager.startTimer('camera');
@@ -207,7 +228,8 @@ export class GameLoopManager {
       }
     }
 
-    if (this.game.debugManager?.enabled && this.game.cannonDebugRenderer) {
+    const dm = this.game.debugManager;
+    if ((dm?.enabled || dm?.wireframeEnabled) && this.game.cannonDebugRenderer) {
       this.game.cannonDebugRenderer.update();
     }
 
@@ -222,13 +244,25 @@ export class GameLoopManager {
     if (this.game.spaceDecorations) {
       this.game.spaceDecorations.update(this.deltaTime);
     }
+
+    if (this.game.starField) {
+      this.game.starField.update(this.game.camera);
+    }
+
+    if (this.game.inputController) {
+      this.game.inputController.update(this.deltaTime);
+    }
   }
 
   _renderScene() {
     if (this.game.performanceManager) {
       this.game.performanceManager.startTimer('render');
     }
-    this.game.renderer.render(this.game.scene, this.game.camera);
+    if (this.game.composer) {
+      this.game.composer.render();
+    } else {
+      this.game.renderer.render(this.game.scene, this.game.camera);
+    }
     if (this.game.performanceManager) {
       this.game.performanceManager.endTimer('render');
     }

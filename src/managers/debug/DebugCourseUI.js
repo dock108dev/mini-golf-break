@@ -37,6 +37,11 @@ export class DebugCourseUI {
         `;
     this.INFO_STYLE = 'margin-bottom: 5px;';
 
+    // Chord tracking for d+c wireframe toggle
+    this._lastKey = null;
+    this._lastKeyTime = 0;
+    this._chordWindowMs = 800;
+
     // Bound event handler
     this.boundHandleKeyPress = this.handleKeyPress.bind(this);
   }
@@ -85,7 +90,8 @@ export class DebugCourseUI {
     keyInfo.style.fontSize = '12px';
     keyInfo.innerHTML = `
             Load Hole #: [${DEBUG_CONFIG.courseDebug.loadSpecificHoleKey}] <br>
-            Quick Load: [1-9]
+            Quick Load: [1-9] <br>
+            Wireframe: [d then c]
         `;
     this.courseDebugUI.appendChild(keyInfo);
 
@@ -98,6 +104,15 @@ export class DebugCourseUI {
 
     // Add listener for key presses
     this.addInputListener();
+
+    // Activate wireframe via URL param in non-production builds
+    if (process.env.NODE_ENV !== 'production') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('wireframe') === 'true') {
+        this.debugManager.wireframeEnabled = true;
+        debug.log('[DebugCourseUI] Wireframe enabled via URL param.');
+      }
+    }
 
     // Update initial display state
     this.updateDisplay();
@@ -130,10 +145,27 @@ export class DebugCourseUI {
   handleKeyPress(e) {
     // IMPORTANT: Only process keys if the main debug mode is enabled
     if (!this.debugManager.enabled) {
+      // d+c chord is allowed even when debug mode is off — wireframe is standalone
+      const now = Date.now();
+      if (e.key === 'c' && this._lastKey === 'd' && now - this._lastKeyTime < this._chordWindowMs) {
+        this.toggleWireframe();
+        e.preventDefault();
+      }
+      this._lastKey = e.key;
+      this._lastKeyTime = now;
       return;
     }
 
     const courseDebugConfig = DEBUG_CONFIG.courseDebug;
+
+    // d+c chord: toggle wireframe overlay
+    const now = Date.now();
+    if (e.key === 'c' && this._lastKey === 'd' && now - this._lastKeyTime < this._chordWindowMs) {
+      this.toggleWireframe();
+      e.preventDefault();
+    }
+    this._lastKey = e.key;
+    this._lastKeyTime = now;
 
     // Load specific hole (h key)
     if (e.key === courseDebugConfig.loadSpecificHoleKey) {
@@ -148,6 +180,21 @@ export class DebugCourseUI {
       debug.log(`[DebugCourseUI] Quick Load key pressed: ${holeNumber}`);
       this.debugManager.loadSpecificHole(holeNumber); // Delegate to parent manager
       e.preventDefault();
+    }
+  }
+
+  /**
+   * Toggle the CannonDebugRenderer wireframe overlay on/off.
+   */
+  toggleWireframe() {
+    const dm = this.debugManager;
+    dm.wireframeEnabled = !dm.wireframeEnabled;
+    if (!dm.wireframeEnabled) {
+      this.game.cannonDebugRenderer?.clearMeshes();
+    }
+    debug.log(`[DebugCourseUI] Wireframe: ${dm.wireframeEnabled ? 'ON' : 'OFF'}`);
+    if (dm.enabled) {
+      this.game.uiManager?.updateDebugDisplay(dm.getDebugInfo());
     }
   }
 

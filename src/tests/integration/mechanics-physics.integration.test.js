@@ -58,6 +58,7 @@ beforeAll(() => {
       setFromAxisAngle: jest.fn(),
       copy: jest.fn()
     },
+    angularVelocity: { x: 0, y: 0, z: 0, set: jest.fn() },
     addShape: jest.fn(),
     addEventListener: jest.fn(),
     userData: {}
@@ -155,11 +156,11 @@ describe('BoostStrip physics integration', () => {
     group = makeMockGroup();
   });
 
-  it('applies directional force to ball while in zone', () => {
+  it('applies velocity impulse to ball while in zone', () => {
     const config = {
       position: new THREE.Vector3(0, 0, 0),
-      direction: new THREE.Vector3(1, 0, 0),
-      force: 12,
+      boost_direction: new THREE.Vector3(1, 0, 0),
+      boost_magnitude: 12,
       size: { width: 3, length: 3 }
     };
     const strip = new BoostStrip(world, group, config, SURFACE_HEIGHT);
@@ -169,39 +170,36 @@ describe('BoostStrip physics integration', () => {
 
     strip.update(1 / 60, ball);
 
-    expect(ball.applyForce).toHaveBeenCalledTimes(1);
-    const force = ball.applyForce.mock.calls[0][0];
-    expect(force.x).toBeCloseTo(12); // force in configured direction
-    expect(force.z).toBeCloseTo(0);
+    // Velocity impulse adds boost_direction * boost_magnitude to ball velocity
+    expect(ball.velocity.x).toBeCloseTo(12);
+    expect(ball.velocity.z).toBeCloseTo(0);
   });
 
-  it('applies force every frame while ball remains in zone', () => {
+  it('fires impulse once then cooldown prevents re-trigger on subsequent frames', () => {
     const config = {
       position: new THREE.Vector3(0, 0, 0),
-      direction: new THREE.Vector3(0, 0, -1),
-      force: 8,
+      boost_direction: new THREE.Vector3(0, 0, -1),
+      boost_magnitude: 8,
       size: { width: 2, length: 4 }
     };
     const strip = new BoostStrip(world, group, config, SURFACE_HEIGHT);
     const ball = makeMockBall(strip.triggerBody.position.x, strip.triggerBody.position.z);
 
-    // Simulate multiple frames
+    // Frame 1: impulse fires
     strip.update(1 / 60, ball);
-    strip.update(1 / 60, ball);
-    strip.update(1 / 60, ball);
+    expect(ball.velocity.z).toBeCloseTo(-8);
 
-    expect(ball.applyForce).toHaveBeenCalledTimes(3);
-    // Each call applies the same force magnitude in the z direction
-    for (let i = 0; i < 3; i++) {
-      expect(ball.applyForce.mock.calls[i][0].z).toBeCloseTo(-8);
-    }
+    // Frames 2-3: cooldown prevents re-trigger (0.8s not elapsed)
+    strip.update(1 / 60, ball);
+    strip.update(1 / 60, ball);
+    expect(ball.velocity.z).toBeCloseTo(-8); // still the same — no additional impulse
   });
 
-  it('does not apply force when ball is outside zone', () => {
+  it('does not apply impulse when ball is outside zone', () => {
     const config = {
       position: new THREE.Vector3(0, 0, 0),
-      direction: new THREE.Vector3(1, 0, 0),
-      force: 10,
+      boost_direction: new THREE.Vector3(1, 0, 0),
+      boost_magnitude: 10,
       size: { width: 1, length: 1 }
     };
     const strip = new BoostStrip(world, group, config, SURFACE_HEIGHT);
@@ -209,7 +207,8 @@ describe('BoostStrip physics integration', () => {
 
     strip.update(1 / 60, ball);
 
-    expect(ball.applyForce).not.toHaveBeenCalled();
+    expect(ball.velocity.x).toBe(0);
+    expect(ball.velocity.z).toBe(0);
   });
 });
 
@@ -246,7 +245,7 @@ describe('SuctionZone physics integration', () => {
     expect(force.y).toBe(0);
   });
 
-  it('force strength scales with proximity (stronger closer to center)', () => {
+  it('force magnitude is constant (suction_force * mass) regardless of distance', () => {
     const config = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 10,
@@ -265,9 +264,10 @@ describe('SuctionZone physics integration', () => {
     const forceClose = Math.abs(ballClose.applyForce.mock.calls[0][0].x);
     const forceFar = Math.abs(ballFar.applyForce.mock.calls[0][0].x);
 
-    // SuctionZone uses inverse distance: strength = force * (1 - dist/radius)
-    // Closer ball gets stronger pull
-    expect(forceClose).toBeGreaterThan(forceFar);
+    // Constant force: same magnitude at different distances
+    expect(forceClose).toBeCloseTo(forceFar, 5);
+    // Magnitude equals force * mass
+    expect(forceClose).toBeCloseTo(config.force * 0.45, 5);
   });
 
   it('does not apply force when ball is outside radius', () => {
@@ -561,7 +561,7 @@ describe('LowGravityZone physics integration', () => {
     const config = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      gravityMultiplier: 0.3 // 30% gravity remains → 70% counter
+      gravity_fraction: 0.3 // 30% gravity remains → 70% counter
     };
     const zone = new LowGravityZone(world, group, config, SURFACE_HEIGHT);
 
@@ -578,8 +578,8 @@ describe('LowGravityZone physics integration', () => {
     expect(force.z).toBe(0);
     expect(force.y).toBeGreaterThan(0);
 
-    // Expected: mass * 9.81 * (1 - 0.3) = 0.45 * 9.81 * 0.7 ≈ 3.0906
-    const expected = 0.45 * 9.81 * 0.7;
+    // Expected: mass * 9.82 * (1 - 0.3) = 0.45 * 9.82 * 0.7 ≈ 3.0933
+    const expected = 0.45 * 9.82 * 0.7;
     expect(force.y).toBeCloseTo(expected, 2);
   });
 
@@ -587,7 +587,7 @@ describe('LowGravityZone physics integration', () => {
     const config = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      gravityMultiplier: 0.5
+      gravity_fraction: 0.5
     };
     const zone = new LowGravityZone(world, group, config, SURFACE_HEIGHT);
 
@@ -610,7 +610,7 @@ describe('LowGravityZone physics integration', () => {
     const config = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 2,
-      gravityMultiplier: 0.3
+      gravity_fraction: 0.3
     };
     const zone = new LowGravityZone(world, group, config, SURFACE_HEIGHT);
 
@@ -624,7 +624,7 @@ describe('LowGravityZone physics integration', () => {
     const config = {
       position: new THREE.Vector3(0, 0, 0),
       radius: 5,
-      gravityMultiplier: 0.3
+      gravity_fraction: 0.3
     };
     const zone = new LowGravityZone(world, group, config, SURFACE_HEIGHT);
 
@@ -752,14 +752,14 @@ describe('Multiple mechanics affecting ball trajectory', () => {
     group = makeMockGroup();
   });
 
-  it('ball receives forces from all active mechanics in a single frame', () => {
+  it('ball receives effects from all active mechanics in a single frame', () => {
     const boost = new BoostStrip(
       world,
       group,
       {
         position: new THREE.Vector3(0, 0, 0),
-        direction: new THREE.Vector3(1, 0, 0),
-        force: 10,
+        boost_direction: new THREE.Vector3(1, 0, 0),
+        boost_magnitude: 10,
         size: { width: 6, length: 6 }
       },
       SURFACE_HEIGHT
@@ -782,7 +782,7 @@ describe('Multiple mechanics affecting ball trajectory', () => {
       {
         position: new THREE.Vector3(0, 0, 0),
         radius: 5,
-        gravityMultiplier: 0.4
+        gravity_fraction: 0.4
       },
       SURFACE_HEIGHT
     );
@@ -806,16 +806,16 @@ describe('Multiple mechanics affecting ball trajectory', () => {
     lowGrav.update(1 / 60, ball);
     bowl.update(1 / 60, ball);
 
-    // All four should have applied force
-    expect(ball.applyForce).toHaveBeenCalledTimes(4);
+    // BoostStrip applies velocity impulse (+x direction)
+    expect(ball.velocity.x).toBeCloseTo(10);
 
-    // BoostStrip: positive x direction
-    expect(ball.applyForce.mock.calls[0][0].x).toBeCloseTo(10);
-    // SuctionZone: negative x (toward center)
-    expect(ball.applyForce.mock.calls[1][0].x).toBeLessThan(0);
+    // Suction + LowGrav + BowlContour all use applyForce (3 calls)
+    expect(ball.applyForce).toHaveBeenCalledTimes(3);
+    // SuctionZone: negative x (toward center, ball at x=2)
+    expect(ball.applyForce.mock.calls[0][0].x).toBeLessThan(0);
     // LowGravityZone: upward force
-    expect(ball.applyForce.mock.calls[2][0].y).toBeGreaterThan(0);
+    expect(ball.applyForce.mock.calls[1][0].y).toBeGreaterThan(0);
     // BowlContour: negative x (toward center)
-    expect(ball.applyForce.mock.calls[3][0].x).toBeLessThan(0);
+    expect(ball.applyForce.mock.calls[2][0].x).toBeLessThan(0);
   });
 });

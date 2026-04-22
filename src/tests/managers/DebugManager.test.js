@@ -551,6 +551,7 @@ describe('DebugManager', () => {
         FPS: 63, // Math.round(1 / 0.016)
         'Debug Mode': 'ON',
         'Force Fields': 'Visible',
+        Wireframe: 'OFF',
         'Ball Position': 'X: 1.00, Y: 2.00, Z: 3.00',
         'Ball Velocity': '5.50 m/s'
       });

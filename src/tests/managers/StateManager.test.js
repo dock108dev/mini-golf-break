@@ -366,7 +366,7 @@ describe('StateManager', () => {
       expect(cb1).toHaveBeenCalled();
       expect(cb2).toHaveBeenCalled();
       expect(console.error).toHaveBeenCalledWith(
-        'Error in hole completed callback:',
+        expect.stringMatching(/^Error in hole completed callback/),
         expect.any(Error)
       );
     });

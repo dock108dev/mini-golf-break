@@ -99,7 +99,7 @@ function buildRocketStand(g) {
   // Engine glow
   const engine = new THREE.Mesh(
     new THREE.CylinderGeometry(0.2, 0.35, 0.3, 12),
-    mat(0xff8800, 0xff4400, 0.8)
+    mat(0xff8800, 0xff4400, 0.1)
   );
   engine.position.y = 0.35;
   g.add(engine);
@@ -177,7 +177,7 @@ function buildWormholeRing(g) {
   const meshes = [];
   const ring = new THREE.Mesh(
     new THREE.TorusGeometry(1.5, 0.15, 8, 32),
-    mat(0x8800ff, 0x8800ff, 0.6)
+    mat(0x8800ff, 0x8800ff, 0.1)
   );
   ring.position.y = 1.5;
   ring.rotation.x = Math.PI / 6;
@@ -189,7 +189,7 @@ function buildWormholeRing(g) {
     new THREE.MeshStandardMaterial({
       color: 0x6600cc,
       emissive: 0x6600cc,
-      emissiveIntensity: 0.4,
+      emissiveIntensity: 0.1,
       transparent: true,
       opacity: 0.3,
       side: THREE.DoubleSide
@@ -213,7 +213,7 @@ function buildEnergyCollector(g) {
   for (let i = 0; i < 3; i++) {
     const panel = new THREE.Mesh(
       new THREE.BoxGeometry(1.5, 0.05, 0.8),
-      mat(0x2244aa, 0x1122aa, 0.3)
+      mat(0x2244aa, 0x1122aa, 0.1)
     );
     panel.position.y = 2.5;
     panel.rotation.y = (i * Math.PI * 2) / 3;
@@ -233,12 +233,12 @@ function buildLabEquipment(g) {
   g.add(console_box);
   meshes.push(console_box);
   // Screen
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.4), mat(0x44aaff, 0x44aaff, 0.5));
+  const screen = new THREE.Mesh(new THREE.PlaneGeometry(0.6, 0.4), mat(0x44aaff, 0x44aaff, 0.1));
   screen.position.set(0, 0.9, 0.21);
   g.add(screen);
   meshes.push(screen);
   // Floating drone
-  const drone = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), mat(0xcccccc, 0x44aaff, 0.3));
+  const drone = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), mat(0xcccccc, 0x44aaff, 0.1));
   drone.position.set(0.5, 1.5, 0.3);
   g.add(drone);
   meshes.push(drone);
@@ -258,7 +258,7 @@ function buildBlackHoleCore(g) {
   // Accretion disc
   const disc = new THREE.Mesh(
     new THREE.TorusGeometry(1.5, 0.2, 6, 32),
-    mat(0xff6600, 0xff4400, 0.6)
+    mat(0xff6600, 0xff4400, 0.1)
   );
   disc.position.y = 1.5;
   disc.rotation.x = Math.PI / 3;
@@ -272,7 +272,7 @@ function buildStationReactor(g) {
   // Core cylinder
   const core = new THREE.Mesh(
     new THREE.CylinderGeometry(0.6, 0.6, 3, 16),
-    mat(0x446688, 0x2244aa, 0.2)
+    mat(0x446688, 0x2244aa, 0.1)
   );
   core.position.y = 1.5;
   g.add(core);
@@ -280,7 +280,7 @@ function buildStationReactor(g) {
   // Top ring
   const ring = new THREE.Mesh(
     new THREE.TorusGeometry(0.9, 0.1, 8, 24),
-    mat(0x88aacc, 0x44aaff, 0.4)
+    mat(0x88aacc, 0x44aaff, 0.1)
   );
   ring.position.y = 2.8;
   g.add(ring);
@@ -291,7 +291,7 @@ function buildStationReactor(g) {
   g.add(ring2);
   meshes.push(ring2);
   // Glow sphere at center
-  const glow = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 12), mat(0x44ddff, 0x44ddff, 0.8));
+  const glow = new THREE.Mesh(new THREE.SphereGeometry(0.4, 12, 12), mat(0x44ddff, 0x44ddff, 0.1));
   glow.position.y = 1.5;
   g.add(glow);
   meshes.push(glow);
@@ -316,7 +316,7 @@ function buildDockingClamp(g) {
   g.add(lowerArm);
   meshes.push(lowerArm);
   // Clamp tip indicator light
-  const light = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), mat(0x44ff44, 0x44ff44, 0.6));
+  const light = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), mat(0x44ff44, 0x44ff44, 0.1));
   light.position.set(1.2, 1.8, 0);
   g.add(light);
   meshes.push(light);
@@ -336,14 +336,14 @@ function buildLaserEmitter(g) {
   g.add(column);
   meshes.push(column);
   // Emitter head
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), mat(0xff2222, 0xff2222, 0.6));
+  const head = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), mat(0xff2222, 0xff2222, 0.1));
   head.position.y = 1.5;
   g.add(head);
   meshes.push(head);
   // Emitter ring
   const ring = new THREE.Mesh(
     new THREE.TorusGeometry(0.18, 0.03, 6, 16),
-    mat(0x666688, 0xff2222, 0.2)
+    mat(0x666688, 0xff2222, 0.1)
   );
   ring.position.y = 1.35;
   g.add(ring);
@@ -359,7 +359,7 @@ function buildGravityVortex(g) {
     new THREE.MeshStandardMaterial({
       color: 0x4488ff,
       emissive: 0x4488ff,
-      emissiveIntensity: 0.5,
+      emissiveIntensity: 0.1,
       transparent: true,
       opacity: 0.25,
       side: THREE.DoubleSide
@@ -372,7 +372,7 @@ function buildGravityVortex(g) {
   // Inner glowing ring
   const innerRing = new THREE.Mesh(
     new THREE.TorusGeometry(1.2, 0.08, 8, 32),
-    mat(0x66aaff, 0x66aaff, 0.7)
+    mat(0x66aaff, 0x66aaff, 0.1)
   );
   innerRing.rotation.x = Math.PI / 2;
   innerRing.position.y = 0.05;
@@ -381,14 +381,14 @@ function buildGravityVortex(g) {
   // Outer glowing ring
   const outerRing = new THREE.Mesh(
     new THREE.TorusGeometry(2.2, 0.06, 8, 48),
-    mat(0x4488ff, 0x4488ff, 0.5)
+    mat(0x4488ff, 0x4488ff, 0.1)
   );
   outerRing.rotation.x = Math.PI / 2;
   outerRing.position.y = 0.03;
   g.add(outerRing);
   meshes.push(outerRing);
   // Core glow sphere
-  const core = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), mat(0xaaddff, 0xaaddff, 0.9));
+  const core = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), mat(0xaaddff, 0xaaddff, 0.1));
   core.position.y = 0.3;
   g.add(core);
   meshes.push(core);
@@ -399,7 +399,7 @@ function buildGenericProp(g, config) {
   const meshes = [];
   const prop = new THREE.Mesh(
     new THREE.CylinderGeometry(0.3, 0.3, 1.5, 8),
-    mat(config.color || 0x888888, config.color || 0x888888, 0.2)
+    mat(config.color || 0x888888, config.color || 0x888888, 0.1)
   );
   prop.position.y = 0.75;
   g.add(prop);

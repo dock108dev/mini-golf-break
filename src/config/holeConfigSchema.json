@@ -74,6 +74,11 @@
     "cameraHint": {
       "$ref": "#/$defs/cameraHint",
       "description": "Camera position and look-at overrides"
+    },
+    "physicsSubsteps": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Physics substeps per frame (default 4; use 8 for holes with moving obstacles)"
     }
   },
   "$defs": {
@@ -131,11 +136,11 @@
     },
     "cameraHint": {
       "type": "object",
-      "required": ["offset", "lookAt"],
+      "required": ["position", "target"],
       "additionalProperties": false,
       "properties": {
-        "offset": { "$ref": "#/$defs/vector3" },
-        "lookAt": { "$ref": "#/$defs/vector3" }
+        "position": { "$ref": "#/$defs/vector3" },
+        "target": { "$ref": "#/$defs/vector3" }
       }
     },
     "hazard": {
@@ -279,19 +284,20 @@
         "openDuration": { "type": "number", "exclusiveMinimum": 0 },
         "closedDuration": { "type": "number", "exclusiveMinimum": 0 },
         "phase": { "type": "number" },
+        "gracePeriod": { "type": "number", "minimum": 0 },
         "color": { "type": "integer" },
         "baseElevation": { "type": "number" }
       }
     },
     "boost_strip": {
       "type": "object",
-      "required": ["type", "position", "direction", "force", "size"],
+      "required": ["type", "position", "boost_direction", "boost_magnitude", "size"],
       "additionalProperties": false,
       "properties": {
         "type": { "const": "boost_strip" },
         "position": { "$ref": "#/$defs/vector3" },
-        "direction": { "$ref": "#/$defs/vector3" },
-        "force": { "type": "number" },
+        "boost_direction": { "$ref": "#/$defs/vector3" },
+        "boost_magnitude": { "type": "number", "exclusiveMinimum": 0 },
         "size": { "$ref": "#/$defs/sizeWidthLength" },
         "color": { "type": "integer" }
       }
@@ -310,13 +316,13 @@
     },
     "low_gravity_zone": {
       "type": "object",
-      "required": ["type", "position", "radius", "gravityMultiplier"],
+      "required": ["type", "position", "radius"],
       "additionalProperties": false,
       "properties": {
         "type": { "const": "low_gravity_zone" },
         "position": { "$ref": "#/$defs/vector3" },
         "radius": { "type": "number", "exclusiveMinimum": 0 },
-        "gravityMultiplier": { "type": "number", "minimum": 0, "maximum": 1 },
+        "gravity_fraction": { "type": "number", "exclusiveMinimum": 0, "maximum": 1 },
         "color": { "type": "integer" }
       }
     },
@@ -334,14 +340,15 @@
     },
     "portal_gate": {
       "type": "object",
-      "required": ["type", "entryPosition", "exitPosition"],
+      "required": ["type"],
       "additionalProperties": false,
       "properties": {
         "type": { "const": "portal_gate" },
         "entryPosition": { "$ref": "#/$defs/vector3" },
         "exitPosition": { "$ref": "#/$defs/vector3" },
         "radius": { "type": "number", "exclusiveMinimum": 0 },
-        "color": { "type": "integer" }
+        "color": { "type": "integer" },
+        "exitColor": { "type": "integer" }
       }
     },
     "bank_wall": {
@@ -371,7 +378,7 @@
     },
     "split_route": {
       "type": "object",
-      "required": ["type", "walls", "height"],
+      "required": ["type", "walls"],
       "additionalProperties": false,
       "properties": {
         "type": { "const": "split_route" },

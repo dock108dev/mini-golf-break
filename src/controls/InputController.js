@@ -35,6 +35,26 @@ export class InputController {
     this.touchStartTime = 0;
     this.touchVelocity = new THREE.Vector2();
     this.lastTouchPosition = new THREE.Vector2();
+    this._twoFingerStartTime = undefined;
+
+    // Pull-back drag tracking (screen-pixel based power)
+    this._dragStartScreenX = 0;
+    this._dragStartScreenY = 0;
+    this._DRAG_SCALE_PX = 120;
+
+    // Trajectory preview dots
+    this._trajectoryDots = [];
+
+    // Wall-reflection secondary line
+    this._wallReflectionLine = null;
+
+    // Power-bar oscillation mode
+    this.powerBarMode = false;
+    this._powerBarPhase = 0;
+    this.powerBarValue = 0;
+
+    // Exposed sleep speed limit (matches PhysicsConstants.ball.sleepSpeedLimit)
+    this.sleepSpeedLimit = 0.1;
 
     // Keyboard aiming state
     this.isKeyboardAiming = false;
@@ -174,6 +194,8 @@ export class InputController {
 
     this.isPointerDown = true;
     this.isDragging = false;
+    this._dragStartScreenX = event.clientX;
+    this._dragStartScreenY = event.clientY;
     this.pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
     this.pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
     this.raycaster.setFromCamera(this.pointer, this.camera);
@@ -231,8 +253,10 @@ export class InputController {
 
     if (intersection) {
       this.hitDirection = new THREE.Vector3().subVectors(ballPosition, intersection).normalize();
-      const dragDistance = ballPosition.distanceTo(intersection);
-      this.hitPower = Math.min(dragDistance / this.maxDragDistance, 1.0);
+      const dx = event.clientX - this._dragStartScreenX;
+      const dy = event.clientY - this._dragStartScreenY;
+      const screenDist = Math.sqrt(dx * dx + dy * dy);
+      this.hitPower = Math.min(screenDist / this._DRAG_SCALE_PX, 1.0);
       this.updatePowerIndicator(this.hitPower);
       this.updateAimLine(ballPosition, this.hitDirection, this.hitPower);
     }
@@ -316,6 +340,8 @@ export class InputController {
       const dx = event.touches[0].clientX - event.touches[1].clientX;
       const dy = event.touches[0].clientY - event.touches[1].clientY;
       this.pinchDistance = Math.sqrt(dx * dx + dy * dy);
+      this._twoFingerStartTime = performance.now();
+      return;
     }
 
     if (event.touches.length === 1) {
@@ -343,12 +369,22 @@ export class InputController {
   }
 
   onTouchEnd(event) {
+    // Two-finger tap: if two fingers landed and all are now up within 200 ms, trigger pause
+    if (this.isMultiTouch && this._twoFingerStartTime !== undefined && event.touches.length === 0) {
+      const elapsed = performance.now() - this._twoFingerStartTime;
+      this._twoFingerStartTime = undefined;
+      this.isMultiTouch = false;
+      if (elapsed < 200 && typeof this.game.pauseGame === 'function') {
+        this.game.pauseGame();
+        event.preventDefault();
+        return;
+      }
+    }
+
     if (this.isPointerDown) {
       this.onMouseUp({ button: 0, preventDefault: () => event.preventDefault() });
     }
   }
-
-  // --- Keyboard aiming ---
 
   onKeyDown(event) {
     const key = event.key;
@@ -536,17 +572,37 @@ export class InputController {
     this.stopKeyboardUpdateLoop();
   }
 
-  /** Remove and dispose the direction/aim line */
+  /** Remove and dispose the direction/aim line, trajectory dots, and wall reflection */
   removeDirectionLine() {
-    if (!this.directionLine) {
+    if (this.directionLine) {
+      if (this.game.scene) {
+        this.game.scene.remove(this.directionLine);
+      }
+      this.directionLine.geometry?.dispose();
+      this.directionLine.material?.dispose();
+      this.directionLine = null;
+    }
+    this._clearTrajectoryDots();
+    this._removeWallReflectionLine();
+  }
+
+  _clearTrajectoryDots() {
+    this._trajectoryDots.forEach(dot => {
+      this.game.scene?.remove(dot);
+      dot.geometry?.dispose?.();
+      dot.material?.dispose?.();
+    });
+    this._trajectoryDots = [];
+  }
+
+  _removeWallReflectionLine() {
+    if (!this._wallReflectionLine) {
       return;
     }
-    if (this.game.scene) {
-      this.game.scene.remove(this.directionLine);
-    }
-    this.directionLine.geometry?.dispose();
-    this.directionLine.material?.dispose();
-    this.directionLine = null;
+    this.game.scene?.remove(this._wallReflectionLine);
+    this._wallReflectionLine.geometry?.dispose?.();
+    this._wallReflectionLine.material?.dispose?.();
+    this._wallReflectionLine = null;
   }
 
   updatePowerIndicator(power) {
@@ -599,10 +655,114 @@ export class InputController {
     this.directionLine = new THREE.Line(lineGeometry, lineMaterial);
     this.directionLine.position.y += 0.02;
     this.game.scene.add(this.directionLine);
+
+    this._updateTrajectoryDots(ballPosition, direction, power);
+    this._updateWallReflectionLine(ballPosition, direction, lineLength);
+  }
+
+  _updateTrajectoryDots(ballPos, dir, power) {
+    this._clearTrajectoryDots();
+    if (!this.game.scene) {
+      return;
+    }
+
+    const DOT_COUNT = 12;
+    const previewSpeed = power * 10;
+    const stepDt = 0.12;
+    const damping = 0.99;
+
+    let px = ballPos.x || 0;
+    const py = ballPos.y || 0;
+    let pz = ballPos.z || 0;
+    let vx = (dir.x || 0) * previewSpeed;
+    let vz = (dir.z || 0) * previewSpeed;
+
+    for (let i = 0; i < DOT_COUNT; i++) {
+      px += vx * stepDt;
+      pz += vz * stepDt;
+      vx *= damping;
+      vz *= damping;
+
+      const t = i / (DOT_COUNT - 1);
+      const opacity = 1.0 - t * 0.9;
+      const scale = 1.0 - t * 0.6;
+
+      const geo = new THREE.SphereGeometry(0.08, 6, 6);
+      const mat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity });
+      const dot = new THREE.Mesh(geo, mat);
+      dot.position.set(px, py + 0.05, pz);
+      dot.scale.setScalar(scale);
+      this.game.scene.add(dot);
+      this._trajectoryDots.push(dot);
+    }
+  }
+
+  _updateWallReflectionLine(ballPos, dir, lineLength) {
+    this._removeWallReflectionLine();
+
+    const world = this.game.physicsManager?.world;
+    if (typeof world?.raycastClosest !== 'function') {
+      return;
+    }
+
+    const aimLen = lineLength * 2;
+    const from = { x: ballPos.x || 0, y: (ballPos.y || 0) + 0.1, z: ballPos.z || 0 };
+    const to = {
+      x: (ballPos.x || 0) + (dir.x || 0) * aimLen,
+      y: (ballPos.y || 0) + 0.1,
+      z: (ballPos.z || 0) + (dir.z || 0) * aimLen
+    };
+    const result = {
+      hasHit: false,
+      hitPointWorld: { x: 0, y: 0, z: 0 },
+      hitNormalWorld: { x: 0, y: 0, z: 0 }
+    };
+
+    const hit = world.raycastClosest(from, to, { skipBackfaces: true }, result);
+    if (!hit && !result.hasHit) {
+      return;
+    }
+
+    const hpx = result.hitPointWorld.x;
+    const hpy = (ballPos.y || 0) + 0.02;
+    const hpz = result.hitPointWorld.z;
+
+    const nx = result.hitNormalWorld.x;
+    const nz = result.hitNormalWorld.z;
+    const nLen = Math.sqrt(nx * nx + nz * nz) || 1;
+    const nnx = nx / nLen;
+    const nnz = nz / nLen;
+    const dot2 = (dir.x || 0) * nnx + (dir.z || 0) * nnz;
+    const rx = (dir.x || 0) - 2 * dot2 * nnx;
+    const rz = (dir.z || 0) - 2 * dot2 * nnz;
+
+    const reflectLen = lineLength * 0.7;
+    const hitPt = new THREE.Vector3(hpx, hpy, hpz);
+    const reflectEnd = new THREE.Vector3(hpx + rx * reflectLen, hpy, hpz + rz * reflectLen);
+
+    const geo = new THREE.BufferGeometry().setFromPoints([hitPt, reflectEnd]);
+    const mat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.4 });
+    this._wallReflectionLine = new THREE.Line(geo, mat);
+    this.game.scene.add(this._wallReflectionLine);
   }
 
   triggerHapticFeedback(intensity) {
     this.deviceCapabilities.triggerHapticFeedback(intensity);
+  }
+
+  /** Called each frame by the game loop. Drives power-bar oscillation. */
+  update(dt) {
+    if (!this.powerBarMode) {
+      return;
+    }
+    const ball = this.game.ballManager?.ball;
+    if (ball && !ball.isStopped()) {
+      return;
+    }
+
+    this._powerBarPhase += 2 * Math.PI * 0.7 * dt;
+    this.powerBarValue = (1 - Math.cos(this._powerBarPhase)) / 2;
+    this.updatePowerIndicator(this.powerBarValue);
   }
 
   cleanup() {
@@ -628,6 +788,8 @@ export class InputController {
       this.eventSubscriptions = [];
     }
     this.resetKeyboardState();
+    this._clearTrajectoryDots();
+    this._removeWallReflectionLine();
     this.removeDirectionLine();
     this.resetPowerIndicator();
     this.raycaster = null;

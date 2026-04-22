@@ -373,6 +373,9 @@ function makeGame(scene, world, course) {
       enableInput: jest.fn(),
       disableInput: jest.fn()
     },
+    holeFlyoverManager: {
+      startFlyover: jest.fn()
+    },
     holeCompletionManager: {
       resetGracePeriod: jest.fn()
     },
@@ -484,10 +487,10 @@ describe('Hole Transition Flow — Integration Tests', () => {
       expect(game.scoringSystem.resetCurrentStrokes).toHaveBeenCalled();
     });
 
-    it('input is re-enabled after transition', async () => {
+    it('flyover is started after transition (input re-enabled by HoleFlyoverManager)', async () => {
       await transitionManager.transitionToNextHole();
 
-      expect(game.inputController.enableInput).toHaveBeenCalled();
+      expect(game.holeFlyoverManager.startFlyover).toHaveBeenCalled();
     });
 
     it('grace period is reset for hole completion detection', async () => {
@@ -649,6 +652,61 @@ describe('Hole Transition Flow — Integration Tests', () => {
 
       const ballBodiesInWorld = world.bodies.filter(b => ballBodiesSeen.has(b));
       expect(ballBodiesInWorld.length).toBeLessThanOrEqual(1);
+    });
+  });
+
+  // =========================================================================
+  // Scenario 5: Physics velocity reset validation (holes 1→2→3)
+  // =========================================================================
+  describe('Physics velocity reset validation (holes 1→2→3)', () => {
+    it('resetWorld is called each transition and spawned hole bodies have zero velocity', async () => {
+      // Simulate residual velocity on hole 1 bodies from gameplay
+      course.currentHoleEntity.bodies.forEach(body => {
+        body.velocity.x = 4.0;
+        body.velocity.z = 2.0;
+      });
+
+      // Transition: hole 1 → hole 2
+      await transitionManager.transitionToNextHole();
+
+      // Physics world must have been reset during the transition
+      expect(game.physicsManager.resetWorld).toHaveBeenCalledTimes(1);
+
+      // New hole entity bodies must be fresh with zero velocity
+      const hole2Entity = course.currentHoleEntity;
+      expect(hole2Entity).toBeTruthy();
+      expect(hole2Entity.bodies.length).toBeGreaterThan(0);
+      hole2Entity.bodies.forEach(body => {
+        const speedSq =
+          body.velocity.x * body.velocity.x +
+          body.velocity.y * body.velocity.y +
+          body.velocity.z * body.velocity.z;
+        expect(speedSq).toBeLessThan(0.001);
+      });
+
+      // Simulate residual velocity on hole 2 bodies
+      hole2Entity.bodies.forEach(body => {
+        body.velocity.x = 1.5;
+        body.velocity.y = 0.5;
+      });
+
+      // Transition: hole 2 → hole 3
+      game.stateManager.state.currentHoleNumber = 2;
+      await transitionManager.transitionToNextHole();
+
+      expect(game.physicsManager.resetWorld).toHaveBeenCalledTimes(2);
+
+      // Hole 3 bodies must also spawn with zero velocity
+      const hole3Entity = course.currentHoleEntity;
+      expect(hole3Entity).toBeTruthy();
+      expect(hole3Entity.bodies.length).toBeGreaterThan(0);
+      hole3Entity.bodies.forEach(body => {
+        const speedSq =
+          body.velocity.x * body.velocity.x +
+          body.velocity.y * body.velocity.y +
+          body.velocity.z * body.velocity.z;
+        expect(speedSq).toBeLessThan(0.001);
+      });
     });
   });
 });

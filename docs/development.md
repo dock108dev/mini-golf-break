@@ -180,6 +180,5 @@ Calibrated on 2026-04-12.
 
 ## Known Limitations
 
-- No CI/CD pipeline (GitHub Actions not configured)
-- Capacitor dependencies exist in package.json but are unused (no native app build)
-- UAT tests require WebGL support; may need `--use-gl=swiftshader` on headless CI
+- Capacitor dependencies exist in package.json but the iOS native app build is not actively maintained
+- UAT tests require WebGL support; CI uses `--use-gl=swiftshader` (configured in `.github/workflows/ci.yml`)

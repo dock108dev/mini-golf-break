@@ -305,7 +305,7 @@ describe('Orbital Drift configs match design spec', () => {
     const lgz = configs[6].mechanics.find(m => m.type === 'low_gravity_zone');
     expect(lgz).toBeDefined();
     expect(lgz.radius).toBeGreaterThanOrEqual(3);
-    expect(lgz.gravityMultiplier).toBeLessThan(0.5);
+    expect(lgz.gravity_fraction).toBeLessThan(0.5);
     const startZ = configs[6].startPosition[2];
     const holeZ = configs[6].holePosition[2];
     const midZ = (startZ + holeZ) / 2;
@@ -740,10 +740,11 @@ describe('Orbital Drift configs match design spec', () => {
     expect(dist).toBe(22);
   });
 
-  it('H17 boost_strips have emissive color for glow rendering', () => {
+  it('H17 boost_strips have boost_magnitude and boost_direction defined', () => {
     const boosts = configs[16].mechanics.filter(m => m.type === 'boost_strip');
     for (const b of boosts) {
-      expect(b.color).toBeDefined();
+      expect(b.boost_magnitude).toBeGreaterThan(0);
+      expect(b.boost_direction).toBeDefined();
     }
   });
 
@@ -789,7 +790,7 @@ describe('Orbital Drift configs match design spec', () => {
     const boost = configs[17].mechanics.find(m => m.type === 'boost_strip');
     expect(boost).toBeDefined();
     expect(boost.position[0]).toBeGreaterThan(0);
-    expect(boost.force).toBeGreaterThanOrEqual(8);
+    expect(boost.boost_magnitude).toBeGreaterThanOrEqual(8);
   });
 
   it('H18 gravity_funnel has force >= 4.0 and is in Stage 2 corridor', () => {
@@ -835,9 +836,9 @@ describe('Orbital Drift configs match design spec', () => {
   it('H18 has camera preset showing all three stages from above', () => {
     const hint = configs[17].cameraHint;
     expect(hint).toBeDefined();
-    expect(hint.offset).toBeDefined();
-    expect(hint.lookAt).toBeDefined();
-    expect(hint.offset[1]).toBeGreaterThanOrEqual(25);
+    expect(hint.position).toBeDefined();
+    expect(hint.target).toBeDefined();
+    expect(hint.position[1]).toBeGreaterThanOrEqual(25);
   });
 
   it('H18 front nine par totals 24', () => {
@@ -865,5 +866,154 @@ describe('Orbital Drift configs match design spec', () => {
     const warnings = issues.filter(i => i.level === 'warning');
     expect(errors).toHaveLength(0);
     expect(warnings).toHaveLength(0);
+  });
+
+  // --- ISSUE-015: back nine acceptance criteria ---
+
+  describe('back nine (holes 10-18) acceptance criteria', () => {
+    it('back nine holes (indexes 9-17) are present with non-empty descriptions', () => {
+      const backNine = configs.filter(c => c.index >= 9 && c.index <= 17);
+      expect(backNine).toHaveLength(9);
+      for (const hole of backNine) {
+        expect(typeof hole.description).toBe('string');
+        expect(hole.description.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('back nine total par is at least 33', () => {
+      const backNine = configs.filter(c => c.index >= 9 && c.index <= 17);
+      const total = backNine.reduce((sum, c) => sum + c.par, 0);
+      expect(total).toBeGreaterThanOrEqual(33);
+    });
+
+    it('hole 18 (index 17) has par 5 and at least 3 distinct mechanic types', () => {
+      const h18 = configs[17];
+      expect(h18.par).toBe(5);
+      const uniqueTypes = new Set(h18.mechanics.map(m => m.type));
+      expect(uniqueTypes.size).toBeGreaterThanOrEqual(3);
+    });
+
+    it('no two consecutive holes share the same primary mechanic type', () => {
+      for (let i = 0; i < configs.length - 1; i++) {
+        const primaryA = configs[i].mechanics[0]?.type;
+        const primaryB = configs[i + 1].mechanics[0]?.type;
+        if (primaryA && primaryB) {
+          expect(primaryA).not.toBe(
+            primaryB,
+            `Holes ${configs[i].index} and ${configs[i + 1].index} both start with '${primaryA}'`
+          );
+        }
+      }
+    });
+
+    it.each([
+      [10, 9, 'Laser Grid'],
+      [12, 11, 'Gravity Well'],
+      [14, 13, 'Reactor Bypass'],
+      [15, 14, 'Wormhole Relay'],
+      [16, 15, 'Eclipse Steps']
+    ])('H%i (%s) passes holeValidator with 0 errors and 0 warnings', (_holeNum, idx, _name) => {
+      const { validateHoleConfig } = require('../../utils/holeValidator');
+      const issues = validateHoleConfig(configs[idx]);
+      const errors = issues.filter(i => i.level === 'error');
+      const warnings = issues.filter(i => i.level === 'warning');
+      expect(errors).toHaveLength(0);
+      expect(warnings).toHaveLength(0);
+    });
+  });
+
+  // --- physicsSubsteps (ISSUE-009) ---
+
+  describe('physicsSubsteps on obstacle holes', () => {
+    const OBSTACLE_TYPES = new Set(['moving_sweeper', 'timed_gate']);
+
+    it('every hole with moving_sweeper or timed_gate has physicsSubsteps: 8', () => {
+      const obstacleHoles = configs.filter(c =>
+        (c.mechanics || []).some(m => OBSTACLE_TYPES.has(m.type))
+      );
+
+      expect(obstacleHoles.length).toBeGreaterThan(0); // sanity: we have obstacle holes
+
+      for (const hole of obstacleHoles) {
+        expect(hole.physicsSubsteps).toBe(8);
+      }
+    });
+
+    it('holeValidator warns for obstacle hole missing physicsSubsteps', () => {
+      const { validateHoleConfig } = require('../../utils/holeValidator');
+      const badConfig = {
+        index: 99,
+        description: '99. Test Hole',
+        par: 2,
+        boundaryShape: [
+          [-2, -6],
+          [-2, 6],
+          [2, 6],
+          [2, -6],
+          [-2, -6]
+        ],
+        startPosition: [0, 0, 5],
+        holePosition: [0, 0, -5],
+        mechanics: [
+          {
+            type: 'moving_sweeper',
+            pivot: [0, 0, 0],
+            armLength: 3,
+            speed: 1.0,
+            size: { width: 3, height: 0.4, depth: 0.3 }
+          }
+        ]
+        // physicsSubsteps intentionally omitted
+      };
+
+      const issues = validateHoleConfig(badConfig);
+      const warnings = issues.filter(i => i.level === 'warning');
+      expect(warnings.some(w => w.message.includes('physicsSubsteps'))).toBe(true);
+    });
+
+    it('holeValidator produces no physicsSubsteps warning when set to 8', () => {
+      const { validateHoleConfig } = require('../../utils/holeValidator');
+      const goodConfig = {
+        index: 99,
+        description: '99. Test Hole',
+        par: 2,
+        physicsSubsteps: 8,
+        boundaryShape: [
+          [-2, -6],
+          [-2, 6],
+          [2, 6],
+          [2, -6],
+          [-2, -6]
+        ],
+        startPosition: [0, 0, 5],
+        holePosition: [0, 0, -5],
+        mechanics: [
+          {
+            type: 'moving_sweeper',
+            pivot: [0, 0, 0],
+            armLength: 3,
+            speed: 1.0,
+            size: { width: 3, height: 0.4, depth: 0.3 }
+          }
+        ]
+      };
+
+      const issues = validateHoleConfig(goodConfig);
+      const substepWarnings = issues.filter(
+        i => i.level === 'warning' && i.message.includes('physicsSubsteps')
+      );
+      expect(substepWarnings).toHaveLength(0);
+    });
+
+    it('physicsSubsteps field is accepted by schema (integer >= 1)', () => {
+      // Verify the schema allows physicsSubsteps without errors in configs that have it
+      for (const hole of configs) {
+        if (hole.physicsSubsteps !== undefined) {
+          expect(typeof hole.physicsSubsteps).toBe('number');
+          expect(hole.physicsSubsteps).toBeGreaterThanOrEqual(1);
+          expect(Number.isInteger(hole.physicsSubsteps)).toBe(true);
+        }
+      }
+    });
   });
 });

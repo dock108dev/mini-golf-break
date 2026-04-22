@@ -107,17 +107,17 @@ describe('Force field overlap and stacking', () => {
   });
 
   describe('BoostStrip + LowGravityZone overlap', () => {
-    it('ball receives both forces when in overlapping zones', () => {
+    it('ball receives velocity impulse from boost and applyForce from lowGrav when in overlapping zones', () => {
       const boostConfig = {
         position: new THREE.Vector3(0, 0, 0),
-        direction: new THREE.Vector3(1, 0, 0),
-        force: 10,
+        boost_direction: new THREE.Vector3(1, 0, 0),
+        boost_magnitude: 10,
         size: { width: 4, length: 4 }
       };
       const lowGravConfig = {
         position: new THREE.Vector3(0, 0, 0),
         radius: 5,
-        gravityMultiplier: 0.3
+        gravity_fraction: 0.3
       };
 
       const boost = new BoostStrip(world, group, boostConfig, SURFACE_HEIGHT);
@@ -129,61 +129,60 @@ describe('Force field overlap and stacking', () => {
       boost.update(0.016, ball);
       lowGrav.update(0.016, ball);
 
-      // Ball should have received exactly 2 force applications (one from each)
-      expect(ball.applyForce).toHaveBeenCalledTimes(2);
+      // BoostStrip applies velocity impulse (x-direction)
+      expect(ball.velocity.x).toBeCloseTo(10);
+      expect(ball.velocity.z).toBeCloseTo(0);
 
-      // First call: BoostStrip directional force (x-direction)
-      const boostForce = ball.applyForce.mock.calls[0][0];
-      expect(boostForce.x).toBeCloseTo(10);
-      expect(boostForce.z).toBeCloseTo(0);
-
-      // Second call: LowGravityZone upward counter-gravity
-      const gravForce = ball.applyForce.mock.calls[1][0];
+      // LowGravityZone applies upward counter-gravity via applyForce
+      expect(ball.applyForce).toHaveBeenCalledTimes(1);
+      const gravForce = ball.applyForce.mock.calls[0][0];
       expect(gravForce.x).toBe(0);
       expect(gravForce.y).toBeGreaterThan(0);
       expect(gravForce.z).toBe(0);
     });
 
-    it('forces are independent — each mechanic applies its own force unchanged', () => {
+    it('impulse is independent — boost velocity delta is identical with or without LowGravityZone', () => {
       const boostConfig = {
         position: new THREE.Vector3(0, 0, 0),
-        direction: new THREE.Vector3(0, 0, -1),
-        force: 15,
+        boost_direction: new THREE.Vector3(0, 0, -1),
+        boost_magnitude: 15,
         size: { width: 6, length: 6 }
       };
       const lowGravConfig = {
         position: new THREE.Vector3(0, 0, 0),
         radius: 5,
-        gravityMultiplier: 0.5
+        gravity_fraction: 0.5
       };
 
-      const boost = new BoostStrip(world, group, boostConfig, SURFACE_HEIGHT);
+      // Separate boost instances so cooldowns don't interfere
+      const boostOverlap = new BoostStrip(world, group, boostConfig, SURFACE_HEIGHT);
+      const boostSolo = new BoostStrip(world, group, boostConfig, SURFACE_HEIGHT);
       const lowGrav = new LowGravityZone(world, group, lowGravConfig, SURFACE_HEIGHT);
 
       // Ball in overlap zone
-      const ballOverlap = makeMockBall(boost.triggerBody.position.x, boost.triggerBody.position.z);
-      boost.update(0.016, ballOverlap);
+      const ballOverlap = makeMockBall(
+        boostOverlap.triggerBody.position.x,
+        boostOverlap.triggerBody.position.z
+      );
+      boostOverlap.update(0.016, ballOverlap);
       lowGrav.update(0.016, ballOverlap);
 
-      // Ball in only boost zone (reference for boost force)
+      // Ball in only boost zone (reference for boost impulse — fresh instance, no cooldown)
       const ballBoostOnly = makeMockBall(
-        boost.triggerBody.position.x,
-        boost.triggerBody.position.z
+        boostSolo.triggerBody.position.x,
+        boostSolo.triggerBody.position.z
       );
-      boost.update(0.016, ballBoostOnly);
+      boostSolo.update(0.016, ballBoostOnly);
 
       // Ball in only lowGrav zone (reference for gravity force)
       const ballGravOnly = makeMockBall(1, 0);
       lowGrav.update(0.016, ballGravOnly);
 
-      // Boost force should be identical whether or not LowGravityZone is also active
-      const overlapBoostForce = ballOverlap.applyForce.mock.calls[0][0];
-      const soloBoostForce = ballBoostOnly.applyForce.mock.calls[0][0];
-      expect(overlapBoostForce.x).toBeCloseTo(soloBoostForce.x);
-      expect(overlapBoostForce.z).toBeCloseTo(soloBoostForce.z);
+      // Boost velocity delta should be identical whether or not LowGravityZone is also active
+      expect(ballOverlap.velocity.z).toBeCloseTo(ballBoostOnly.velocity.z);
 
       // Gravity force should be identical whether or not BoostStrip is also active
-      const overlapGravForce = ballOverlap.applyForce.mock.calls[1][0];
+      const overlapGravForce = ballOverlap.applyForce.mock.calls[0][0];
       const soloGravForce = ballGravOnly.applyForce.mock.calls[0][0];
       expect(overlapGravForce.y).toBeCloseTo(soloGravForce.y);
     });
@@ -222,11 +221,11 @@ describe('Force field overlap and stacking', () => {
   });
 
   describe('Three overlapping force fields', () => {
-    it('all three forces are applied when ball is in all zones', () => {
+    it('all three effects are applied when ball is in all zones', () => {
       const boostConfig = {
         position: new THREE.Vector3(0, 0, 0),
-        direction: new THREE.Vector3(1, 0, 0),
-        force: 5,
+        boost_direction: new THREE.Vector3(1, 0, 0),
+        boost_magnitude: 5,
         size: { width: 6, length: 6 }
       };
       const suctionConfig = {
@@ -237,7 +236,7 @@ describe('Force field overlap and stacking', () => {
       const lowGravConfig = {
         position: new THREE.Vector3(0, 0, 0),
         radius: 5,
-        gravityMultiplier: 0.2
+        gravity_fraction: 0.2
       };
 
       const boost = new BoostStrip(world, group, boostConfig, SURFACE_HEIGHT);
@@ -250,15 +249,15 @@ describe('Force field overlap and stacking', () => {
       suction.update(0.016, ball);
       lowGrav.update(0.016, ball);
 
-      // All three mechanics applied force
-      expect(ball.applyForce).toHaveBeenCalledTimes(3);
+      // Boost: velocity impulse in +x direction
+      expect(ball.velocity.x).toBeCloseTo(5);
 
-      // Boost: horizontal force in x direction
-      expect(ball.applyForce.mock.calls[0][0].x).toBeCloseTo(5);
-      // Suction: radial pull toward center (negative x)
-      expect(ball.applyForce.mock.calls[1][0].x).toBeLessThan(0);
+      // Suction + LowGrav use applyForce
+      expect(ball.applyForce).toHaveBeenCalledTimes(2);
+      // Suction: radial pull toward center (negative x since ball at x=2)
+      expect(ball.applyForce.mock.calls[0][0].x).toBeLessThan(0);
       // LowGrav: upward force
-      expect(ball.applyForce.mock.calls[2][0].y).toBeGreaterThan(0);
+      expect(ball.applyForce.mock.calls[1][0].y).toBeGreaterThan(0);
     });
   });
 });
@@ -276,15 +275,15 @@ describe('Force field transitions', () => {
   });
 
   describe('ball moving between adjacent fields', () => {
-    it('receives exactly one force when in only one zone at a time', () => {
+    it('receives exactly one impulse when in only one zone at a time', () => {
       // Two BoostStrips side by side with no overlap
       const boostA = new BoostStrip(
         world,
         group,
         {
           position: new THREE.Vector3(-5, 0, 0),
-          direction: new THREE.Vector3(1, 0, 0),
-          force: 10,
+          boost_direction: new THREE.Vector3(1, 0, 0),
+          boost_magnitude: 10,
           size: { width: 2, length: 2 }
         },
         SURFACE_HEIGHT
@@ -295,8 +294,8 @@ describe('Force field transitions', () => {
         group,
         {
           position: new THREE.Vector3(5, 0, 0),
-          direction: new THREE.Vector3(0, 0, -1),
-          force: 8,
+          boost_direction: new THREE.Vector3(0, 0, -1),
+          boost_magnitude: 8,
           size: { width: 2, length: 2 }
         },
         SURFACE_HEIGHT
@@ -308,9 +307,9 @@ describe('Force field transitions', () => {
       boostA.update(0.016, ball);
       boostB.update(0.016, ball);
 
-      // Only zone A should apply force
-      expect(ball.applyForce).toHaveBeenCalledTimes(1);
-      expect(ball.applyForce.mock.calls[0][0].x).toBeCloseTo(10);
+      // Only zone A should apply impulse (x-direction)
+      expect(ball.velocity.x).toBeCloseTo(10);
+      expect(ball.velocity.z).toBeCloseTo(0); // zone B did not fire
     });
 
     it('no frame gap when ball transitions between adjacent zones', () => {
@@ -321,7 +320,7 @@ describe('Force field transitions', () => {
         {
           position: new THREE.Vector3(-3, 0, 0),
           radius: 4,
-          gravityMultiplier: 0.3
+          gravity_fraction: 0.3
         },
         SURFACE_HEIGHT
       );
@@ -332,7 +331,7 @@ describe('Force field transitions', () => {
         {
           position: new THREE.Vector3(3, 0, 0),
           radius: 4,
-          gravityMultiplier: 0.5
+          gravity_fraction: 0.5
         },
         SURFACE_HEIGHT
       );
@@ -390,31 +389,32 @@ describe('Force field exit behavior', () => {
   });
 
   describe('BoostStrip exit', () => {
-    it('stops applying force immediately when ball leaves zone', () => {
+    it('stops applying impulse immediately when ball leaves zone', () => {
       const strip = new BoostStrip(
         world,
         group,
         {
           position: new THREE.Vector3(0, 0, 0),
-          direction: new THREE.Vector3(1, 0, 0),
-          force: 10,
+          boost_direction: new THREE.Vector3(1, 0, 0),
+          boost_magnitude: 10,
           size: { width: 2, length: 2 }
         },
         SURFACE_HEIGHT
       );
 
-      // Frame 1: ball inside zone
+      // Frame 1: ball inside zone — impulse fires
       const ball = makeMockBall(strip.triggerBody.position.x, strip.triggerBody.position.z);
       strip.update(0.016, ball);
-      expect(ball.applyForce).toHaveBeenCalledTimes(1);
+      const velocityAfterFirst = ball.velocity.x;
+      expect(velocityAfterFirst).toBeCloseTo(10);
 
       // Frame 2: ball moves outside zone
       ball.position.x = 100;
       ball.position.z = 100;
       strip.update(0.016, ball);
 
-      // No additional force applied — still just the 1 call from frame 1
-      expect(ball.applyForce).toHaveBeenCalledTimes(1);
+      // No additional impulse applied — velocity unchanged
+      expect(ball.velocity.x).toBeCloseTo(velocityAfterFirst);
     });
   });
 
@@ -452,7 +452,7 @@ describe('Force field exit behavior', () => {
         {
           position: new THREE.Vector3(0, 0, 0),
           radius: 3,
-          gravityMultiplier: 0.3
+          gravity_fraction: 0.3
         },
         SURFACE_HEIGHT
       );
@@ -507,7 +507,7 @@ describe('Force field exit behavior', () => {
         {
           position: new THREE.Vector3(0, 0, 0),
           radius: 5,
-          gravityMultiplier: 0.3
+          gravity_fraction: 0.3
         },
         SURFACE_HEIGHT
       );
@@ -563,7 +563,7 @@ describe('Force field visual mesh independence', () => {
       {
         position: new THREE.Vector3(0, 0, 0),
         radius: 5,
-        gravityMultiplier: 0.3
+        gravity_fraction: 0.3
       },
       SURFACE_HEIGHT
     );
@@ -612,7 +612,7 @@ describe('Force field visual mesh independence', () => {
       {
         position: new THREE.Vector3(0, 0, 0),
         radius: 5,
-        gravityMultiplier: 0.3
+        gravity_fraction: 0.3
       },
       SURFACE_HEIGHT
     );

@@ -108,12 +108,9 @@ export function checkHoleEntry(ballBody, holeTriggerBody, thresholds) {
   const dz = ballPosition.z - holePosition.z;
   const distanceFromHoleCenter = Math.sqrt(dx * dx + dz * dz);
 
-  // Log positions being used
   debug.log(
     `[PhysicsUtils.checkHoleEntry] Positions: Ball=(${ballPosition.x.toFixed(2)},${ballPosition.z.toFixed(2)}), Hole=(${holePosition.x.toFixed(2)},${holePosition.z.toFixed(2)})`
   );
-
-  // Log proximity values
   debug.log(
     `[PhysicsUtils.checkHoleEntry] Proximity Check: Distance=${distanceFromHoleCenter.toFixed(3)}, Radius=${holeRadius.toFixed(3)}`
   );
@@ -121,7 +118,6 @@ export function checkHoleEntry(ballBody, holeTriggerBody, thresholds) {
   if (distanceFromHoleCenter <= holeRadius) {
     // --- 2. Speed Check ---
     const ballSpeed = ballVelocity.length();
-    // Log speed values
     debug.log(
       `[PhysicsUtils.checkHoleEntry] Speed Check: Speed=${ballSpeed.toFixed(3)}, MAX_SAFE_SPEED=${thresholds.MAX_SAFE_SPEED.toFixed(3)}`
     );
@@ -133,7 +129,6 @@ export function checkHoleEntry(ballBody, holeTriggerBody, thresholds) {
 
     // --- 3. Lip-Out Check (for faster balls) ---
     const angleDeg = calculateImpactAngle(ballVelocity, holePosition, ballPosition);
-    // Log lip-out check values
     debug.log(
       `[PhysicsUtils.checkHoleEntry] Lip-Out Check: Speed=${ballSpeed.toFixed(3)}, Angle=${angleDeg.toFixed(1)}, SpeedThreshold=${thresholds.LIP_OUT_SPEED_THRESHOLD.toFixed(3)}, AngleThreshold=${thresholds.LIP_OUT_ANGLE_THRESHOLD.toFixed(1)}`
     );

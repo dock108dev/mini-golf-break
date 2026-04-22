@@ -7,6 +7,7 @@ import * as CANNON from 'cannon-es';
 import * as THREE from 'three';
 import { MovingSweeper } from '../../mechanics/MovingSweeper';
 import { getRegisteredTypes } from '../../mechanics/MechanicRegistry';
+import { HAZARD_COLORS } from '../../themes/palette';
 
 // ---------------------------------------------------------------------------
 // Enhance mocks from jest.setup.js for MovingSweeper tests
@@ -25,6 +26,7 @@ beforeAll(() => {
       })
     },
     velocity: { x: 0, y: 0, z: 0, set: jest.fn() },
+    angularVelocity: { x: 0, y: 0, z: 0, set: jest.fn() },
     quaternion: {
       x: 0,
       y: 0,
@@ -151,12 +153,13 @@ describe('MovingSweeper', () => {
       expect(group.add).toHaveBeenCalledTimes(2);
     });
 
-    it('positions the arm mesh at the pivot point initially', () => {
-      const pivotConfig = makeConfig({ pivot: { x: 3, y: 0, z: -5 } });
+    it('positions the arm mesh at the arm center initially (pivot + half-length at phase=0)', () => {
+      const pivotConfig = makeConfig({ pivot: { x: 3, y: 0, z: -5 }, armLength: 4, phase: 0 });
       const sweeper = new MovingSweeper(world, group, pivotConfig, surfaceHeight);
 
-      expect(sweeper.mesh.position.x).toBe(3);
-      expect(sweeper.mesh.position.z).toBe(-5);
+      // At phase 0, arm center is pivot.x + cos(0)*2, pivot.z + sin(0)*2
+      expect(sweeper.mesh.position.x).toBeCloseTo(3 + 2, 5);
+      expect(sweeper.mesh.position.z).toBeCloseTo(-5 + 0, 5);
     });
 
     it('positions the body at the same location as the mesh', () => {
@@ -264,13 +267,20 @@ describe('MovingSweeper', () => {
       expect(sweeper.mesh.position.z).toBeCloseTo(expectedZ, 5);
     });
 
-    it('syncs the physics body position to match the mesh', () => {
-      const sweeper = new MovingSweeper(world, group, config, surfaceHeight);
+    it('body moves to arm-center during update', () => {
+      const pivotConfig = makeConfig({ pivot: { x: 0, y: 0, z: 0 }, armLength: 4, speed: Math.PI });
+      const sweeper = new MovingSweeper(world, group, pivotConfig, surfaceHeight);
 
-      sweeper.update(0.1, null);
+      sweeper.update(0.5, null);
 
-      expect(sweeper.body.position.x).toBe(sweeper.mesh.position.x);
-      expect(sweeper.body.position.z).toBe(sweeper.mesh.position.z);
+      const halfLength = 4 / 2;
+      const angle = Math.PI * 0.5;
+      const expectedX = Math.cos(angle) * halfLength;
+      const expectedZ = Math.sin(angle) * halfLength;
+      expect(sweeper.body.position.x).toBeCloseTo(expectedX, 5);
+      expect(sweeper.body.position.z).toBeCloseTo(expectedZ, 5);
+      // Mesh also moved to arm center
+      expect(sweeper.mesh.position.x).toBeCloseTo(expectedX, 5);
     });
 
     it('updates the mesh rotation to match the current angle', () => {
@@ -345,6 +355,33 @@ describe('MovingSweeper', () => {
 
       expect(sweeper.mesh.position.x).toBeCloseTo(1, 5);
       expect(sweeper.mesh.position.z).toBeCloseTo(0, 5);
+    });
+  });
+
+  // --- Blocker-tier emissive ---
+
+  describe('blocker-tier static emissive', () => {
+    it('applies gray-blue static emissive to arm material', () => {
+      new MovingSweeper(world, group, config, surfaceHeight);
+
+      expect(THREE.MeshStandardMaterial).toHaveBeenCalledWith(
+        expect.objectContaining({
+          emissive: HAZARD_COLORS.blocker,
+          emissiveIntensity: 0.2
+        })
+      );
+    });
+
+    it('emissiveIntensity does not change after multiple update calls', () => {
+      const sweeper = new MovingSweeper(world, group, config, surfaceHeight);
+
+      sweeper.update(0.016, null);
+      const intensity1 = sweeper.mesh.material.emissiveIntensity;
+
+      sweeper.update(0.016, null);
+      const intensity2 = sweeper.mesh.material.emissiveIntensity;
+
+      expect(intensity1).toEqual(intensity2);
     });
   });
 

@@ -169,7 +169,26 @@ jest.mock('three', () => {
     Path: jest.fn(function () {
       return {};
     }),
-    PointLight: jest.fn(() => ({ position: { x: 0, y: 0, z: 0, copy: jest.fn() } }))
+    PointLight: jest.fn(function () {
+      this.position = { x: 0, y: 0, z: 0, set: jest.fn() };
+      this.parent = null;
+    }),
+    SpriteMaterial: jest.fn(function (opts) {
+      this.opacity = opts?.opacity !== undefined ? opts.opacity : 1;
+      this.dispose = jest.fn();
+    }),
+    Sprite: jest.fn(function (material) {
+      this.material = material || { opacity: 1, dispose: jest.fn() };
+      this.position = { x: 0, y: 0, z: 0, set: jest.fn(), copy: jest.fn() };
+      this.scale = { set: jest.fn() };
+      this.parent = null;
+    }),
+    AdditiveBlending: 2,
+    GridHelper: jest.fn(function () {
+      this.geometry = { dispose: jest.fn() };
+      this.material = { dispose: jest.fn() };
+      this.position = { set: jest.fn() };
+    })
   };
 });
 

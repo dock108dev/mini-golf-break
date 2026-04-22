@@ -220,4 +220,33 @@ describe('HeroPropFactory', () => {
       expect(meshes.length).toBe(1);
     });
   });
+
+  describe('emissive intensity budget (≤ 0.15)', () => {
+    const ALL_PROP_TYPES = [
+      'rocket_stand',
+      'moon_rover',
+      'satellite_dish',
+      'asteroid_cluster',
+      'wormhole_ring',
+      'energy_collector',
+      'lab_equipment',
+      'black_hole_core',
+      'station_reactor',
+      'docking_clamp',
+      'laser_emitter',
+      'gravity_vortex'
+    ];
+
+    test.each(ALL_PROP_TYPES)('no material in %s has emissiveIntensity > 0.15', type => {
+      jest.clearAllMocks();
+      createHeroProp(mockGroup, { type });
+
+      const calls = THREE.MeshStandardMaterial.mock.calls;
+      for (const [opts] of calls) {
+        if (opts && opts.emissiveIntensity !== undefined) {
+          expect(opts.emissiveIntensity).toBeLessThanOrEqual(0.15);
+        }
+      }
+    });
+  });
 });

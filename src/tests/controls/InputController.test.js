@@ -86,6 +86,19 @@ jest.mock('three', () => ({
     geometry: { dispose: jest.fn() },
     material: { dispose: jest.fn() }
   })),
+  SphereGeometry: jest.fn(() => ({ dispose: jest.fn() })),
+  MeshBasicMaterial: jest.fn(opts => ({
+    color: opts?.color || 0xffffff,
+    opacity: opts?.opacity !== undefined ? opts.opacity : 1,
+    transparent: opts?.transparent || false,
+    dispose: jest.fn()
+  })),
+  Mesh: jest.fn((geo, mat) => ({
+    geometry: geo,
+    material: mat,
+    position: { x: 0, y: 0, z: 0, set: jest.fn() },
+    scale: { setScalar: jest.fn(), x: 1, y: 1, z: 1 }
+  })),
   Color: jest.fn()
 }));
 
@@ -442,19 +455,14 @@ describe('InputController — aiming, power, and events', () => {
       expect(controller.hitPower).toBe(1.0);
     });
 
-    test('hitPower is proportional for drags within maxDragDistance', () => {
+    test('hitPower is proportional for drags within _DRAG_SCALE_PX (screen-pixel based)', () => {
+      // Set drag start so that a 60px drag → power ≈ 0.5
       controller.isPointerDown = true;
-      const halfMax = controller.maxDragDistance / 2;
-      mockGame.ballManager.ball.mesh.position.clone = jest.fn(() => ({
-        x: 0,
-        y: 0,
-        z: 0,
-        distanceTo: jest.fn(() => halfMax)
-      }));
-      controller.raycaster.ray.intersectPlane = jest.fn(() => ({ x: halfMax, y: 0, z: 0 }));
+      controller._dragStartScreenX = 440;
+      controller._dragStartScreenY = 300;
 
       controller.onMouseMove({
-        clientX: 500,
+        clientX: 500, // 60px from start → 60/120 = 0.5
         clientY: 300,
         preventDefault: jest.fn()
       });
@@ -681,6 +689,60 @@ describe('InputController — aiming, power, and events', () => {
 
       expect(controller.isMultiTouch).toBe(true);
       expect(controller.pinchDistance).toBeGreaterThan(0);
+    });
+
+    test('two-finger tap triggers game.pauseGame within 200 ms', () => {
+      mockGame.pauseGame = jest.fn();
+      const now = performance.now();
+      jest.spyOn(performance, 'now').mockReturnValue(now);
+
+      const twoFingerStart = {
+        preventDefault: jest.fn(),
+        touches: [
+          { clientX: 100, clientY: 100 },
+          { clientX: 120, clientY: 100 }
+        ]
+      };
+      controller.onTouchStart(twoFingerStart);
+
+      // Simulate quick release (< 200 ms)
+      jest.spyOn(performance, 'now').mockReturnValue(now + 100);
+      const twoFingerEnd = {
+        preventDefault: jest.fn(),
+        touches: []
+      };
+      controller.onTouchEnd(twoFingerEnd);
+
+      expect(mockGame.pauseGame).toHaveBeenCalled();
+
+      jest.restoreAllMocks();
+    });
+
+    test('two-finger long-press does NOT trigger pauseGame (> 200 ms)', () => {
+      mockGame.pauseGame = jest.fn();
+      const now = performance.now();
+      jest.spyOn(performance, 'now').mockReturnValue(now);
+
+      const twoFingerStart = {
+        preventDefault: jest.fn(),
+        touches: [
+          { clientX: 100, clientY: 100 },
+          { clientX: 120, clientY: 100 }
+        ]
+      };
+      controller.onTouchStart(twoFingerStart);
+
+      // Simulate slow release (> 200 ms = pinch/drag gesture)
+      jest.spyOn(performance, 'now').mockReturnValue(now + 300);
+      const twoFingerEnd = {
+        preventDefault: jest.fn(),
+        touches: []
+      };
+      controller.onTouchEnd(twoFingerEnd);
+
+      expect(mockGame.pauseGame).not.toHaveBeenCalled();
+
+      jest.restoreAllMocks();
     });
 
     test('touch start is ignored when input is disabled', () => {

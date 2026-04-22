@@ -99,7 +99,7 @@ describe('Hole 9 — Station Core Finale (ISSUE-015)', () => {
     const elevatedGreen = hole9.mechanics.find(m => m.type === 'elevated_green');
 
     it('boost direction points toward the ramp (-z direction)', () => {
-      expect(boostStrip.direction[2]).toBeLessThan(0);
+      expect(boostStrip.boost_direction[2]).toBeLessThan(0);
     });
 
     it('boost strip is positioned before the ramp along z', () => {

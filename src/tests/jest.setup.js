@@ -142,6 +142,24 @@ jest.mock('cannon-es', () => {
   };
 });
 
+// Mock Three.js post-processing to avoid ES module import issues
+jest.mock('three/examples/jsm/postprocessing/EffectComposer', () => ({
+  EffectComposer: jest.fn(() => ({
+    addPass: jest.fn(),
+    render: jest.fn(),
+    setSize: jest.fn(),
+    dispose: jest.fn()
+  }))
+}));
+
+jest.mock('three/examples/jsm/postprocessing/RenderPass', () => ({
+  RenderPass: jest.fn()
+}));
+
+jest.mock('three/examples/jsm/postprocessing/UnrealBloomPass', () => ({
+  UnrealBloomPass: jest.fn()
+}));
+
 // Mock Three.js OrbitControls to avoid ES module import issues
 jest.mock('three/examples/jsm/controls/OrbitControls', () => ({
   OrbitControls: jest.fn(() => ({
@@ -208,6 +226,7 @@ jest.mock(
       })),
       // Geometry constructors
       CircleGeometry: jest.fn(),
+      TorusGeometry: jest.fn(() => ({ dispose: jest.fn() })),
       CylinderGeometry: jest.fn(),
       SphereGeometry: jest.fn(),
       PlaneGeometry: jest.fn(() => ({
@@ -228,6 +247,7 @@ jest.mock(
           this.clone = jest.fn(() => new Vector3Mock(this.x, this.y, this.z));
           this.toArray = jest.fn(() => [this.x, this.y, this.z]);
           this.addVectors = jest.fn().mockReturnThis();
+          this.add = jest.fn().mockReturnThis();
           this.multiplyScalar = jest.fn().mockReturnThis();
           this.subVectors = jest.fn().mockReturnThis();
           this.normalize = jest.fn().mockReturnThis();
@@ -235,6 +255,7 @@ jest.mock(
         });
         Vector3Mock.prototype = {
           addVectors: jest.fn().mockReturnThis(),
+          add: jest.fn().mockReturnThis(),
           multiplyScalar: jest.fn().mockReturnThis(),
           subVectors: jest.fn().mockReturnThis(),
           normalize: jest.fn().mockReturnThis(),
@@ -249,8 +270,10 @@ jest.mock(
         roughness: 0.3,
         metalness: 0.2
       })),
-      MeshBasicMaterial: jest.fn(() => ({
-        color: 0xffffff,
+      MeshBasicMaterial: jest.fn(opts => ({
+        color: opts?.color || 0xffffff,
+        opacity: opts?.opacity !== undefined ? opts.opacity : 1,
+        transparent: opts?.transparent || false,
         dispose: jest.fn()
       })),
       // Mesh class
@@ -259,7 +282,7 @@ jest.mock(
         this.material = material;
         this.position = { x: 0, y: 0, z: 0, set: jest.fn(), copy: jest.fn() };
         this.rotation = { x: 0, y: 0, z: 0, set: jest.fn() };
-        this.scale = { x: 1, y: 1, z: 1, set: jest.fn() };
+        this.scale = { x: 1, y: 1, z: 1, set: jest.fn(), setScalar: jest.fn() };
         this.castShadow = false;
         this.receiveShadow = false;
         this.name = '';

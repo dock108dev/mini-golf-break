@@ -42,8 +42,9 @@ Defined in `src/states/GameState.js`:
 | `PLAYING` | Game is actively running |
 | `AIMING` | Player can aim and shoot |
 | `HOLE_COMPLETED` | Ball entered the hole, transitioning |
-| `GAME_COMPLETED` | All 9 holes finished, scorecard shown |
+| `GAME_COMPLETED` | All 18 holes finished, scorecard shown |
 | `PAUSED` | Game loop stopped, pause overlay shown |
+| `FLYOVER` | Per-hole intro camera flyover is playing |
 
 State transitions are managed by `StateManager` and broadcast via `STATE_CHANGED` events.
 
@@ -51,11 +52,17 @@ State transitions are managed by `StateManager` and broadcast via `STATE_CHANGED
 
 `EventManager` provides publish/subscribe messaging. Events are defined in `src/events/EventTypes.js`:
 
-**Ball events:** `BALL_CREATED`, `BALL_HIT`, `BALL_MOVED`, `BALL_STOPPED`, `BALL_RESET`, `BALL_IN_HOLE`
+**Ball events:** `BALL_CREATED`, `BALL_HIT`, `BALL_MOVED`, `BALL_STOPPED`, `BALL_RESET`, `BALL_IN_HOLE`, `BALL_WALL_IMPACT`
 
-**Game events:** `HOLE_COMPLETED`, `HOLE_STARTED`, `GAME_COMPLETED`, `GAME_STARTED`, `GAME_INITIALIZED`, `STATE_CHANGED`
+**Game events:** `HOLE_COMPLETED`, `HOLE_STARTED`, `HOLE_STATE_UPDATED`, `HOLE_STATE_CHANGED`, `GAME_COMPLETED`, `GAME_STARTED`, `GAME_INITIALIZED`, `STATE_CHANGED`
+
+**Flyover events:** `HOLE_FLYOVER_START`, `HOLE_FLYOVER_END`
 
 **Pause events:** `GAME_PAUSED`, `GAME_RESUMED`
+
+**Scoring events:** `STROKE_LIMIT_WARNING`, `STROKE_LIMIT_REACHED`
+
+**Mechanic events:** `GATE_STATE_CHANGED`, `LASER_GRID_STATE_CHANGE`
 
 **Other:** `HAZARD_DETECTED`, `BALL_STUCK`, `UI_REQUEST_RESTART_GAME`, `ERROR_OCCURRED`
 
@@ -89,7 +96,7 @@ Each subscriber callback is wrapped in try-catch with rich context logging. A si
 
 ## Course System
 
-The game ships with a single course: **Orbital Drift** (9 holes, par 24).
+The game ships with a single course: **Orbital Drift** (18 holes, par 57: front nine par 24, back nine par 33).
 
 `OrbitalDriftCourse` extends `CoursesManager` and loads hole configs from `src/config/orbitalDriftConfigs.js`. `Game.js` accepts a `courseClass` constructor option for future extensibility.
 
@@ -106,7 +113,7 @@ Each hole is represented by a `HoleEntity` which creates:
 
 ## Mechanics System
 
-12 mechanic types extend `MechanicBase` and self-register with `MechanicRegistry` via the barrel import at `src/mechanics/index.js`.
+16 mechanic types extend `MechanicBase` and self-register with `MechanicRegistry` via the barrel import at `src/mechanics/index.js`.
 
 ### MechanicBase Interface
 
@@ -124,17 +131,21 @@ isBallInZone(ballBody)  // Helper for trigger zone detection
 | Type | Description | Holes |
 |------|-------------|-------|
 | `moving_sweeper` | Kinematic body rotating around a pivot, deflects ball | H1, H3, H9 |
-| `bowl_contour` | Radial force toward center, scales with distance | H2 |
-| `split_route` | Walls dividing the green into multiple paths | H3, H9 |
-| `ricochet_bumpers` | Bumpers with configurable geometry and high restitution | H4 |
-| `elevated_green` | Raised platform with ramp connection | H4, H9 |
+| `bowl_contour` | Radial inward force proportional to distance from center, no collision mesh; config: `position`, `radius`, `force`, `color` | H2 |
+| `split_route` | Static wall segments creating alternate routing paths; config: `walls` (array: `start`, `end` Vector3 pairs), `height` (default 0.8), `thickness` (default 0.15), `color` | H3, H9 |
+| `ricochet_bumpers` | Cylinder/sphere/box bumpers with high restitution amplifying exit velocity; config: `bumpers` (array: `position`, `geometry`, `radius`, `height`, `size`, `restitution`, `color`), `color` | H4 |
+| `elevated_green` | Raised platform with connecting ramp (angle clamped ≤30°) and side rails; config: `platform` (`position`, `width`, `length`), `elevation`, `ramp` (`start`, `end`, `width`), `color` | H4, H9 |
 | `portal_gate` | Teleports ball from entry to exit, preserves velocity, cooldown | H5 |
 | `timed_hazard` | Hazard cycling active/inactive on a timer | H6 |
 | `low_gravity_zone` | Reduces effective gravity in zone | H7 |
-| `bank_wall` | Angled wall segments for bank shots | H7 |
+| `bank_wall` | Angled wall segments for bank shots; config: `segments`, `height`, `thickness`, `restitution`, `color` | H7, H11 |
 | `suction_zone` | Radial pull toward zone center | H8 |
 | `timed_gate` | Wall that opens/closes on a timer | H8 |
 | `boost_strip` | Constant directional force in trigger zone | H9 |
+| `laser_grid` | Timed laser beams cycling active/inactive; hazard on contact | H10 |
+| `disappearing_platform` | Platform toggling solid/passthrough on a timer | H11 |
+| `gravity_funnel` | Directional force channel funneling ball toward exitPoint; config: `position`, `radius`, `exitPoint`, `force` | H12 |
+| `multi_level_ramp` | Multi-stage ascending/descending ramp with trimesh physics (angle clamped ≤30°) and optional side rails; config: `startPosition`, `endPosition`, `width`, `sideWalls`, `surfaceColor` | H4, H9 |
 
 ### Force Field Pattern
 

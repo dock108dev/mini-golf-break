@@ -13,6 +13,12 @@ export class HoleCompletionManager {
     this.detectionGracePeriod = 2000; // Grace period after hole creation (ms) - increased from 1000
     this.holeCreationTime = Date.now(); // Track when the hole was created
     this.isTransitioning = false; // Track if we're currently transitioning
+
+    // Cup sink detection state
+    this._prevInsideTrigger = false;
+    this._prevSpeed = 0;
+    this._approachSpeedThreshold = 0.5;
+    this._minSpeedGuard = 0.2; // sleepSpeedLimit * 2 — blocks rim-bounce false triggers
   }
 
   /**
@@ -44,6 +50,8 @@ export class HoleCompletionManager {
   resetGracePeriod() {
     this.holeCreationTime = Date.now();
     this.isTransitioning = false;
+    this._prevInsideTrigger = false;
+    this._prevSpeed = 0;
     this.game.debugManager.log(
       `[DEBUG] Hole detection grace period reset at ${this.holeCreationTime}`
     );
@@ -69,38 +77,29 @@ export class HoleCompletionManager {
       return;
     }
 
-    // Mark that we're starting a transition (or completion)
     this.isTransitioning = true;
 
-    // --- Add Immediate Feedback Actions ---
     try {
       if (this.game.ballManager && this.game.ballManager.ball) {
         const ball = this.game.ballManager.ball;
-        // Play success sound
         if (this.game.audioManager) {
           this.game.audioManager.playSound('success', 0.7);
         }
-        // Trigger ball's success effect
         if (ball.handleHoleSuccess) {
           ball.handleHoleSuccess();
         }
       }
-      // Show UI message (moved from Game.js)
+      // Delay so the ball-sink animation finishes before the overlay appears
       setTimeout(() => {
         this.game.uiManager.showMessage('Great Shot!', 2000);
-      }, 500); // Small delay still seems appropriate
+      }, 500);
     } catch (error) {
       console.error('[HoleCompletionManager] Error during immediate feedback actions:', error);
     }
-    // --- End Immediate Feedback Actions ---
 
-    // Set game state to hole completed
     this.game.stateManager.setHoleCompleted(true);
 
-    // Get score data
     const totalStrokes = this.game.scoringSystem.getTotalStrokes();
-
-    // Update score
     this.updateScore(currentHoleNumber, totalStrokes);
 
     // In isolation mode, stay on the current hole
@@ -284,10 +283,68 @@ export class HoleCompletionManager {
   }
 
   /**
-   * Update loop for the hole completion manager
-   * @param {number} dt - Delta time in seconds
+   * Update loop — runs cup sink detection each frame.
+   * @param {number} _dt - Delta time in seconds (unused)
    */
   update(_dt) {
-    // REMOVE commented-out, redundant ball-in-hole check
+    this._checkCupSinkDetection();
+  }
+
+  /**
+   * Position + speed based cup sink detection.
+   * Fires BALL_IN_HOLE when ball center is within cupRadius of the hole and
+   * approach speed is below the threshold. A min-speed guard suppresses the
+   * event on the tick immediately following a fast entry (rim-bounce guard).
+   * @private
+   */
+  _checkCupSinkDetection() {
+    if (this.isTransitioning || this.game.stateManager.isHoleCompleted()) {
+      this._prevInsideTrigger = false;
+      this._prevSpeed = 0;
+      return;
+    }
+
+    if (Date.now() - this.holeCreationTime < this.detectionGracePeriod) {
+      return;
+    }
+
+    const hole = this.game.course?.currentHole;
+    const ballBody = this.game.ballManager?.ball?.body;
+    if (!hole?.worldHolePosition || !ballBody) {
+      return;
+    }
+
+    const hp = hole.worldHolePosition;
+    const bp = ballBody.position;
+    const cupRadius = hole.cupRadius ?? 0.3;
+
+    const dx = bp.x - hp.x;
+    const dz = bp.z - hp.z;
+    const dist = Math.sqrt(dx * dx + dz * dz);
+
+    const vel = ballBody.velocity;
+    const speed =
+      typeof vel.length === 'function'
+        ? vel.length()
+        : Math.sqrt(vel.x * vel.x + vel.y * vel.y + vel.z * vel.z);
+
+    if (dist < cupRadius) {
+      // Rim-bounce guard: skip detection if ball was inside and moving fast on the previous tick.
+      if (this._prevInsideTrigger && this._prevSpeed > this._minSpeedGuard) {
+        this._prevInsideTrigger = true;
+        this._prevSpeed = speed;
+        return;
+      }
+
+      if (speed < this._approachSpeedThreshold) {
+        this.game.eventManager.publish(EventTypes.BALL_IN_HOLE, {}, this);
+      }
+
+      this._prevInsideTrigger = true;
+      this._prevSpeed = speed;
+    } else {
+      this._prevInsideTrigger = false;
+      this._prevSpeed = speed;
+    }
   }
 }

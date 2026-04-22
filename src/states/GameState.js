@@ -18,5 +18,8 @@ export const GameState = {
   GAME_COMPLETED: 'game_completed',
 
   /** Game is paused */
-  PAUSED: 'paused'
+  PAUSED: 'paused',
+
+  /** Hole intro flyover is playing */
+  FLYOVER: 'flyover'
 };

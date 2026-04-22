@@ -48,6 +48,7 @@ beforeAll(() => {
       copy: jest.fn(),
       setFromAxisAngle: jest.fn()
     },
+    angularVelocity: { x: 0, y: 0, z: 0, set: jest.fn() },
     userData: {},
     addShape: jest.fn(),
     addEventListener: jest.fn(),
@@ -226,7 +227,7 @@ const MECHANIC_CONFIGS = {
   low_gravity_zone: {
     position: { x: 0, y: 0, z: 0 },
     radius: 2,
-    gravityMultiplier: 0.3
+    gravity_fraction: 0.3
   },
   bowl_contour: {
     position: { x: 0, y: 0, z: 0 },

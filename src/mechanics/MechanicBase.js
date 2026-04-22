@@ -31,6 +31,20 @@ export class MechanicBase {
     this.meshes = [];
     this.bodies = [];
     this.isForceField = false;
+
+    // Warn when obstacle linear speed could cause ball tunneling
+    const depth = config?.size?.depth;
+    if (config?.speed !== undefined && depth !== undefined) {
+      const fixedDt = 1 / 60;
+      const maxSafeSpeed = depth / fixedDt;
+      if (config.speed > maxSafeSpeed) {
+        console.warn(
+          `[MechanicBase] speed ${config.speed} exceeds anti-tunneling limit ` +
+            `${maxSafeSpeed.toFixed(2)} (size.depth=${depth} / fixedDt=${fixedDt.toFixed(4)}). ` +
+            'Ball tunneling may occur.'
+        );
+      }
+    }
   }
 
   /**

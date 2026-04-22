@@ -65,6 +65,7 @@ beforeAll(() => {
       setFromAxisAngle: jest.fn(),
       copy: jest.fn()
     },
+    angularVelocity: { x: 0, y: 0, z: 0, set: jest.fn() },
     addShape: jest.fn(),
     addEventListener: jest.fn(),
     userData: {},
@@ -154,12 +155,12 @@ function makeAwakeBall(x = 0, z = 0, mass = 0.45) {
 describe('BoostStrip sleep/wake interaction', () => {
   const config = {
     position: new THREE.Vector3(0, 0, 0),
-    direction: new THREE.Vector3(0, 0, -1),
-    force: 10,
+    boost_direction: new THREE.Vector3(0, 0, -1),
+    boost_magnitude: 10,
     size: { width: 2, length: 4 }
   };
 
-  it('wakes sleeping ball inside zone and applies force on next update', () => {
+  it('wakes sleeping ball inside zone and applies velocity impulse', () => {
     const world = makeMockWorld();
     const group = makeMockGroup();
     const strip = new BoostStrip(world, group, config, SURFACE_HEIGHT);
@@ -170,7 +171,7 @@ describe('BoostStrip sleep/wake interaction', () => {
     strip.update(0.016, ball);
 
     expect(ball.wakeUp).toHaveBeenCalled();
-    expect(ball.applyForce).toHaveBeenCalledWith(strip.direction);
+    expect(ball.velocity.z).toBeCloseTo(-10);
   });
 
   it('does not wake sleeping ball outside zone', () => {
@@ -183,10 +184,10 @@ describe('BoostStrip sleep/wake interaction', () => {
     strip.update(0.016, ball);
 
     expect(ball.wakeUp).not.toHaveBeenCalled();
-    expect(ball.applyForce).not.toHaveBeenCalled();
+    expect(ball.velocity.z).toBe(0);
   });
 
-  it('does not call wakeUp on awake ball', () => {
+  it('does not call wakeUp on awake ball but still applies impulse', () => {
     const world = makeMockWorld();
     const group = makeMockGroup();
     const strip = new BoostStrip(world, group, config, SURFACE_HEIGHT);
@@ -196,7 +197,7 @@ describe('BoostStrip sleep/wake interaction', () => {
     strip.update(0.016, ball);
 
     expect(ball.wakeUp).not.toHaveBeenCalled();
-    expect(ball.applyForce).toHaveBeenCalled();
+    expect(ball.velocity.z).toBeCloseTo(-10);
   });
 });
 
@@ -264,7 +265,7 @@ describe('LowGravityZone sleep/wake interaction', () => {
   const config = {
     position: new THREE.Vector3(0, 0, 0),
     radius: 5,
-    gravityMultiplier: 0.3
+    gravity_fraction: 0.3
   };
 
   it('does not wake sleeping ball (no force needed when stationary)', () => {

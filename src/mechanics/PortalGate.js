@@ -2,15 +2,18 @@ import * as THREE from 'three';
 import { MechanicBase } from './MechanicBase';
 import { registerMechanic } from './MechanicRegistry';
 
+const PORTAL_COOLDOWN = 0.5;
+const DEFAULT_RADIUS = 0.4;
+const DEFAULT_PULSE_SPEED = 1.5; // Hz
+const ENTRY_COLOR = 0x00aaff;
+const EXIT_COLOR = 0xff6600;
+
 /**
  * PortalGate - Two linked portals that teleport the ball.
- * Ball enters one portal and exits the other with preserved velocity direction.
+ * On contact with the entry trigger radius the ball is moved to the exit
+ * position. A 0.5 s cooldown prevents re-entry loops.
  *
- * Config:
- *   entryPosition: Vector3 - Position of the entry portal
- *   exitPosition: Vector3 - Position of the exit portal
- *   radius: number - Portal trigger radius (default 0.6)
- *   color: number (optional) - Portal color (default 0x8800ff)
+ * Config: entryPosition: Vector3, exitPosition: Vector3, radius: number
  */
 class PortalGate extends MechanicBase {
   constructor(world, group, config, surfaceHeight, theme) {
@@ -18,22 +21,24 @@ class PortalGate extends MechanicBase {
 
     const entryPos = config.entryPosition || new THREE.Vector3(-3, 0, 2);
     const exitPos = config.exitPosition || new THREE.Vector3(3, 0, -5);
+
     this.entryX = entryPos.x;
     this.entryZ = entryPos.z;
     this.exitX = exitPos.x;
     this.exitZ = exitPos.z;
-    this.exitY = surfaceHeight + 0.3; // Slight elevation for clean exit
-    this.radius = config.radius || 0.6;
-    this.cooldown = 0; // Prevent immediate re-trigger
-    const color = config.color || theme?.mechanics?.portalGate?.color || 0x8800ff;
+    this.exitY = surfaceHeight + 0.3;
+    this.radius = config.radius || DEFAULT_RADIUS;
+    this.cooldown = 0;
+    this._pulseTimer = 0;
 
-    // Entry portal ring
-    this._createPortalRing(entryPos, color, 'entry', surfaceHeight, group);
-    // Exit portal ring
-    this._createPortalRing(exitPos, color, 'exit', surfaceHeight, group);
+    const entryColor = config.color || theme?.mechanics?.portalGate?.entryColor || ENTRY_COLOR;
+    const exitColor = config.exitColor || theme?.mechanics?.portalGate?.exitColor || EXIT_COLOR;
+
+    this._createPortalVisual(entryPos, entryColor, surfaceHeight, group);
+    this._createPortalVisual(exitPos, exitColor, surfaceHeight, group);
   }
 
-  _createPortalRing(pos, color, label, surfaceHeight, group) {
+  _createPortalVisual(pos, color, surfaceHeight, group) {
     const ringGeom = new THREE.RingGeometry(this.radius * 0.7, this.radius, 32);
     const ringMat = new THREE.MeshStandardMaterial({
       color,
@@ -49,7 +54,6 @@ class PortalGate extends MechanicBase {
     group.add(ring);
     this.meshes.push(ring);
 
-    // Inner glow disc
     const discGeom = new THREE.CircleGeometry(this.radius * 0.7, 32);
     const discMat = new THREE.MeshStandardMaterial({
       color,
@@ -75,28 +79,36 @@ class PortalGate extends MechanicBase {
       return;
     }
 
-    // Decrease cooldown
+    // Animate portal pulse (slow emissive throb)
+    this._pulseTimer += dt;
+    const pulse = 0.4 + 0.3 * Math.sin(this._pulseTimer * Math.PI * 2 * DEFAULT_PULSE_SPEED);
+    for (let i = 0; i < this.meshes.length; i++) {
+      const mat = this.meshes[i]?.material;
+      if (mat) {
+        mat.emissiveIntensity = i % 2 === 0 ? pulse + 0.2 : pulse;
+      }
+    }
+
     if (this.cooldown > 0) {
       this.cooldown -= dt;
       return;
     }
 
-    // Check if ball is at entry portal
     const dx = ballBody.position.x - this.entryX;
     const dz = ballBody.position.z - this.entryZ;
-
-    if (dx * dx + dz * dz <= this.radius * this.radius) {
-      // Teleport: preserve velocity magnitude and direction
-      ballBody.position.set(this.exitX, this.exitY, this.exitZ);
-      ballBody.wakeUp();
-
-      if (this.audioManager) {
-        this.audioManager.playSound('teleport');
-      }
-
-      // Set cooldown to prevent immediate re-entry
-      this.cooldown = 1.0;
+    if (dx * dx + dz * dz > this.radius * this.radius) {
+      return;
     }
+
+    // Teleport: move ball to exit position
+    ballBody.position.set(this.exitX, this.exitY, this.exitZ);
+    ballBody.wakeUp();
+
+    if (this.audioManager) {
+      this.audioManager.playSound('teleport');
+    }
+
+    this.cooldown = PORTAL_COOLDOWN;
   }
 }
 

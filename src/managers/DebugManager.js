@@ -29,6 +29,7 @@ export class DebugManager {
       courseOverrideActive: false
     };
     this.forceFieldsVisible = true;
+    this.wireframeEnabled = false;
     this.errorOverlay = null;
     this.courseDebugUI = null;
     this.boundHandleMainKey = this.handleMainDebugKey.bind(this);
@@ -239,7 +240,8 @@ export class DebugManager {
     const info = {
       FPS: Math.round(1 / this.game.deltaTime),
       'Debug Mode': 'ON',
-      'Force Fields': this.forceFieldsVisible ? 'Visible' : 'Hidden'
+      'Force Fields': this.forceFieldsVisible ? 'Visible' : 'Hidden',
+      Wireframe: this.wireframeEnabled ? 'ON' : 'OFF'
     };
     const errorStats = this.getErrorStats();
     if (errorStats.totalErrors > 0 || errorStats.totalWarnings > 0) {
@@ -266,6 +268,7 @@ export class DebugManager {
     this.velocityHistory = [];
     this.errorHistory.clear();
     this.forceFieldsVisible = true;
+    this.wireframeEnabled = false;
     this.errorOverlay = null;
     this.courseDebugUI = null;
     debug.log('[DebugManager] Cleanup finished.');

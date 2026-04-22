@@ -175,8 +175,9 @@ describe('TimedHazard with clamped dt', () => {
 
     CANNON.Body.mockImplementation(() => ({
       position: { x: 0, y: 0, z: 0, set: jest.fn() },
-      velocity: { x: 0, y: 0, z: 0 },
+      velocity: { x: 0, y: 0, z: 0, set: jest.fn() },
       quaternion: { x: 0, y: 0, z: 0, w: 1, set: jest.fn() },
+      angularVelocity: { x: 0, y: 0, z: 0, set: jest.fn() },
       addShape: jest.fn(),
       applyImpulse: jest.fn(),
       sleepState: 0,
@@ -290,8 +291,9 @@ describe('TimedGate with clamped dt', () => {
           this.z = z;
         })
       },
-      velocity: { x: 0, y: 0, z: 0 },
+      velocity: { x: 0, y: 0, z: 0, set: jest.fn() },
       quaternion: { x: 0, y: 0, z: 0, w: 1, set: jest.fn() },
+      angularVelocity: { x: 0, y: 0, z: 0, set: jest.fn() },
       addShape: jest.fn(),
       userData: {}
     }));
@@ -399,6 +401,7 @@ describe('MovingSweeper with clamped dt', () => {
         setFromAxisAngle: jest.fn(),
         copy: jest.fn()
       },
+      angularVelocity: { x: 0, y: 0, z: 0, set: jest.fn() },
       addShape: jest.fn(),
       addEventListener: jest.fn(),
       userData: {}
@@ -477,7 +480,7 @@ describe('MovingSweeper with clamped dt', () => {
     expect(sweeper.angle - initialAngle).toBeCloseTo(maxAngleStep, 6);
   });
 
-  test('mesh and body positions should remain consistent after clamped frame', () => {
+  test('body and mesh both move to arm-center after clamped frame', () => {
     const config = {
       pivot: new THREE.Vector3(2, 0, 3),
       armLength: 4,
@@ -487,15 +490,21 @@ describe('MovingSweeper with clamped dt', () => {
 
     sweeper.update(1 / 30, null);
 
-    // Mesh and body should both have been positioned via set()
-    expect(sweeper.mesh.position.set).toHaveBeenCalled();
-    expect(sweeper.body.position.set).toHaveBeenCalled();
+    const halfLength = 4 / 2;
+    const angle = 1 / 30; // speed=1 * dt=1/30
+    const expectedX = 2 + Math.cos(angle) * halfLength;
+    const expectedZ = 3 + Math.sin(angle) * halfLength;
 
-    // The arguments to both set() calls should match
-    const meshArgs = sweeper.mesh.position.set.mock.calls.slice(-1)[0];
+    // Body is updated each frame to the arm-center offset from pivot
     const bodyArgs = sweeper.body.position.set.mock.calls.slice(-1)[0];
-    expect(meshArgs[0]).toBeCloseTo(bodyArgs[0], 6); // x
-    expect(meshArgs[2]).toBeCloseTo(bodyArgs[2], 6); // z
+    expect(bodyArgs[0]).toBeCloseTo(expectedX, 5);
+    expect(bodyArgs[2]).toBeCloseTo(expectedZ, 5);
+
+    // Mesh is also updated each frame to the arm-center offset from pivot
+    expect(sweeper.mesh.position.set).toHaveBeenCalled();
+    const meshArgs = sweeper.mesh.position.set.mock.calls.slice(-1)[0];
+    expect(meshArgs[0]).toBeCloseTo(expectedX, 5);
+    expect(meshArgs[2]).toBeCloseTo(expectedZ, 5);
   });
 });
 

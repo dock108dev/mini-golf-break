@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as CANNON from 'cannon-es';
 import { MechanicBase } from './MechanicBase';
 import { registerMechanic } from './MechanicRegistry';
+import { HAZARD_COLORS } from '../themes/palette';
 
 /**
  * BankWall - Angled wall segments for bank shots and ricochets.
@@ -21,12 +22,14 @@ class BankWall extends MechanicBase {
     const segments = config.segments || [];
     const wallHeight = config.height || 0.6;
     const thickness = config.thickness || 0.15;
-    const color = config.color || theme?.mechanics?.bankWall?.color || 0x6666aa;
+    const color = config.color || theme?.mechanics?.bankWall?.color || HAZARD_COLORS.blocker;
 
     const material = new THREE.MeshStandardMaterial({
       color,
       roughness: 0.4,
-      metalness: 0.5
+      metalness: 0.5,
+      emissive: HAZARD_COLORS.blocker,
+      emissiveIntensity: 0.2
     });
 
     for (const seg of segments) {

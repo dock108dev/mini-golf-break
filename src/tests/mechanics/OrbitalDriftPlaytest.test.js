@@ -591,11 +591,11 @@ describe('Orbital Drift — Mechanic Config Validation', () => {
     }
   });
 
-  it('all boost_strip configs have direction and force', () => {
+  it('all boost_strip configs have boost_direction and boost_magnitude', () => {
     for (const h of configs) {
       for (const m of h.mechanics.filter(m => m.type === 'boost_strip')) {
-        expect(m.direction).toBeDefined();
-        expect(m.force).toBeGreaterThan(0);
+        expect(m.boost_direction).toBeDefined();
+        expect(m.boost_magnitude).toBeGreaterThan(0);
       }
     }
   });
@@ -610,11 +610,11 @@ describe('Orbital Drift — Mechanic Config Validation', () => {
     }
   });
 
-  it('all low_gravity_zone configs have valid gravityMultiplier', () => {
+  it('all low_gravity_zone configs have valid gravity_fraction', () => {
     for (const h of configs) {
       for (const m of h.mechanics.filter(m => m.type === 'low_gravity_zone')) {
-        expect(m.gravityMultiplier).toBeGreaterThan(0);
-        expect(m.gravityMultiplier).toBeLessThan(1);
+        expect(m.gravity_fraction).toBeGreaterThan(0);
+        expect(m.gravity_fraction).toBeLessThan(1);
       }
     }
   });
