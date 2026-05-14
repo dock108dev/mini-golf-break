@@ -164,23 +164,41 @@ class App {
     }
 
     leaderboardEl.style.display = '';
+    leaderboardEl.textContent = '';
 
-    const rows = topScores
-      .map(
-        (entry, i) =>
-          '<tr>' +
-          `<td class="lb-rank">${i + 1}</td>` +
-          `<td class="lb-name">${this._escapeHtml(entry.name)}</td>` +
-          `<td class="lb-score">${entry.score}</td>` +
-          '</tr>'
-      )
-      .join('');
+    const titleEl = document.createElement('h3');
+    titleEl.classList.add('lb-title');
+    titleEl.textContent = 'Top Scores';
 
-    leaderboardEl.innerHTML =
-      '<h3 class="lb-title">Top Scores</h3>' +
-      '<table class="lb-table" aria-label="Top 3 leaderboard">' +
-      `<tbody>${rows}</tbody>` +
-      '</table>';
+    const tableEl = document.createElement('table');
+    tableEl.classList.add('lb-table');
+    tableEl.setAttribute('aria-label', 'Top 3 leaderboard');
+
+    const tbodyEl = document.createElement('tbody');
+    topScores.forEach((entry, i) => {
+      const rowEl = document.createElement('tr');
+
+      const rankEl = document.createElement('td');
+      rankEl.classList.add('lb-rank');
+      rankEl.textContent = String(i + 1);
+
+      const nameEl = document.createElement('td');
+      nameEl.classList.add('lb-name');
+      nameEl.textContent = String(entry.name);
+
+      const scoreEl = document.createElement('td');
+      scoreEl.classList.add('lb-score');
+      scoreEl.textContent = String(entry.score);
+
+      rowEl.appendChild(rankEl);
+      rowEl.appendChild(nameEl);
+      rowEl.appendChild(scoreEl);
+      tbodyEl.appendChild(rowEl);
+    });
+
+    tableEl.appendChild(tbodyEl);
+    leaderboardEl.appendChild(titleEl);
+    leaderboardEl.appendChild(tableEl);
   }
 
   /** Escape HTML special chars for safe innerHTML insertion. */
